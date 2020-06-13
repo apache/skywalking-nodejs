@@ -26,6 +26,7 @@ import { ContextCarrier } from '@/trace/context/Carrier';
 import ID from '@/trace/ID';
 import SegmentRef from '@/trace/context/SegmentRef';
 import { SpanLayer, SpanType } from '@/proto/language-agent/Tracing_pb';
+import { createLogger } from '@/logging';
 
 export type SpanCtorOptions = {
   context: Context;
@@ -36,6 +37,8 @@ export type SpanCtorOptions = {
   layer?: SpanLayer;
   component?: Component;
 };
+
+const logger = createLogger('Span');
 
 export default abstract class Span {
   readonly context: Context;
@@ -69,17 +72,20 @@ export default abstract class Span {
   }
 
   start(): this {
+    logger.debug('Starting span', this);
     this.startTime = new Date().getTime();
     this.context.start(this);
     return this;
   }
 
   stop(): this {
+    logger.debug('Stopping span', this);
     this.context.stop(this);
     return this;
   }
 
   finish(segment: Segment): boolean {
+    logger.debug('Finishing span', this);
     this.endTime = new Date().getTime();
     segment.archive(this);
     return true;

@@ -1,7 +1,7 @@
 {
   "name": "skywalking-nodejs",
   "version": "1.0.0",
-  "description": "",
+  "description": "The NodeJS agent for Apache SkyWalking",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "scripts": {
@@ -19,8 +19,8 @@
     "lib/**/*"
   ],
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "kezhenxu94",
+  "license": "Apache 2.0",
   "devDependencies": {
     "@types/google-protobuf": "^3.7.2",
     "@types/node": "^14.0.11",

@@ -22,6 +22,7 @@ export type AgentConfig = {
   serviceInstance?: string;
   collectorAddress?: string;
   authorization?: string;
+  maxBufferSize?: number;
 }
 
 export default {
@@ -29,4 +30,5 @@ export default {
   serviceInstance: process.env.SERVICE_INSTANCE || 'your-node-js-instance',
   collectorAddress: process.env.COLLECTOR_ADDRESS || '127.0.0.1:11800',
   authorization: process.env.AUTHORIZATION,
+  maxBufferSize: process.env.MAX_BUFFER_SIZE || '1000',
 };

@@ -19,12 +19,18 @@
 
 import { createLogger } from '@/logging';
 import Segment from '@/trace/context/Segment';
+import config from '@/config/AgentConfig';
 
 const logger = createLogger('Buffer');
 
 class Buffer {
-  maxSize = 1000;
-  buffer: Segment[] = [];
+  maxSize: number;
+  buffer: Segment[];
+
+  constructor(maxSize: number = 1000) {
+    this.maxSize = maxSize;
+    this.buffer = [];
+  }
 
   get length(): number {
     return this.buffer.length;
@@ -41,4 +47,8 @@ class Buffer {
   }
 }
 
-export default new Buffer();
+export default new Buffer(
+  Number.isSafeInteger(config.maxBufferSize)
+    ? Number.parseInt(config.maxBufferSize, 10)
+    : 1000,
+);

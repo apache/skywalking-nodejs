@@ -22,6 +22,9 @@ import config from '@/config/AgentConfig';
 import { KeyStringValuePair } from '@/proto/common/Common_pb';
 import Segment from '@/trace/context/Segment';
 
+/**
+ * An adapter that adapts {@link Segment} objects to gRPC object {@link SegmentObject}.
+ */
 export default class SegmentObjectAdapter extends SegmentObject {
   constructor(segment: Segment) {
     super();

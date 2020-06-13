@@ -17,15 +17,8 @@
  *
  */
 
-declare global {
-  namespace NodeJS {
-    interface ProcessEnv {
-      AUTHORIZATION?: string;
-      COLLECTOR_ADDRESS?: string;
-      SERVICE_INSTANCE?: string;
-      SERVICE_NAME?: string;
-    }
-  }
-}
+export default interface Client {
+  readonly isConnected: boolean;
 
-export {};
+  start(): void;
+}

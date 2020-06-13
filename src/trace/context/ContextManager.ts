@@ -28,8 +28,13 @@ class ContextManager {
   constructor() {
     this.scopeContext = new Map<number, Context>();
 
+    this.scopeContext.set(1, new SpanContext());
+
     this.hooks = createHook({
       init: (asyncId: number, type: string, triggerAsyncId: number, resource: object) => {
+        if (type === 'TIMERWRAP') {
+          return;
+        }
         const context = this.scopeContext.get(triggerAsyncId) || new SpanContext();
         this.scopeContext.set(asyncId, context);
       },

@@ -17,11 +17,10 @@
  *
  */
 
-import StackedSpan from '@/trace/span/StackedSpan';
-import { SpanCtorOptions } from '@/trace/span/Span';
+import Span, { SpanCtorOptions } from '@/trace/span/Span';
 import { SpanType } from '@/proto/language-agent/Tracing_pb';
 
-export default class LocalSpan extends StackedSpan {
+export default class LocalSpan extends Span {
   constructor(options: SpanCtorOptions) {
     super(Object.assign(options, {
       type: SpanType.LOCAL,

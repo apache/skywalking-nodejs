@@ -27,6 +27,7 @@ import LocalSpan from '@/trace/span/LocalSpan';
 import * as assert from 'assert';
 import buffer from '@/agent/Buffer';
 import { createLogger } from '@/logging';
+import { executionAsyncId } from 'async_hooks';
 
 const logger = createLogger('SpanContext');
 
@@ -47,7 +48,7 @@ export default class SpanContext implements Context {
   }
 
   newEntrySpan(operation: string, carrier?: ContextCarrier): Span {
-    logger.debug('Creating entry span', { parentId: this.parentId });
+    logger.debug('Creating entry span', { parentId: this.parentId, executionAsyncId: executionAsyncId() });
     return new EntrySpan({
       id: this.spanId++,
       parentId: this.parentId,
@@ -57,6 +58,7 @@ export default class SpanContext implements Context {
   }
 
   newExitSpan(operation: string, peer: string, carrier?: ContextCarrier): Span {
+    logger.debug('Creating exit span', { parentId: this.parentId, executionAsyncId: executionAsyncId() });
     return new ExitSpan({
       id: this.spanId++,
       parentId: this.parentId,
@@ -66,6 +68,7 @@ export default class SpanContext implements Context {
   }
 
   newLocalSpan(operation: string): Span {
+    logger.debug('Creating local span', { parentId: this.parentId, executionAsyncId: executionAsyncId() });
     return new LocalSpan({
       id: this.spanId++,
       parentId: this.parentId,
