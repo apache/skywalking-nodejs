@@ -1,0 +1,44 @@
+{
+  "name": "skywalking-nodejs",
+  "version": "1.0.0",
+  "description": "",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "scripts": {
+    "prepare": "npm run generate-source",
+    "generate-source": "scripts/protoc.sh",
+    "build": "tsc",
+    "lint": "tslint -p tsconfig.json",
+    "fix-lint": "tslint --fix -p tsconfig.json",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "dev": "node --experimental-worker node_modules/ts-node/dist/bin -r tsconfig-paths/register test/dev-test.ts",
+    "clean": "(rm -rf src/proto || true) && (rm -rf src/proto || true)"
+  },
+  "files": [
+    "lib/**/*"
+  ],
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/google-protobuf": "^3.7.2",
+    "@types/node": "^14.0.11",
+    "@types/uuid": "^8.0.0",
+    "grpc-tools": "^1.9.0",
+    "grpc_tools_node_protoc_ts": "^4.0.0",
+    "prettier": "^2.0.5",
+    "ts-node": "^8.10.2",
+    "tsconfig-paths": "^3.9.0",
+    "tslint": "^6.1.2",
+    "tslint-config-prettier": "^1.18.0",
+    "typescript": "^3.9.5",
+    "worker-loader": "^2.0.0"
+  },
+  "dependencies": {
+    "google-protobuf": "^3.12.2",
+    "grpc": "^1.10.1",
+    "uuid": "^8.1.0",
+    "winston": "^3.2.1"
+  }
+}
