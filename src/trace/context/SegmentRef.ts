@@ -18,24 +18,53 @@
  */
 
 import { ContextCarrier } from '@/trace/context/Carrier';
+import Snapshot from '@/trace/context/Snapshot';
+import ID from '@/trace/ID';
+import config from '@/config/AgentConfig';
 
 export default class SegmentRef {
-  refType = 'CrossProcess';
-  traceId: string;
-  segmentId: string;
-  spanId: number;
-  service: string;
-  serviceInstance: string;
-  endpoint: string;
-  clientAddress: string;
+  private constructor(
+    public refType: 'CrossProcess' | 'CrossThread' = 'CrossProcess',
+    public traceId: ID,
+    public segmentId: ID,
+    public spanId: number,
+    public service: string,
+    public serviceInstance: string,
+    public endpoint: string,
+    public clientAddress: string,
+  ) {
+    this.traceId = traceId;
+    this.segmentId = segmentId;
+    this.spanId = spanId;
+    this.service = service;
+    this.serviceInstance = serviceInstance;
+    this.endpoint = endpoint;
+    this.clientAddress = clientAddress;
+  }
 
-  constructor(carrier: ContextCarrier) {
-    this.traceId = carrier.traceId;
-    this.segmentId = carrier.segmentId;
-    this.spanId = carrier.spanId;
-    this.service = carrier.service;
-    this.serviceInstance = carrier.serviceInstance;
-    this.endpoint = carrier.endpoint;
-    this.clientAddress = carrier.clientAddress;
+  static fromCarrier(carrier: ContextCarrier): SegmentRef {
+    return new SegmentRef(
+      'CrossProcess',
+      carrier.traceId,
+      carrier.segmentId,
+      carrier.spanId,
+      carrier.service,
+      carrier.serviceInstance,
+      carrier.endpoint,
+      carrier.clientAddress,
+    );
+  }
+
+  static fromSnapshot(snapshot: Snapshot): SegmentRef {
+    return new SegmentRef(
+      'CrossThread',
+      new ID(snapshot.traceId.toString()),
+      new ID(snapshot.segmentId.toString()),
+      snapshot.spanId,
+      config.serviceName,
+      config.serviceInstance,
+      snapshot.parentEndpoint,
+      '',
+    );
   }
 }

@@ -17,38 +17,28 @@
  *
  */
 
+import fs = require('fs');
+import path = require('path');
+import SwPlugin from '@/core/SwPlugin';
 import { createLogger } from '@/logging';
-import Segment from '@/trace/context/Segment';
-import config from '@/config/AgentConfig';
 
 const logger = createLogger(__filename);
 
-class Buffer {
-  maxSize: number;
-  buffer: Segment[];
+class PluginInstaller {
+  pluginDir: string;
 
-  constructor(maxSize: number = 1000) {
-    this.maxSize = maxSize;
-    this.buffer = [];
+  constructor() {
+    this.pluginDir = path.resolve(__dirname, '..', 'plugins');
   }
 
-  get length(): number {
-    return this.buffer.length;
-  }
-
-  put(segment: Segment): this {
-    if (this.buffer.length > this.maxSize) {
-      logger.warn('Drop the data because of the buffer is oversized');
-      return this;
-    }
-    this.buffer.push(segment);
-
-    return this;
+  install(): void {
+    const files = fs.readdirSync(this.pluginDir);
+    files.forEach(file => {
+      const plugin = require(path.join(this.pluginDir, file)).default as SwPlugin;
+      logger.info(`Installing plugin ${plugin.module} ${plugin.versions}`);
+      plugin.install();
+    });
   }
 }
 
-export default new Buffer(
-  Number.isSafeInteger(config.maxBufferSize)
-    ? Number.parseInt(config.maxBufferSize, 10)
-    : 1000,
-);
+export default new PluginInstaller();

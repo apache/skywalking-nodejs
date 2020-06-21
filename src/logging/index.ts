@@ -18,12 +18,23 @@
  */
 
 import * as winston from 'winston';
+import { Logger } from 'winston';
 
-export function createLogger(name: string) {
+type LoggerLevelAware = Logger & {
+  isDebugEnabled(): boolean;
+  isInfoEnabled(): boolean;
+};
+
+export function createLogger(name: string): LoggerLevelAware {
+  const loggingLevel = process.env.LOGGING_LEVEL
+    || (process.env.NODE_ENV !== 'production' ? 'debug' : 'info');
+
   const logger = winston.createLogger({
-    level: process.env.NODE_ENV !== 'production' ? 'debug' : 'info',
+    level: loggingLevel,
     format: winston.format.json(),
-    defaultMeta: { service: name },
+    defaultMeta: {
+      file: name,
+    },
   });
   if (process.env.NODE_ENV !== 'production') {
     logger.add(new winston.transports.Console({
@@ -34,5 +45,12 @@ export function createLogger(name: string) {
       filename: 'skywalking.log',
     }));
   }
-  return logger;
+
+  const isDebugEnabled = (): boolean => logger.levels[logger.level] > logger.levels.debug;
+  const isInfoEnabled = (): boolean => logger.levels[logger.level] > logger.levels.info;
+
+  return Object.assign(logger, {
+    isDebugEnabled,
+    isInfoEnabled,
+  } as LoggerLevelAware);
 }

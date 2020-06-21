@@ -7,6 +7,7 @@
     "strict": true,
     "baseUrl": ".",
     "moduleResolution": "Node",
+    "resolveJsonModule": true,
     "paths": {
       "@/*": [
         "src/*"

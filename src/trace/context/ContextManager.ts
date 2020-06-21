@@ -19,33 +19,17 @@
 
 import Context from '@/trace/context/Context';
 import SpanContext from '@/trace/context/SpanContext';
-import { AsyncHook, createHook, executionAsyncId } from 'async_hooks';
+import { executionAsyncId } from 'async_hooks';
 
 class ContextManager {
-  hooks: AsyncHook;
-  scopeContext: Map<number, Context>;
+  contextKeyedByAsyncId: { [asyncId: number]: Context } = {};
 
-  constructor() {
-    this.scopeContext = new Map<number, Context>();
+  get current(): Context {
+    const thisAsyncId = executionAsyncId();
 
-    this.scopeContext.set(1, new SpanContext());
+    this.contextKeyedByAsyncId[thisAsyncId] = this.contextKeyedByAsyncId[thisAsyncId] || new SpanContext(thisAsyncId);
 
-    this.hooks = createHook({
-      init: (asyncId: number, type: string, triggerAsyncId: number, resource: object) => {
-        if (type === 'TIMERWRAP') {
-          return;
-        }
-        const context = this.scopeContext.get(triggerAsyncId) || new SpanContext();
-        this.scopeContext.set(asyncId, context);
-      },
-      destroy: (asyncId: number) => {
-        this.scopeContext.delete(asyncId);
-      },
-    }).enable();
-  }
-
-  get currentContext(): Context {
-    return this.scopeContext.get(executionAsyncId()) || new SpanContext();
+    return this.contextKeyedByAsyncId[thisAsyncId];
   }
 }
 

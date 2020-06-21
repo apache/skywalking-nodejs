@@ -22,7 +22,7 @@ import Segment from '@/trace/context/Segment';
 import { createLogger } from '@/logging';
 import { SpanType } from '@/proto/language-agent/Tracing_pb';
 
-const logger = createLogger('StackedSpan');
+const logger = createLogger(__filename);
 
 export default class StackedSpan extends Span {
   depth = 0;
@@ -32,7 +32,9 @@ export default class StackedSpan extends Span {
   }
 
   finish(segment: Segment): boolean {
-    logger.debug('Finishing span', this);
+    if (logger.isDebugEnabled()) {
+      logger.debug('Finishing span', this);
+    }
     return --this.depth === 0 && super.finish(segment);
   }
 }

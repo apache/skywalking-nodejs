@@ -19,14 +19,14 @@
 
 import Context from '@/trace/context/Context';
 import { Component } from '@/trace/Component';
-import Tag from '@/Tag';
-import Log from '@/Log';
+import { Tag } from '@/Tag';
+import Log, { LogItem } from '@/Log';
 import Segment from '@/trace/context/Segment';
 import { ContextCarrier } from '@/trace/context/Carrier';
-import ID from '@/trace/ID';
 import SegmentRef from '@/trace/context/SegmentRef';
 import { SpanLayer, SpanType } from '@/proto/language-agent/Tracing_pb';
 import { createLogger } from '@/logging';
+import * as packageInfo from 'package.json';
 
 export type SpanCtorOptions = {
   context: Context;
@@ -38,7 +38,7 @@ export type SpanCtorOptions = {
   component?: Component;
 };
 
-const logger = createLogger('Span');
+const logger = createLogger(__filename);
 
 export default abstract class Span {
   readonly context: Context;
@@ -72,14 +72,14 @@ export default abstract class Span {
   }
 
   start(): this {
-    logger.debug('Starting span', this);
+    logger.debug(`Starting span ${this.operation}`, this);
     this.startTime = new Date().getTime();
     this.context.start(this);
     return this;
   }
 
   stop(): this {
-    logger.debug('Stopping span', this);
+    logger.debug(`Stopping span ${this.operation}`, this);
     this.context.stop(this);
     return this;
   }
@@ -95,25 +95,48 @@ export default abstract class Span {
   inject(carrier: ContextCarrier): this {
     throw new Error(`
       can only inject context carrier into ExitSpan, this may be a potential bug in the agent,
-      please report this in https://github.com/apache/skywalking/issues if you encounter this.
+      please report this in ${packageInfo.bugs.url} if you encounter this.
     `);
   }
 
   extract(carrier: ContextCarrier): this {
-    this.context.segment.relate(new ID(carrier.traceId));
+    this.context.segment.relate(carrier.traceId);
 
     return this;
   }
 
   tag(tag: Tag): this {
     if (!tag.overridable) {
-      this.tags.push(tag);
+      this.tags.push(Object.assign({}, tag));
     }
 
-    this.tags
-      .filter(it => it.key === tag.key)
-      .forEach(it => it.val = tag.val);
+    const sameTags = this.tags.filter(it => it.key === tag.key);
 
+    if (sameTags.length) {
+      sameTags.forEach(it => it.val = tag.val);
+    } else {
+      this.tags.push(Object.assign({}, tag));
+    }
+
+    return this;
+  }
+
+  error(error: Error): this {
+    this.errored = true;
+    this.logs.push({
+      timestamp: new Date().getTime(),
+      items: [{
+        key: 'Stack',
+        val: error.stack,
+      } as LogItem],
+    } as Log);
+    return this;
+  }
+
+  refer(ref: SegmentRef): this {
+    if (!this.refs.includes(ref)) {
+      this.refs.push(ref);
+    }
     return this;
   }
 }

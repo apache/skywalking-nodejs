@@ -17,9 +17,11 @@
  *
  */
 
+import ID from '@/trace/ID';
+
 export interface ContextCarrier extends CarrierItem {
-  traceId: string;
-  segmentId: string;
+  traceId: ID;
+  segmentId: ID;
   spanId: number;
   service: string;
   serviceInstance: string;

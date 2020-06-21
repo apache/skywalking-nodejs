@@ -27,7 +27,9 @@ import { InstancePingPkg } from '@/proto/management/Management_pb';
 import config from '@/config/AgentConfig';
 import Client from '@/agent/protocol/grpc/clients/Client';
 
-const logger = createLogger('HeartbeatTask');
+import * as packageInfo from 'package.json';
+
+const logger = createLogger(__filename);
 
 class HeartbeatClient implements Client {
   heartbeatClient: ManagementServiceClient;
@@ -50,7 +52,7 @@ class HeartbeatClient implements Client {
       logger.warn(`
         The heartbeat timer has already been scheduled,
         this may be a potential bug, please consider reporting
-        this to https://github.com/apache/skywalking/issues/new
+        this to ${packageInfo.bugs.url}
       `);
       return;
     }

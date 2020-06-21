@@ -24,17 +24,22 @@ import Segment from '@/trace/context/Segment';
 import EntrySpan from '@/trace/span/EntrySpan';
 import ExitSpan from '@/trace/span/ExitSpan';
 import LocalSpan from '@/trace/span/LocalSpan';
-import * as assert from 'assert';
+import * as packageInfo from 'package.json';
 import buffer from '@/agent/Buffer';
 import { createLogger } from '@/logging';
 import { executionAsyncId } from 'async_hooks';
+import Snapshot from '@/trace/context/Snapshot';
+import SegmentRef from '@/trace/context/SegmentRef';
 
-const logger = createLogger('SpanContext');
+const logger = createLogger(__filename);
 
 export default class SpanContext implements Context {
   spanId = 0;
   spans: Span[] = [];
   segment: Segment = new Segment();
+
+  constructor(public asyncId: number) {
+  }
 
   get parent(): Span | null {
     if (this.spans.length > 0) {
@@ -48,7 +53,13 @@ export default class SpanContext implements Context {
   }
 
   newEntrySpan(operation: string, carrier?: ContextCarrier): Span {
-    logger.debug('Creating entry span', { parentId: this.parentId, executionAsyncId: executionAsyncId() });
+    if (logger.isDebugEnabled()) {
+      logger.debug('Creating entry span', {
+        parentId: this.parentId,
+        executionAsyncId: executionAsyncId(),
+      });
+    }
+
     return new EntrySpan({
       id: this.spanId++,
       parentId: this.parentId,
@@ -58,7 +69,13 @@ export default class SpanContext implements Context {
   }
 
   newExitSpan(operation: string, peer: string, carrier?: ContextCarrier): Span {
-    logger.debug('Creating exit span', { parentId: this.parentId, executionAsyncId: executionAsyncId() });
+    if (logger.isDebugEnabled()) {
+      logger.debug('Creating exit span', {
+        parentId: this.parentId,
+        executionAsyncId: executionAsyncId(),
+      });
+    }
+
     return new ExitSpan({
       id: this.spanId++,
       parentId: this.parentId,
@@ -68,7 +85,13 @@ export default class SpanContext implements Context {
   }
 
   newLocalSpan(operation: string): Span {
-    logger.debug('Creating local span', { parentId: this.parentId, executionAsyncId: executionAsyncId() });
+    if (logger.isDebugEnabled()) {
+      logger.debug('Creating local span', {
+        parentId: this.parentId,
+        executionAsyncId: executionAsyncId(),
+      });
+    }
+
     return new LocalSpan({
       id: this.spanId++,
       parentId: this.parentId,
@@ -78,7 +101,7 @@ export default class SpanContext implements Context {
   }
 
   start(span: Span): Context {
-    if (!this.spans.includes(span)) {
+    if (this.spans.every(s => s.id !== span.id)) {
       this.spans.push(span);
     }
 
@@ -88,14 +111,40 @@ export default class SpanContext implements Context {
   stop(span: Span): boolean {
     logger.info('Stopping span', { span, spans: this.spans });
 
-    assert(this.spans[this.spans.length - 1] === span);
+    if (this.spans[this.spans.length - 1] !== span) {
+      logger.error(`Stopping unexpected span. Consider report this to ${packageInfo.bugs.url}`);
+      this.spans.splice(0, this.spans.length);
+      return true;
+    }
 
     if (span.finish(this.segment)) {
-      logger.debug('Finishing span', { span });
+      if (logger.isDebugEnabled()) {
+        logger.debug('Finishing span', { span });
+      }
       this.spans.pop();
       buffer.put(this.segment);
     }
 
     return this.spans.length === 0;
+  }
+
+  currentSpan(): Span | undefined {
+    return this.spans[this.spans.length - 1];
+  }
+
+  capture(): Snapshot {
+    return {
+      segmentId: this.segment.segmentId,
+      spanId: this.currentSpan()?.id ?? -1,
+      traceId: this.segment.relatedTraces[0],
+      parentEndpoint: this.spans[0].operation,
+    };
+  }
+
+  restore(snapshot: Snapshot) {
+    const ref = SegmentRef.fromSnapshot(snapshot);
+    this.segment.refer(ref);
+    this.currentSpan()?.refer(ref);
+    this.segment.relate(ref.traceId);
   }
 }

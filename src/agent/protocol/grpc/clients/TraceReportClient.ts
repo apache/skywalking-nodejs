@@ -27,7 +27,7 @@ import SegmentObjectAdapter from '@/agent/protocol/grpc/SegmentObjectAdapter';
 import { createLogger } from '@/logging';
 import Client from '@/agent/protocol/grpc/clients/Client';
 
-const logger = createLogger('TraceReportClient');
+const logger = createLogger(__filename);
 
 class TraceReportClient implements Client {
   reporterClient: TraceSegmentReportServiceClient;

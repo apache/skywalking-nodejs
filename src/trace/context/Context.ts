@@ -20,6 +20,7 @@
 import Span from '@/trace/span/Span';
 import { ContextCarrier } from '@/trace/context/Carrier';
 import Segment from '@/trace/context/Segment';
+import Snapshot from '@/trace/context/Snapshot';
 
 export default interface Context {
   segment: Segment;
@@ -34,4 +35,10 @@ export default interface Context {
   start(span: Span): Context;
 
   stop(span: Span): boolean;
+
+  currentSpan(): Span | undefined;
+
+  capture(): Snapshot;
+
+  restore(snapshot: Snapshot): void;
 }

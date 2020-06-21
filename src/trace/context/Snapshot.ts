@@ -17,38 +17,11 @@
  *
  */
 
-import { createLogger } from '@/logging';
-import Segment from '@/trace/context/Segment';
-import config from '@/config/AgentConfig';
+import ID from '@/trace/ID';
 
-const logger = createLogger(__filename);
-
-class Buffer {
-  maxSize: number;
-  buffer: Segment[];
-
-  constructor(maxSize: number = 1000) {
-    this.maxSize = maxSize;
-    this.buffer = [];
-  }
-
-  get length(): number {
-    return this.buffer.length;
-  }
-
-  put(segment: Segment): this {
-    if (this.buffer.length > this.maxSize) {
-      logger.warn('Drop the data because of the buffer is oversized');
-      return this;
-    }
-    this.buffer.push(segment);
-
-    return this;
-  }
+export default interface Snapshot {
+  segmentId: ID;
+  spanId: number;
+  traceId: ID;
+  parentEndpoint: string;
 }
-
-export default new Buffer(
-  Number.isSafeInteger(config.maxBufferSize)
-    ? Number.parseInt(config.maxBufferSize, 10)
-    : 1000,
-);

@@ -36,8 +36,8 @@ export default class ExitSpan extends StackedSpan {
   }
 
   inject(carrier: ContextCarrier): this {
-    carrier.traceId = this.context.segment.relatedTraces[0].toString();
-    carrier.segmentId = this.context.segment.segmentId.toString();
+    carrier.traceId = this.context.segment.relatedTraces[0];
+    carrier.segmentId = this.context.segment.segmentId;
     carrier.spanId = this.id;
     carrier.service = config.serviceName;
     carrier.serviceInstance = config.serviceInstance;

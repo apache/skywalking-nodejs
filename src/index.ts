@@ -21,8 +21,9 @@ import config, { AgentConfig } from '@/config/AgentConfig';
 import GrpcProtocol from '@/agent/protocol/grpc/GrpcProtocol';
 import { createLogger } from '@/logging';
 import Protocol from '@/agent/protocol/Protocol';
+import PluginInstaller from '@/core/PluginInstaller';
 
-const logger = createLogger('SkyWalking');
+const logger = createLogger(__filename);
 
 class Agent {
   started = false;
@@ -37,6 +38,8 @@ class Agent {
     logger.debug('Starting SkyWalking agent');
 
     this.started = true;
+
+    PluginInstaller.install();
 
     this.protocol.heartbeat();
     this.protocol.report();

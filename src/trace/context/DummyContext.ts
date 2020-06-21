@@ -23,6 +23,8 @@ import Span from '@/trace/span/Span';
 import DummySpan from '@/trace/span/DummySpan';
 import Segment from '@/trace/context/Segment';
 import { SpanType } from '@/proto/language-agent/Tracing_pb';
+import Snapshot from '@/trace/context/Snapshot';
+import ID from '@/trace/ID';
 
 export default class DummyContext implements Context {
   span: Span = new DummySpan({
@@ -56,4 +58,22 @@ export default class DummyContext implements Context {
   stop(): boolean {
     return --this.depth === 0;
   }
+
+  currentSpan(): Span {
+    return this.spans[this.spans.length - 1];
+  }
+
+  capture(): Snapshot {
+    return {
+      parentEndpoint: '',
+      segmentId: new ID(),
+      spanId: 0,
+      traceId: new ID(),
+    };
+  }
+
+  restore(snapshot: Snapshot) {
+    // Big Bang ~
+  }
+
 }

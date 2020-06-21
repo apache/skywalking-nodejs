@@ -17,8 +17,25 @@
  *
  */
 
-export default interface Tag {
-  key: string;
+export interface Tag {
+  readonly key: string;
+  readonly overridable: boolean;
   val: string;
-  overridable: boolean;
 }
+
+export default {
+  httpStatusCode: (val: string | number | undefined): Tag => {
+    return {
+      key: 'http.status.code',
+      overridable: true,
+      val: `${val}`,
+    } as Tag;
+  },
+  httpStatusMsg: (val: string | undefined): Tag => {
+    return {
+      key: 'http.status.msg',
+      overridable: true,
+      val: `${val}`,
+    } as Tag;
+  },
+};
