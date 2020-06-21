@@ -20,6 +20,7 @@
 export class Component {
   static UNKNOWN = new Component(0);
   static HTTP = new Component(2);
+  static HTTP_SERVER = new Component(49);
 
   constructor(public id: number) {
   }

@@ -19,9 +19,9 @@
 
 import StackedSpan from '@/trace/span/StackedSpan';
 import { SpanCtorOptions } from '@/trace/span/Span';
-import { ContextCarrier } from '@/trace/context/Carrier';
 import config from '@/config/AgentConfig';
 import { SpanType } from '@/proto/language-agent/Tracing_pb';
+import { ContextCarrier } from '@/trace/context/ContextCarrier';
 
 export default class ExitSpan extends StackedSpan {
   constructor(options: SpanCtorOptions) {
@@ -35,15 +35,16 @@ export default class ExitSpan extends StackedSpan {
     return super.start();
   }
 
-  inject(carrier: ContextCarrier): this {
-    carrier.traceId = this.context.segment.relatedTraces[0];
-    carrier.segmentId = this.context.segment.segmentId;
-    carrier.spanId = this.id;
-    carrier.service = config.serviceName;
-    carrier.serviceInstance = config.serviceInstance;
-    carrier.endpoint = this.context.spans[0].operation;
-    carrier.clientAddress = this.peer;
-
-    return this;
+  extract(): ContextCarrier {
+    return new ContextCarrier(
+      this.context.segment.relatedTraces[0],
+      this.context.segment.segmentId,
+      this.id,
+      config.serviceName,
+      config.serviceInstance,
+      this.context.spans[0].operation,
+      this.peer,
+      [],
+    );
   }
 }

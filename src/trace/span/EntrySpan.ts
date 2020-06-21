@@ -20,9 +20,9 @@
 import StackedSpan from '@/trace/span/StackedSpan';
 import { Component } from '@/trace/Component';
 import { SpanCtorOptions } from '@/trace/span/Span';
-import { ContextCarrier } from '@/trace/context/Carrier';
 import SegmentRef from '@/trace/context/SegmentRef';
 import { SpanLayer, SpanType } from '@/proto/language-agent/Tracing_pb';
+import { ContextCarrier } from '@/trace/context/ContextCarrier';
 
 export default class EntrySpan extends StackedSpan {
   maxDepth = 0;
@@ -45,8 +45,8 @@ export default class EntrySpan extends StackedSpan {
     return this;
   }
 
-  extract(carrier: ContextCarrier): this {
-    super.extract(carrier);
+  inject(carrier: ContextCarrier): this {
+    super.inject(carrier);
 
     const ref = SegmentRef.fromCarrier(carrier);
 

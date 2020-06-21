@@ -17,20 +17,9 @@
  *
  */
 
-import ID from '@/trace/ID';
+export class CarrierItem {
+  value!: string;
 
-export interface ContextCarrier extends CarrierItem {
-  traceId: ID;
-  segmentId: ID;
-  spanId: number;
-  service: string;
-  serviceInstance: string;
-  endpoint: string;
-  clientAddress: string;
-  items: CarrierItem[];
-}
-
-export interface CarrierItem {
-  key: string;
-  value: string;
+  constructor(public key: string) {
+  }
 }

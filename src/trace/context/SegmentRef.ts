@@ -17,10 +17,10 @@
  *
  */
 
-import { ContextCarrier } from '@/trace/context/Carrier';
 import Snapshot from '@/trace/context/Snapshot';
 import ID from '@/trace/ID';
 import config from '@/config/AgentConfig';
+import { ContextCarrier } from '@/trace/context/ContextCarrier';
 
 export default class SegmentRef {
   private constructor(
@@ -45,13 +45,13 @@ export default class SegmentRef {
   static fromCarrier(carrier: ContextCarrier): SegmentRef {
     return new SegmentRef(
       'CrossProcess',
-      carrier.traceId,
-      carrier.segmentId,
-      carrier.spanId,
-      carrier.service,
-      carrier.serviceInstance,
-      carrier.endpoint,
-      carrier.clientAddress,
+      carrier.traceId!,
+      carrier.segmentId!,
+      carrier.spanId!,
+      carrier.service!,
+      carrier.serviceInstance!,
+      carrier.endpoint!,
+      carrier.clientAddress!,
     );
   }
 

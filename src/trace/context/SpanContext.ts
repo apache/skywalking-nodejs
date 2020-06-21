@@ -18,7 +18,6 @@
  */
 
 import Context from '@/trace/context/Context';
-import { ContextCarrier } from '@/trace/context/Carrier';
 import Span from '@/trace/span/Span';
 import Segment from '@/trace/context/Segment';
 import EntrySpan from '@/trace/span/EntrySpan';
@@ -30,6 +29,7 @@ import { createLogger } from '@/logging';
 import { executionAsyncId } from 'async_hooks';
 import Snapshot from '@/trace/context/Snapshot';
 import SegmentRef from '@/trace/context/SegmentRef';
+import { ContextCarrier } from '@/trace/context/ContextCarrier';
 
 const logger = createLogger(__filename);
 
@@ -60,15 +60,21 @@ export default class SpanContext implements Context {
       });
     }
 
-    return new EntrySpan({
+    const span = new EntrySpan({
       id: this.spanId++,
       parentId: this.parentId,
       context: this,
       operation,
     });
+
+    if (carrier) {
+      span.inject(carrier);
+    }
+
+    return span;
   }
 
-  newExitSpan(operation: string, peer: string, carrier?: ContextCarrier): Span {
+  newExitSpan(operation: string, peer: string): Span {
     if (logger.isDebugEnabled()) {
       logger.debug('Creating exit span', {
         parentId: this.parentId,

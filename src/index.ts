@@ -30,6 +30,11 @@ class Agent {
   protocol: Protocol = new GrpcProtocol();
 
   start(options: AgentConfig = {}): void {
+    if (process.env.SW_DISABLE === 'true') {
+      logger.info('SkyWalking agent is disabled by `SW_DISABLE=true`');
+      return;
+    }
+
     Object.assign(config, options);
 
     if (this.started) {

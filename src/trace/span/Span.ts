@@ -22,11 +22,11 @@ import { Component } from '@/trace/Component';
 import { Tag } from '@/Tag';
 import Log, { LogItem } from '@/Log';
 import Segment from '@/trace/context/Segment';
-import { ContextCarrier } from '@/trace/context/Carrier';
 import SegmentRef from '@/trace/context/SegmentRef';
 import { SpanLayer, SpanType } from '@/proto/language-agent/Tracing_pb';
 import { createLogger } from '@/logging';
 import * as packageInfo from 'package.json';
+import { ContextCarrier } from '@/trace/context/ContextCarrier';
 
 export type SpanCtorOptions = {
   context: Context;
@@ -92,15 +92,15 @@ export default abstract class Span {
   }
 
   // noinspection JSUnusedLocalSymbols
-  inject(carrier: ContextCarrier): this {
+  extract(): ContextCarrier {
     throw new Error(`
       can only inject context carrier into ExitSpan, this may be a potential bug in the agent,
       please report this in ${packageInfo.bugs.url} if you encounter this.
     `);
   }
 
-  extract(carrier: ContextCarrier): this {
-    this.context.segment.relate(carrier.traceId);
+  inject(carrier: ContextCarrier): this {
+    this.context.segment.relate(carrier.traceId!);
 
     return this;
   }
