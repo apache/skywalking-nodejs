@@ -17,7 +17,7 @@
  *
  */
 
-import Span from '@/trace/span/Span';
+import Span from '../../trace/span/Span';
 
 export default class DummySpan extends Span {
 }

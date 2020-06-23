@@ -17,10 +17,10 @@
  *
  */
 
-import Span from '@/trace/span/Span';
-import Segment from '@/trace/context/Segment';
-import Snapshot from '@/trace/context/Snapshot';
-import { ContextCarrier } from '@/trace/context/ContextCarrier';
+import Span from '../../trace/span/Span';
+import Segment from '../../trace/context/Segment';
+import Snapshot from '../../trace/context/Snapshot';
+import { ContextCarrier } from './ContextCarrier';
 
 export default interface Context {
   segment: Segment;

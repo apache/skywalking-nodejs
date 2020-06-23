@@ -17,9 +17,9 @@
  *
  */
 
-import Protocol from '@/agent/protocol/Protocol';
-import HeartbeatClient from '@/agent/protocol/grpc/clients/HeartbeatClient';
-import TraceReportClient from '@/agent/protocol/grpc/clients/TraceReportClient';
+import Protocol from '../../../agent/protocol/Protocol';
+import HeartbeatClient from '../../../agent/protocol/grpc/clients/HeartbeatClient';
+import TraceReportClient from '../../../agent/protocol/grpc/clients/TraceReportClient';
 
 export default class GrpcProtocol implements Protocol {
 

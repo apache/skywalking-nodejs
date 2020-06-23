@@ -17,14 +17,14 @@
  *
  */
 
-import SwPlugin from '@/core/SwPlugin';
+import SwPlugin from '../core/SwPlugin';
 import { URL } from 'url';
 import { ClientRequest, IncomingMessage, RequestOptions, ServerResponse } from 'http';
-import ContextManager from '@/trace/context/ContextManager';
-import { Component } from '@/trace/Component';
-import Tag from '@/Tag';
-import { SpanLayer } from '@/proto/language-agent/Tracing_pb';
-import { ContextCarrier } from '@/trace/context/ContextCarrier';
+import ContextManager from '../trace/context/ContextManager';
+import { Component } from '../trace/Component';
+import Tag from '../Tag';
+import { SpanLayer } from '../proto/language-agent/Tracing_pb';
+import { ContextCarrier } from '../trace/context/ContextCarrier';
 
 type RequestFunctionType = (
   url: string | URL,

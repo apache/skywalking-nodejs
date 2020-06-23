@@ -17,10 +17,10 @@
  *
  */
 
-import Span, { SpanCtorOptions } from '@/trace/span/Span';
-import Segment from '@/trace/context/Segment';
-import { createLogger } from '@/logging';
-import { SpanType } from '@/proto/language-agent/Tracing_pb';
+import Span, { SpanCtorOptions } from '../../trace/span/Span';
+import Segment from '../../trace/context/Segment';
+import { createLogger } from '../../logging';
+import { SpanType } from '../../proto/language-agent/Tracing_pb';
 
 const logger = createLogger(__filename);
 

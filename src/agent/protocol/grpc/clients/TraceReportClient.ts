@@ -17,15 +17,15 @@
  *
  */
 
-import { TraceSegmentReportServiceClient } from '@/proto/language-agent/Tracing_grpc_pb';
-import config from '@/config/AgentConfig';
+import config from '../../../../config/AgentConfig';
 import * as grpc from 'grpc';
 import { connectivityState } from 'grpc';
-import AuthInterceptor from '@/agent/protocol/grpc/AuthInterceptor';
-import buffer from '@/agent/Buffer';
-import SegmentObjectAdapter from '@/agent/protocol/grpc/SegmentObjectAdapter';
-import { createLogger } from '@/logging';
-import Client from '@/agent/protocol/grpc/clients/Client';
+import { createLogger } from '../../../../logging';
+import Client from './Client';
+import { TraceSegmentReportServiceClient } from '../../../../proto/language-agent/Tracing_grpc_pb';
+import AuthInterceptor from '../AuthInterceptor';
+import buffer from '../../../../agent/Buffer';
+import SegmentObjectAdapter from '../SegmentObjectAdapter';
 
 const logger = createLogger(__filename);
 

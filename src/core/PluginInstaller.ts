@@ -17,10 +17,10 @@
  *
  */
 
-import fs = require('fs');
-import path = require('path');
-import SwPlugin from '@/core/SwPlugin';
-import { createLogger } from '@/logging';
+import * as fs from 'fs';
+import * as path from 'path';
+import SwPlugin from '../core/SwPlugin';
+import { createLogger } from '../logging';
 
 const logger = createLogger(__filename);
 

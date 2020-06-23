@@ -17,14 +17,14 @@
  *
  */
 
-import Context from '@/trace/context/Context';
-import Span from '@/trace/span/Span';
-import DummySpan from '@/trace/span/DummySpan';
-import Segment from '@/trace/context/Segment';
-import { SpanType } from '@/proto/language-agent/Tracing_pb';
-import Snapshot from '@/trace/context/Snapshot';
-import ID from '@/trace/ID';
-import { ContextCarrier } from '@/trace/context/ContextCarrier';
+import Context from '../../trace/context/Context';
+import Span from '../../trace/span/Span';
+import DummySpan from '../../trace/span/DummySpan';
+import Segment from '../../trace/context/Segment';
+import { SpanType } from '../../proto/language-agent/Tracing_pb';
+import Snapshot from '../../trace/context/Snapshot';
+import ID from '../../trace/ID';
+import { ContextCarrier } from './ContextCarrier';
 
 export default class DummyContext implements Context {
   span: Span = new DummySpan({

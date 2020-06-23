@@ -17,16 +17,16 @@
  *
  */
 
-import Context from '@/trace/context/Context';
-import { Component } from '@/trace/Component';
-import { Tag } from '@/Tag';
-import Log, { LogItem } from '@/Log';
-import Segment from '@/trace/context/Segment';
-import SegmentRef from '@/trace/context/SegmentRef';
-import { SpanLayer, SpanType } from '@/proto/language-agent/Tracing_pb';
-import { createLogger } from '@/logging';
-import * as packageInfo from 'package.json';
-import { ContextCarrier } from '@/trace/context/ContextCarrier';
+import Context from '../../trace/context/Context';
+import { Component } from '../Component';
+import { Tag } from '../../Tag';
+import Log, { LogItem } from '../../Log';
+import Segment from '../../trace/context/Segment';
+import SegmentRef from '../../trace/context/SegmentRef';
+import { SpanLayer, SpanType } from '../../proto/language-agent/Tracing_pb';
+import { createLogger } from '../../logging';
+import * as packageInfo from '../../../package.json';
+import { ContextCarrier } from '../context/ContextCarrier';
 
 export type SpanCtorOptions = {
   context: Context;

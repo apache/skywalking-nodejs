@@ -17,10 +17,10 @@
  *
  */
 
-import Span from '@/trace/span/Span';
-import ID from '@/trace/ID';
-import NewID from '@/trace/NewID';
-import SegmentRef from '@/trace/context/SegmentRef';
+import Span from '../../trace/span/Span';
+import ID from '../../trace/ID';
+import NewID from '../../trace/NewID';
+import SegmentRef from '../../trace/context/SegmentRef';
 
 export default class Segment {
   segmentId = new ID();

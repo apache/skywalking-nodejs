@@ -17,10 +17,10 @@
  *
  */
 
-import Snapshot from '@/trace/context/Snapshot';
-import ID from '@/trace/ID';
-import config from '@/config/AgentConfig';
-import { ContextCarrier } from '@/trace/context/ContextCarrier';
+import Snapshot from '../../trace/context/Snapshot';
+import ID from '../../trace/ID';
+import config from '../../config/AgentConfig';
+import { ContextCarrier } from './ContextCarrier';
 
 export default class SegmentRef {
   private constructor(

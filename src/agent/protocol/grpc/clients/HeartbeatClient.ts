@@ -18,16 +18,16 @@
  */
 
 
-import { ManagementServiceClient } from '@/proto/management/Management_grpc_pb';
 import * as grpc from 'grpc';
 import { connectivityState } from 'grpc';
-import { createLogger } from '@/logging';
-import AuthInterceptor from '@/agent/protocol/grpc/AuthInterceptor';
-import { InstancePingPkg } from '@/proto/management/Management_pb';
-import config from '@/config/AgentConfig';
-import Client from '@/agent/protocol/grpc/clients/Client';
 
-import * as packageInfo from 'package.json';
+import * as packageInfo from '../../../../../package.json';
+import { createLogger } from '../../../../logging';
+import Client from './Client';
+import { ManagementServiceClient } from '../../../../proto/management/Management_grpc_pb';
+import AuthInterceptor from '../AuthInterceptor';
+import { InstancePingPkg } from '../../../../proto/management/Management_pb';
+import config from '../../../../config/AgentConfig';
 
 const logger = createLogger(__filename);
 

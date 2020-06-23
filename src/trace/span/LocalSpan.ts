@@ -17,8 +17,8 @@
  *
  */
 
-import Span, { SpanCtorOptions } from '@/trace/span/Span';
-import { SpanType } from '@/proto/language-agent/Tracing_pb';
+import Span, { SpanCtorOptions } from '../../trace/span/Span';
+import { SpanType } from '../../proto/language-agent/Tracing_pb';
 
 export default class LocalSpan extends Span {
   constructor(options: SpanCtorOptions) {

@@ -17,8 +17,8 @@
  *
  */
 
-import Context from '@/trace/context/Context';
-import SpanContext from '@/trace/context/SpanContext';
+import Context from '../../trace/context/Context';
+import SpanContext from '../../trace/context/SpanContext';
 import { executionAsyncId } from 'async_hooks';
 
 class ContextManager {

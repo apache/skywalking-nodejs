@@ -17,7 +17,7 @@
  *
  */
 
-import ID from '@/trace/ID';
+import ID from '../../trace/ID';
 
 export default interface Snapshot {
   segmentId: ID;

@@ -1,19 +1,16 @@
 {
   "compilerOptions": {
-    "target": "es6",
-    "module": "commonjs",
-    "declaration": true,
-    "outDir": "./lib",
+    "target": "es5",
+    "module": "esnext",
     "strict": true,
-    "baseUrl": ".",
-    "moduleResolution": "Node",
+    "importHelpers": true,
+    "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "outDir": "./lib",
     "resolveJsonModule": true,
-    "paths": {
-      "@/*": [
-        "src/*"
-      ]
-    },
-    "allowJs": true
+    "declaration": true
   },
   "include": [
     "src/**/*"

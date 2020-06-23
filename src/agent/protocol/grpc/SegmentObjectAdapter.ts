@@ -17,10 +17,10 @@
  *
  */
 
-import { Log, RefType, SegmentObject, SegmentReference, SpanObject } from '@/proto/language-agent/Tracing_pb';
-import config from '@/config/AgentConfig';
-import { KeyStringValuePair } from '@/proto/common/Common_pb';
-import Segment from '@/trace/context/Segment';
+import { Log, RefType, SegmentObject, SegmentReference, SpanObject } from '../../../proto/language-agent/Tracing_pb';
+import config from '../../../config/AgentConfig';
+import { KeyStringValuePair } from '../../../proto/common/Common_pb';
+import Segment from '../../../trace/context/Segment';
 
 /**
  * An adapter that adapts {@link Segment} objects to gRPC object {@link SegmentObject}.

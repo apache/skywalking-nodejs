@@ -17,19 +17,19 @@
  *
  */
 
-import Context from '@/trace/context/Context';
-import Span from '@/trace/span/Span';
-import Segment from '@/trace/context/Segment';
-import EntrySpan from '@/trace/span/EntrySpan';
-import ExitSpan from '@/trace/span/ExitSpan';
-import LocalSpan from '@/trace/span/LocalSpan';
-import * as packageInfo from 'package.json';
-import buffer from '@/agent/Buffer';
-import { createLogger } from '@/logging';
+import Context from '../../trace/context/Context';
+import Span from '../../trace/span/Span';
+import Segment from '../../trace/context/Segment';
+import EntrySpan from '../../trace/span/EntrySpan';
+import ExitSpan from '../../trace/span/ExitSpan';
+import LocalSpan from '../../trace/span/LocalSpan';
+import * as packageInfo from '../../../package.json';
+import buffer from '../../agent/Buffer';
+import { createLogger } from '../../logging';
 import { executionAsyncId } from 'async_hooks';
-import Snapshot from '@/trace/context/Snapshot';
-import SegmentRef from '@/trace/context/SegmentRef';
-import { ContextCarrier } from '@/trace/context/ContextCarrier';
+import Snapshot from '../../trace/context/Snapshot';
+import SegmentRef from '../../trace/context/SegmentRef';
+import { ContextCarrier } from './ContextCarrier';
 
 const logger = createLogger(__filename);
 

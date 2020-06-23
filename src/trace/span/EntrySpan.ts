@@ -17,12 +17,12 @@
  *
  */
 
-import StackedSpan from '@/trace/span/StackedSpan';
-import { Component } from '@/trace/Component';
-import { SpanCtorOptions } from '@/trace/span/Span';
-import SegmentRef from '@/trace/context/SegmentRef';
-import { SpanLayer, SpanType } from '@/proto/language-agent/Tracing_pb';
-import { ContextCarrier } from '@/trace/context/ContextCarrier';
+import StackedSpan from '../../trace/span/StackedSpan';
+import { Component } from '../Component';
+import { SpanCtorOptions } from './Span';
+import SegmentRef from '../../trace/context/SegmentRef';
+import { SpanLayer, SpanType } from '../../proto/language-agent/Tracing_pb';
+import { ContextCarrier } from '../context/ContextCarrier';
 
 export default class EntrySpan extends StackedSpan {
   maxDepth = 0;

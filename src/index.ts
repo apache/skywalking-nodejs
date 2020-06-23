@@ -17,11 +17,11 @@
  *
  */
 
-import config, { AgentConfig } from '@/config/AgentConfig';
-import GrpcProtocol from '@/agent/protocol/grpc/GrpcProtocol';
-import { createLogger } from '@/logging';
-import Protocol from '@/agent/protocol/Protocol';
-import PluginInstaller from '@/core/PluginInstaller';
+import config, { AgentConfig } from './config/AgentConfig';
+import GrpcProtocol from './agent/protocol/grpc/GrpcProtocol';
+import { createLogger } from './logging';
+import Protocol from './agent/protocol/Protocol';
+import PluginInstaller from './core/PluginInstaller';
 
 const logger = createLogger(__filename);
 

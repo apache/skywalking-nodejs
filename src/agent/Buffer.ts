@@ -17,9 +17,9 @@
  *
  */
 
-import { createLogger } from '@/logging';
-import Segment from '@/trace/context/Segment';
-import config from '@/config/AgentConfig';
+import { createLogger } from '../logging';
+import Segment from '../trace/context/Segment';
+import config from '../config/AgentConfig';
 
 const logger = createLogger(__filename);
 

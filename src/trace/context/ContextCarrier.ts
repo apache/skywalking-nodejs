@@ -17,8 +17,8 @@
  *
  */
 
-import ID from '@/trace/ID';
-import { CarrierItem } from '@/trace/context/CarrierItem';
+import ID from '../../trace/ID';
+import { CarrierItem } from './CarrierItem';
 
 export class ContextCarrier extends CarrierItem {
   constructor(

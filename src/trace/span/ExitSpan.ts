@@ -17,11 +17,11 @@
  *
  */
 
-import StackedSpan from '@/trace/span/StackedSpan';
-import { SpanCtorOptions } from '@/trace/span/Span';
-import config from '@/config/AgentConfig';
-import { SpanType } from '@/proto/language-agent/Tracing_pb';
-import { ContextCarrier } from '@/trace/context/ContextCarrier';
+import StackedSpan from '../../trace/span/StackedSpan';
+import { SpanCtorOptions } from './Span';
+import config from '../../config/AgentConfig';
+import { SpanType } from '../../proto/language-agent/Tracing_pb';
+import { ContextCarrier } from '../context/ContextCarrier';
 
 export default class ExitSpan extends StackedSpan {
   constructor(options: SpanCtorOptions) {

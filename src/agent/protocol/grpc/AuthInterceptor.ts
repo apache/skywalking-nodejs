@@ -19,7 +19,7 @@
 
 import * as grpc from 'grpc';
 import { InterceptingCall, Listener, Metadata, Requester } from 'grpc';
-import config from '@/config/AgentConfig';
+import config from '../../../config/AgentConfig';
 
 type Options = { [key: string]: string | number }
 
