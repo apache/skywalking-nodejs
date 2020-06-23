@@ -38,8 +38,7 @@ export default class SpanContext implements Context {
   spans: Span[] = [];
   segment: Segment = new Segment();
 
-  constructor(public asyncId: number) {
-  }
+  constructor(public asyncId: number) {}
 
   get parent(): Span | null {
     if (this.spans.length > 0) {
@@ -67,7 +66,7 @@ export default class SpanContext implements Context {
       operation,
     });
 
-    if (carrier) {
+    if (carrier && carrier.isValid()) {
       span.inject(carrier);
     }
 
@@ -107,7 +106,7 @@ export default class SpanContext implements Context {
   }
 
   start(span: Span): Context {
-    if (this.spans.every(s => s.id !== span.id)) {
+    if (this.spans.every((s) => s.id !== span.id)) {
       this.spans.push(span);
     }
 

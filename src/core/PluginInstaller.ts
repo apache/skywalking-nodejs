@@ -33,7 +33,7 @@ class PluginInstaller {
 
   install(): void {
     fs.readdirSync(this.pluginDir)
-      .filter((file) => !file.endsWith('.d.ts'))
+      .filter((file) => file.endsWith('.js'))
       .forEach((file) => {
         const plugin = require(path.join(this.pluginDir, file)).default as SwPlugin;
         logger.info(`Installing plugin ${plugin.module} ${plugin.versions}`);

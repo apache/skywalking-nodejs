@@ -66,4 +66,15 @@ export class ContextCarrier extends CarrierItem {
     this.endpoint = this.decode(parts[6]);
     this.clientAddress = this.decode(parts[7]);
   }
+
+  isValid(): boolean {
+    return (
+      this.traceId !== undefined &&
+      this.segmentId !== undefined &&
+      this.spanId !== undefined &&
+      this.service !== undefined &&
+      this.endpoint !== undefined &&
+      this.clientAddress !== undefined
+    );
+  }
 }

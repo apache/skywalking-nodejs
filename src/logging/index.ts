@@ -26,8 +26,7 @@ type LoggerLevelAware = Logger & {
 };
 
 export function createLogger(name: string): LoggerLevelAware {
-  const loggingLevel = process.env.LOGGING_LEVEL
-    || (process.env.NODE_ENV !== 'production' ? 'debug' : 'info');
+  const loggingLevel = process.env.LOGGING_LEVEL || (process.env.NODE_ENV !== 'production' ? 'debug' : 'info');
 
   const logger = winston.createLogger({
     level: loggingLevel,
@@ -36,14 +35,18 @@ export function createLogger(name: string): LoggerLevelAware {
       file: name,
     },
   });
-  if (process.env.NODE_ENV !== 'production') {
-    logger.add(new winston.transports.Console({
-      format: winston.format.prettyPrint(),
-    }));
+  if (process.env.NODE_ENV !== 'production' || process.env.LOGGING_TARGET === 'console') {
+    logger.add(
+      new winston.transports.Console({
+        format: winston.format.prettyPrint(),
+      }),
+    );
   } else {
-    logger.add(new winston.transports.File({
-      filename: 'skywalking.log',
-    }));
+    logger.add(
+      new winston.transports.File({
+        filename: 'skywalking.log',
+      }),
+    );
   }
 
   const isDebugEnabled = (): boolean => logger.levels[logger.level] > logger.levels.debug;

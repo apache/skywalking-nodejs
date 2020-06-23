@@ -25,12 +25,15 @@ import { Component } from '../trace/Component';
 import Tag from '../Tag';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from '../trace/context/ContextCarrier';
+import { createLogger } from '../logging';
 
 type RequestFunctionType = (
-  url: string | URL,
+  url: string | URL | RequestOptions,
   options: RequestOptions,
   callback?: (res: IncomingMessage) => void,
 ) => ClientRequest;
+
+const logger = createLogger(__filename);
 
 class HttpPlugin implements SwPlugin {
   readonly module = 'http';
@@ -41,10 +44,12 @@ class HttpPlugin implements SwPlugin {
 
     const http = require('http');
 
-    (original => {
-      http.Server.prototype.emit = function(event: string | symbol, ...args: any[]): boolean {
+    ((original) => {
+      http.Server.prototype.emit = function (event: string | symbol, ...args: any[]): boolean {
+        logger.debug('Intercepting http.Server.prototype.emit');
         if (event === 'request') {
           if (!(args[0] instanceof IncomingMessage) && !(args[1] instanceof ServerResponse)) {
+            logger.debug('args[0] is not IncomingMessage or args[1] is not ServerResponse');
             return original.apply(this, arguments);
           }
           const req = args[0] as IncomingMessage;
@@ -58,7 +63,7 @@ class HttpPlugin implements SwPlugin {
           }
 
           const carrier = new ContextCarrier();
-          carrier.items.forEach(item => {
+          carrier.items.forEach((item) => {
             if (headersMap.hasOwnProperty(item.key)) {
               item.value = headersMap[item.key];
             }
@@ -70,10 +75,7 @@ class HttpPlugin implements SwPlugin {
           span.layer = SpanLayer.HTTP;
 
           res.on('finish', () => {
-            span
-              .tag(Tag.httpStatusCode(res.statusCode))
-              .tag(Tag.httpStatusMsg(res.statusMessage))
-              .stop();
+            span.tag(Tag.httpStatusCode(res.statusCode)).tag(Tag.httpStatusMsg(res.statusMessage)).stop();
           });
         }
         return original.apply(this, arguments);
@@ -93,14 +95,21 @@ class HttpPlugin implements SwPlugin {
 
   private wrapHttpClientRequest(originalRequest: RequestFunctionType): RequestFunctionType {
     return (
-      url: string | URL,
+      url: string | URL | RequestOptions,
       options: RequestOptions,
       callback?: (res: IncomingMessage) => void,
     ): ClientRequest => {
-      const {
-        host: peer,
-        pathname: operation,
-      } = url instanceof URL ? url : new URL(url);
+      logger.debug(`url is ${typeof url}: ${url}`);
+
+      const { host: peer, pathname: operation } =
+        url instanceof URL
+          ? url
+          : typeof url === 'string'
+          ? new URL(url)
+          : {
+              host: url.host || url.hostname || 'unknown',
+              pathname: url.path || '/',
+            };
 
       const span = ContextManager.current.newExitSpan(operation, peer).start();
       span.component = Component.HTTP;
@@ -108,10 +117,8 @@ class HttpPlugin implements SwPlugin {
 
       const snapshot = ContextManager.current.capture();
 
-      const request = originalRequest(url, options, res => {
-        span
-          .tag(Tag.httpStatusCode(res.statusCode))
-          .tag(Tag.httpStatusMsg(res.statusMessage));
+      const request = originalRequest(url, options, (res) => {
+        span.tag(Tag.httpStatusCode(res.statusCode)).tag(Tag.httpStatusMsg(res.statusMessage));
 
         const callbackSpan = ContextManager.current.newLocalSpan('callback').start();
         callbackSpan.layer = SpanLayer.HTTP;
@@ -126,12 +133,9 @@ class HttpPlugin implements SwPlugin {
         callbackSpan.stop();
       });
 
-      span
-        .extract()
-        .items
-        .forEach(item => {
-          request.setHeader(item.key, item.value);
-        });
+      span.extract().items.forEach((item) => {
+        request.setHeader(item.key, item.value);
+      });
 
       span.stop();
 

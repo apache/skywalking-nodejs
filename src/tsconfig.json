@@ -13,7 +13,8 @@
     "baseUrl": ".",
     "resolveJsonModule": true,
     "declaration": true,
-    "allowJs": true
+    "allowJs": true,
+    "sourceMap": true
   },
   "references": [
     {
