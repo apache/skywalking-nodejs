@@ -1,22 +1,13 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "module": "esnext",
-    "strict": true,
-    "importHelpers": true,
-    "moduleResolution": "node",
-    "experimentalDecorators": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "outDir": "./lib",
+    "module": "commonjs",
+    "rootDir": ".",
+    "baseUrl": ".",
+    "outDir": ".",
     "resolveJsonModule": true,
-    "declaration": true
+    "composite": true
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "**/__tests__/*"
+  "files": [
+    "package.json"
   ]
 }

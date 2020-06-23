@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -x
-
 ROOT_DIR="$(dirname "$0")"/..
 
 (rm -rf src/proto || true) && (mkdir -p src/proto || true) && (rm -rf src/proto || true) && (mkdir -p src/proto || true)

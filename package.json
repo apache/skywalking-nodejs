@@ -7,12 +7,11 @@
   "scripts": {
     "prepare": "npm run generate-source",
     "generate-source": "scripts/protoc.sh",
-    "build": "tsc",
+    "build": "tsc --build src",
     "lint": "tslint -p tsconfig.json",
     "fix-lint": "tslint --fix -p tsconfig.json",
     "test": "echo \"Error: no test specified\" && exit 1",
     "format": "prettier --write \"src/**/*.ts\"",
-    "dev": "node --experimental-worker node_modules/ts-node/dist/bin -r tsconfig-paths/register test/dev-test.ts",
     "clean": "(rm -rf src/proto || true) && (rm -rf src/proto || true)"
   },
   "files": [
