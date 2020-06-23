@@ -17,7 +17,6 @@
  *
  */
 
-
 import * as grpc from 'grpc';
 import { connectivityState } from 'grpc';
 
@@ -26,8 +25,10 @@ import { createLogger } from '../../../../logging';
 import Client from './Client';
 import { ManagementServiceClient } from '../../../../proto/management/Management_grpc_pb';
 import AuthInterceptor from '../AuthInterceptor';
-import { InstancePingPkg } from '../../../../proto/management/Management_pb';
+import { InstancePingPkg, InstanceProperties } from '../../../../proto/management/Management_pb';
 import config from '../../../../config/AgentConfig';
+import { KeyStringValuePair } from '../../../../proto/common/Common_pb';
+import * as os from 'os';
 
 const logger = createLogger(__filename);
 
@@ -36,11 +37,9 @@ class HeartbeatClient implements Client {
   heartbeatTimer?: NodeJS.Timeout;
 
   constructor() {
-    this.heartbeatClient = new ManagementServiceClient(
-      config.collectorAddress,
-      grpc.credentials.createInsecure(),
-      { interceptors: [AuthInterceptor] },
-    );
+    this.heartbeatClient = new ManagementServiceClient(config.collectorAddress, grpc.credentials.createInsecure(), {
+      interceptors: [AuthInterceptor],
+    });
   }
 
   get isConnected(): boolean {
@@ -61,18 +60,36 @@ class HeartbeatClient implements Client {
       .setService(config.serviceName)
       .setServiceinstance(config.serviceInstance);
 
-    this.heartbeatTimer = setInterval(() => {
-        this.heartbeatClient.keepAlive(
-          keepAlivePkg,
+    const instanceProperties = new InstanceProperties()
+      .setService(config.serviceName)
+      .setServiceinstance(config.serviceInstance)
+      .setPropertiesList([
+        new KeyStringValuePair().setKey('language').setValue('NodeJS'),
+        new KeyStringValuePair().setKey('OS Name').setValue(os.platform()),
+        new KeyStringValuePair().setValue('hostname').setValue(os.hostname()),
+        new KeyStringValuePair().setValue('Process No.').setValue(`${process.pid}`),
+      ]);
 
-          (error, _) => {
-            if (error) {
-              logger.error('Failed to send heartbeat', error);
-            }
-          },
-        );
-      }, 20000,
-    ).unref();
+    this.heartbeatTimer = setInterval(() => {
+      this.heartbeatClient.reportInstanceProperties(
+        instanceProperties,
+
+        (error, _) => {
+          if (error) {
+            logger.error('Failed to send heartbeat', error);
+          }
+        },
+      );
+      this.heartbeatClient.keepAlive(
+        keepAlivePkg,
+
+        (error, _) => {
+          if (error) {
+            logger.error('Failed to send heartbeat', error);
+          }
+        },
+      );
+    }, 20000).unref();
   }
 }
 
