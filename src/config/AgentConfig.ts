@@ -17,17 +17,23 @@
  *
  */
 
+import * as os from 'os';
+
 export type AgentConfig = {
   serviceName?: string;
   serviceInstance?: string;
   collectorAddress?: string;
   authorization?: string;
   maxBufferSize?: number;
-}
+};
 
 export default {
   serviceName: process.env.SERVICE_NAME || 'your-nodejs-service',
-  serviceInstance: process.env.SERVICE_INSTANCE || 'your-node-js-instance',
+  serviceInstance:
+    process.env.SERVICE_INSTANCE ||
+    ((): string => {
+      return os.hostname();
+    })(),
   collectorAddress: process.env.COLLECTOR_ADDRESS || '127.0.0.1:11800',
   authorization: process.env.AUTHORIZATION,
   maxBufferSize: process.env.MAX_BUFFER_SIZE || '1000',
