@@ -19,5 +19,4 @@
 
 import Span from '../../trace/span/Span';
 
-export default class DummySpan extends Span {
-}
+export default class DummySpan extends Span {}

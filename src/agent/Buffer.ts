@@ -48,7 +48,5 @@ class Buffer {
 }
 
 export default new Buffer(
-  Number.isSafeInteger(config.maxBufferSize)
-    ? Number.parseInt(config.maxBufferSize, 10)
-    : 1000,
+  Number.isSafeInteger(config.maxBufferSize) ? Number.parseInt(config.maxBufferSize, 10) : 1000,
 );

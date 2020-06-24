@@ -28,9 +28,11 @@ export default class EntrySpan extends StackedSpan {
   maxDepth = 0;
 
   constructor(options: SpanCtorOptions) {
-    super(Object.assign(options, {
-      type: SpanType.ENTRY,
-    }));
+    super(
+      Object.assign(options, {
+        type: SpanType.ENTRY,
+      }),
+    );
   }
 
   start(): this {

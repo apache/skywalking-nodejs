@@ -25,9 +25,11 @@ import { ContextCarrier } from '../context/ContextCarrier';
 
 export default class ExitSpan extends StackedSpan {
   constructor(options: SpanCtorOptions) {
-    super(Object.assign(options, {
-      type: SpanType.EXIT,
-    }));
+    super(
+      Object.assign(options, {
+        type: SpanType.EXIT,
+      }),
+    );
   }
 
   start(): this {

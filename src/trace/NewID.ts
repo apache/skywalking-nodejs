@@ -19,5 +19,4 @@
 
 import ID from '../trace/ID';
 
-export default class NewID extends ID {
-}
+export default class NewID extends ID {}

@@ -22,8 +22,10 @@ import { SpanType } from '../../proto/language-agent/Tracing_pb';
 
 export default class LocalSpan extends Span {
   constructor(options: SpanCtorOptions) {
-    super(Object.assign(options, {
-      type: SpanType.LOCAL,
-    }));
+    super(
+      Object.assign(options, {
+        type: SpanType.LOCAL,
+      }),
+    );
   }
 }

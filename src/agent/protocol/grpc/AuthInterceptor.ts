@@ -21,16 +21,19 @@ import * as grpc from 'grpc';
 import { InterceptingCall, Listener, Metadata, Requester } from 'grpc';
 import config from '../../../config/AgentConfig';
 
-type Options = { [key: string]: string | number }
+type Options = { [key: string]: string | number };
 
 export default function AuthInterceptor(options: Options, nextCall: (options: Options) => InterceptingCall) {
-  return new grpc.InterceptingCall(nextCall(options), new class implements Requester {
-    // tslint:disable-next-line:ban-types
-    start(metadata: Metadata, listener: Listener, next: Function) {
-      if (config.authorization) {
-        metadata.add('Authentication', config.authorization);
+  return new grpc.InterceptingCall(
+    nextCall(options),
+    new (class implements Requester {
+      // tslint:disable-next-line:ban-types
+      start(metadata: Metadata, listener: Listener, next: Function) {
+        if (config.authorization) {
+          metadata.add('Authentication', config.authorization);
+        }
+        next(metadata, listener);
       }
-      next(metadata, listener);
-    }
-  });
-};
+    })(),
+  );
+}

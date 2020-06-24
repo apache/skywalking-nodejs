@@ -75,5 +75,4 @@ export default class DummyContext implements Context {
   restore(snapshot: Snapshot) {
     // Big Bang ~
   }
-
 }

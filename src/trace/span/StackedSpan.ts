@@ -27,7 +27,7 @@ const logger = createLogger(__filename);
 export default class StackedSpan extends Span {
   depth = 0;
 
-  constructor(options: SpanCtorOptions & { type: SpanType; }) {
+  constructor(options: SpanCtorOptions & { type: SpanType }) {
     super(options);
   }
 

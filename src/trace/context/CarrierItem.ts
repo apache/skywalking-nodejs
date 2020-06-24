@@ -20,6 +20,5 @@
 export class CarrierItem {
   value!: string;
 
-  constructor(public key: string) {
-  }
+  constructor(public key: string) {}
 }

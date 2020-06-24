@@ -59,7 +59,7 @@ export default abstract class Span {
   endTime = 0;
   errored = false;
 
-  constructor(options: SpanCtorOptions & { type: SpanType; }) {
+  constructor(options: SpanCtorOptions & { type: SpanType }) {
     this.context = options.context;
     this.operation = options.operation;
     this.type = options.type;
@@ -110,10 +110,10 @@ export default abstract class Span {
       this.tags.push(Object.assign({}, tag));
     }
 
-    const sameTags = this.tags.filter(it => it.key === tag.key);
+    const sameTags = this.tags.filter((it) => it.key === tag.key);
 
     if (sameTags.length) {
-      sameTags.forEach(it => it.val = tag.val);
+      sameTags.forEach((it) => (it.val = tag.val));
     } else {
       this.tags.push(Object.assign({}, tag));
     }
@@ -125,10 +125,12 @@ export default abstract class Span {
     this.errored = true;
     this.logs.push({
       timestamp: new Date().getTime(),
-      items: [{
-        key: 'Stack',
-        val: error.stack,
-      } as LogItem],
+      items: [
+        {
+          key: 'Stack',
+          val: error.stack,
+        } as LogItem,
+      ],
     } as Log);
     return this;
   }

@@ -22,7 +22,6 @@ import HeartbeatClient from '../../../agent/protocol/grpc/clients/HeartbeatClien
 import TraceReportClient from '../../../agent/protocol/grpc/clients/TraceReportClient';
 
 export default class GrpcProtocol implements Protocol {
-
   get isConnected(): boolean {
     return HeartbeatClient.isConnected && TraceReportClient.isConnected;
   }
@@ -34,5 +33,4 @@ export default class GrpcProtocol implements Protocol {
   report() {
     TraceReportClient.start();
   }
-
-};
+}

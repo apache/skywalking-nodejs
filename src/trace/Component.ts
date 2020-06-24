@@ -22,7 +22,5 @@ export class Component {
   static HTTP = new Component(2);
   static HTTP_SERVER = new Component(49);
 
-  constructor(public id: number) {
-  }
-
+  constructor(public id: number) {}
 }
