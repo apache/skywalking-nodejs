@@ -38,4 +38,11 @@ export default {
       val: `${val}`,
     } as Tag;
   },
+  httpURL: (val: string | undefined): Tag => {
+    return {
+      key: 'http.url',
+      overridable: true,
+      val: `${val}`,
+    } as Tag;
+  },
 };

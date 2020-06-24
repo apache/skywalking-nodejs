@@ -41,7 +41,72 @@ class HttpPlugin implements SwPlugin {
 
   install(): void {
     this.interceptClientRequest();
+    this.interceptServerRequest();
+  }
 
+  private interceptClientRequest() {
+    const http = require('http');
+
+    if (http.request === this.wrapHttpClientRequest) {
+      return;
+    }
+
+    http.request = this.wrapHttpClientRequest(http.request);
+  }
+
+  private wrapHttpClientRequest(originalRequest: RequestFunctionType): RequestFunctionType {
+    return (
+      url: string | URL | RequestOptions,
+      options: RequestOptions,
+      callback?: (res: IncomingMessage) => void,
+    ): ClientRequest => {
+      logger.debug(`url is ${typeof url}: ${url}`);
+
+      const { host: peer, pathname } =
+        url instanceof URL
+          ? url
+          : typeof url === 'string'
+          ? new URL(url)
+          : {
+              host: url.host || url.hostname || 'unknown',
+              pathname: url.path || '/',
+            };
+      const operation = (pathname || '/').replace(/\?.*$/g, '');
+
+      const span = ContextManager.current.newExitSpan(operation, peer).start();
+      span.component = Component.HTTP;
+      span.layer = SpanLayer.HTTP;
+      span.tag(Tag.httpURL(peer + pathname));
+
+      const snapshot = ContextManager.current.capture();
+
+      const request = originalRequest(url, options, (res) => {
+        span.tag(Tag.httpStatusCode(res.statusCode)).tag(Tag.httpStatusMsg(res.statusMessage));
+
+        const callbackSpan = ContextManager.current.newLocalSpan('callback').start();
+        callbackSpan.layer = SpanLayer.HTTP;
+        callbackSpan.component = Component.HTTP;
+
+        ContextManager.current.restore(snapshot);
+
+        if (callback) {
+          callback(res);
+        }
+
+        callbackSpan.stop();
+      });
+
+      span.extract().items.forEach((item) => {
+        request.setHeader(item.key, item.value);
+      });
+
+      span.stop();
+
+      return request;
+    };
+  }
+
+  private interceptServerRequest() {
     const http = require('http');
 
     ((original) => {
@@ -70,9 +135,10 @@ class HttpPlugin implements SwPlugin {
           });
 
           const span = ContextManager.current.newEntrySpan('/', carrier).start();
-          span.operation = req.url || '/';
+          span.operation = (req.url || '/').replace(/\?.*/g, '');
           span.component = Component.HTTP_SERVER;
           span.layer = SpanLayer.HTTP;
+          span.tag(Tag.httpURL(req.url));
 
           res.on('finish', () => {
             span.tag(Tag.httpStatusCode(res.statusCode)).tag(Tag.httpStatusMsg(res.statusMessage)).stop();
@@ -81,66 +147,6 @@ class HttpPlugin implements SwPlugin {
         return original.apply(this, arguments);
       };
     })(http.Server.prototype.emit);
-  }
-
-  private interceptClientRequest() {
-    const http = require('http');
-
-    if (http.request === this.wrapHttpClientRequest) {
-      return;
-    }
-
-    http.request = this.wrapHttpClientRequest(http.request);
-  }
-
-  private wrapHttpClientRequest(originalRequest: RequestFunctionType): RequestFunctionType {
-    return (
-      url: string | URL | RequestOptions,
-      options: RequestOptions,
-      callback?: (res: IncomingMessage) => void,
-    ): ClientRequest => {
-      logger.debug(`url is ${typeof url}: ${url}`);
-
-      const { host: peer, pathname: operation } =
-        url instanceof URL
-          ? url
-          : typeof url === 'string'
-          ? new URL(url)
-          : {
-              host: url.host || url.hostname || 'unknown',
-              pathname: url.path || '/',
-            };
-
-      const span = ContextManager.current.newExitSpan(operation, peer).start();
-      span.component = Component.HTTP;
-      span.layer = SpanLayer.HTTP;
-
-      const snapshot = ContextManager.current.capture();
-
-      const request = originalRequest(url, options, (res) => {
-        span.tag(Tag.httpStatusCode(res.statusCode)).tag(Tag.httpStatusMsg(res.statusMessage));
-
-        const callbackSpan = ContextManager.current.newLocalSpan('callback').start();
-        callbackSpan.layer = SpanLayer.HTTP;
-        callbackSpan.component = Component.HTTP;
-
-        ContextManager.current.restore(snapshot);
-
-        if (callback) {
-          callback(res);
-        }
-
-        callbackSpan.stop();
-      });
-
-      span.extract().items.forEach((item) => {
-        request.setHeader(item.key, item.value);
-      });
-
-      span.stop();
-
-      return request;
-    };
   }
 }
 
