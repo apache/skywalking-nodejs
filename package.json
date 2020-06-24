@@ -22,7 +22,7 @@
     "Dapper",
     "Tracing"
   ],
-  "author": "kezhenxu94",
+  "author": "Apache SkyWalking Team",
   "license": "Apache 2.0",
   "bugs": {
     "url": "http://github.com/apache/skywalking/issues",
