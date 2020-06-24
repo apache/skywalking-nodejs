@@ -46,7 +46,6 @@
   "dependencies": {
     "google-protobuf": "^3.12.2",
     "grpc": "^1.10.1",
-    "semver": "^7.3.2",
     "uuid": "^8.1.0",
     "winston": "^3.2.1"
   }
