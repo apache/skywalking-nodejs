@@ -17,29 +17,24 @@
  *
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import SwPlugin from '../core/SwPlugin';
-import { createLogger } from '../logging';
+import ContextManager from '../trace/context/ContextManager';
 
-const logger = createLogger(__filename);
+export function trace(op?: string) {
+  return (target: any, key: string, descriptor?: PropertyDescriptor) => {
+    if (descriptor === undefined) {
+      return;
+    }
 
-class PluginInstaller {
-  pluginDir: string;
+    const original = descriptor.value;
 
-  constructor() {
-    this.pluginDir = path.resolve(__dirname, '..', 'plugins');
-  }
+    descriptor.value = function (...args: any[]) {
+      const span = ContextManager.current.newLocalSpan(op || key).start();
 
-  install(): void {
-    fs.readdirSync(this.pluginDir)
-      .filter((file) => (process.env.NODE_ENV === 'production' ? file.endsWith('.js') : true))
-      .forEach((file) => {
-        const plugin = require(path.join(this.pluginDir, file)).default as SwPlugin;
-        logger.info(`Installing plugin ${plugin.module} ${plugin.versions}`);
-        plugin.install();
-      });
-  }
+      const result = original.apply(this, args);
+
+      span.stop();
+
+      return result;
+    };
+  };
 }
-
-export default new PluginInstaller();
