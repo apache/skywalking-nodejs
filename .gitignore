@@ -3,3 +3,4 @@ node_modules
 /lib
 src/proto/
 *.log
+tsconfig.tsbuildinfo
