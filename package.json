@@ -1,6 +1,6 @@
 {
-  "name": "skywalking-nodejs",
-  "version": "1.0.0",
+  "name": "skywalking",
+  "version": "0.0.1",
   "description": "The NodeJS agent for Apache SkyWalking",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
