@@ -19,10 +19,18 @@
 
 import Context from '../../trace/context/Context';
 import SpanContext from '../../trace/context/SpanContext';
-import { executionAsyncId } from 'async_hooks';
+import { executionAsyncId, createHook } from 'async_hooks';
 
 class ContextManager {
   contextKeyedByAsyncId: { [asyncId: number]: Context } = {};
+
+  constructor() {
+    createHook({
+      destroy: (asyncId: number) => {
+        delete this.contextKeyedByAsyncId[asyncId];
+      },
+    }).enable();
+  }
 
   get current(): Context {
     const thisAsyncId = executionAsyncId();
