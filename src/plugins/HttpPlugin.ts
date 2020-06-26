@@ -27,9 +27,11 @@ import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from '../trace/context/ContextCarrier';
 import { createLogger } from '../logging';
 
+type CallbackType = (res: IncomingMessage) => void;
+
 type RequestFunctionType = (
   url: string | URL | RequestOptions,
-  options: RequestOptions,
+  options: RequestOptions | CallbackType,
   callback?: (res: IncomingMessage) => void,
 ) => ClientRequest;
 
@@ -57,8 +59,8 @@ class HttpPlugin implements SwPlugin {
   private wrapHttpClientRequest(originalRequest: RequestFunctionType): RequestFunctionType {
     return (
       url: string | URL | RequestOptions,
-      options: RequestOptions,
-      callback?: (res: IncomingMessage) => void,
+      options: RequestOptions | CallbackType,
+      callback?: CallbackType,
     ): ClientRequest => {
       logger.debug(`url is ${typeof url}: ${url}`);
 
@@ -89,6 +91,9 @@ class HttpPlugin implements SwPlugin {
 
         ContextManager.current.restore(snapshot);
 
+        if (typeof options === 'function') {
+          options(res);
+        }
         if (callback) {
           callback(res);
         }
