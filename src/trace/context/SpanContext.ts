@@ -85,6 +85,7 @@ export default class SpanContext implements Context {
       id: this.spanId++,
       parentId: this.parentId,
       context: this,
+      peer,
       operation,
     });
   }
@@ -118,19 +119,25 @@ export default class SpanContext implements Context {
 
     if (this.spans[this.spans.length - 1] !== span) {
       logger.error(`Stopping unexpected span. Consider report this to ${packageInfo.bugs.url}`);
-      this.spans.splice(0, this.spans.length);
       return true;
     }
 
+    if (this.tryFinish(span)) {
+      this.spans.splice(0, 1);
+    }
+
+    return this.spans.length === 0;
+  }
+
+  tryFinish(span: Span): boolean {
     if (span.finish(this.segment)) {
       if (logger.isDebugEnabled()) {
         logger.debug('Finishing span', { span });
       }
-      this.spans.pop();
       buffer.put(this.segment);
+      return true;
     }
-
-    return this.spans.length === 0;
+    return false;
   }
 
   currentSpan(): Span | undefined {

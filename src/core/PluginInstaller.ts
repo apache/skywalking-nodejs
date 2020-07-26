@@ -21,6 +21,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import SwPlugin from '../core/SwPlugin';
 import { createLogger } from '../logging';
+import * as semver from 'semver';
 
 const logger = createLogger(__filename);
 
@@ -31,12 +32,47 @@ class PluginInstaller {
     this.pluginDir = path.resolve(__dirname, '..', 'plugins');
   }
 
+  private isBuiltIn = (module: string): boolean => require.resolve(module) === module;
+
+  private checkModuleVersion = (plugin: SwPlugin): { version: string; isSupported: boolean } => {
+    if (this.isBuiltIn(plugin.module)) {
+      return {
+        version: '*',
+        isSupported: true,
+      };
+    }
+
+    const packageJsonPath = require.resolve(`${plugin.module}/package.json`);
+    const version = require(packageJsonPath).version;
+
+    if (!semver.satisfies(version, plugin.versions)) {
+      logger.info(`Plugin ${plugin.module} ${version} doesn't satisfy the supported version ${plugin.versions}`);
+      return {
+        version,
+        isSupported: false,
+      };
+    }
+    return {
+      version,
+      isSupported: true,
+    };
+  };
+
   install(): void {
     fs.readdirSync(this.pluginDir)
-      .filter((file) => (process.env.NODE_ENV === 'production' ? file.endsWith('.js') : true))
+      .filter((file) => !(file.endsWith('.d.ts') || file.endsWith('.js.map')))
       .forEach((file) => {
         const plugin = require(path.join(this.pluginDir, file)).default as SwPlugin;
+
+        const { isSupported, version } = this.checkModuleVersion(plugin);
+
+        if (!isSupported) {
+          logger.info(`Plugin ${plugin.module} ${version} doesn't satisfy the supported version ${plugin.versions}`);
+          return;
+        }
+
         logger.info(`Installing plugin ${plugin.module} ${plugin.versions}`);
+
         plugin.install();
       });
   }

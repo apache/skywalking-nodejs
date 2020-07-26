@@ -28,13 +28,13 @@ export type AgentConfig = {
 };
 
 export default {
-  serviceName: process.env.SERVICE_NAME || 'your-nodejs-service',
+  serviceName: process.env.SW_AGENT_NAME || 'your-nodejs-service',
   serviceInstance:
-    process.env.SERVICE_INSTANCE ||
+    process.env.SW_AGENT_INSTANCE ||
     ((): string => {
       return os.hostname();
     })(),
-  collectorAddress: process.env.COLLECTOR_ADDRESS || '127.0.0.1:11800',
-  authorization: process.env.AUTHORIZATION,
-  maxBufferSize: process.env.MAX_BUFFER_SIZE || '1000',
+  collectorAddress: process.env.SW_AGENT_COLLECTOR_BACKEND_SERVICES || '127.0.0.1:11800',
+  authorization: process.env.SW_AGENT_AUTHENTICATION,
+  maxBufferSize: process.env.SW_AGENT_MAX_BUFFER_SIZE || '1000',
 };

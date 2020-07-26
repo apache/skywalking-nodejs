@@ -60,7 +60,10 @@ class TraceReportClient implements Client {
         while (buffer.buffer.length > 0) {
           const segment = buffer.buffer.pop();
           if (segment) {
-            logger.info('Sending segment', { segment });
+            if (logger.isDebugEnabled()) {
+              logger.debug('Sending segment ', { segment });
+            }
+
             stream.write(new SegmentObjectAdapter(segment));
           }
         }

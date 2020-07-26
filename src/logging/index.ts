@@ -26,7 +26,7 @@ type LoggerLevelAware = Logger & {
 };
 
 export function createLogger(name: string): LoggerLevelAware {
-  const loggingLevel = process.env.LOGGING_LEVEL || (process.env.NODE_ENV !== 'production' ? 'debug' : 'info');
+  const loggingLevel = process.env.SW_AGENT_LOGGING_LEVEL || (process.env.NODE_ENV !== 'production' ? 'debug' : 'info');
 
   const logger = winston.createLogger({
     level: loggingLevel,
@@ -35,7 +35,7 @@ export function createLogger(name: string): LoggerLevelAware {
       file: name,
     },
   });
-  if (process.env.NODE_ENV !== 'production' || process.env.LOGGING_TARGET === 'console') {
+  if (process.env.NODE_ENV !== 'production' || process.env.SW_LOGGING_TARGET === 'console') {
     logger.add(
       new winston.transports.Console({
         format: winston.format.prettyPrint(),
@@ -49,8 +49,8 @@ export function createLogger(name: string): LoggerLevelAware {
     );
   }
 
-  const isDebugEnabled = (): boolean => logger.levels[logger.level] > logger.levels.debug;
-  const isInfoEnabled = (): boolean => logger.levels[logger.level] > logger.levels.info;
+  const isDebugEnabled = (): boolean => logger.levels[logger.level] >= logger.levels.debug;
+  const isInfoEnabled = (): boolean => logger.levels[logger.level] >= logger.levels.info;
 
   return Object.assign(logger, {
     isDebugEnabled,

@@ -27,19 +27,11 @@ import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from '../trace/context/ContextCarrier';
 import { createLogger } from '../logging';
 
-type CallbackType = (res: IncomingMessage) => void;
-
-type RequestFunctionType = (
-  url: string | URL | RequestOptions,
-  options: RequestOptions | CallbackType,
-  callback?: (res: IncomingMessage) => void,
-) => ClientRequest;
-
 const logger = createLogger(__filename);
 
 class HttpPlugin implements SwPlugin {
   readonly module = 'http';
-  readonly versions = '';
+  readonly versions = '*';
 
   install(): void {
     this.interceptClientRequest();
@@ -49,106 +41,90 @@ class HttpPlugin implements SwPlugin {
   private interceptClientRequest() {
     const http = require('http');
 
-    if (http.request === this.wrapHttpClientRequest) {
-      return;
-    }
+    ((original) => {
+      http.request = function () {
+        const argc = arguments.length;
 
-    http.request = this.wrapHttpClientRequest(http.request);
-  }
+        const url: URL | string | RequestOptions = arguments[0];
+        const options = argc > 1 ? (typeof arguments[1] === 'function' ? {} : arguments[1]) : {};
+        const callback = typeof arguments[argc - 1] === 'function' ? arguments[argc - 1] : undefined;
 
-  private wrapHttpClientRequest(originalRequest: RequestFunctionType): RequestFunctionType {
-    return (
-      url: string | URL | RequestOptions,
-      options: RequestOptions | CallbackType,
-      callback?: CallbackType,
-    ): ClientRequest => {
-      logger.debug(`url is ${typeof url}: ${url}`);
+        const { host, pathname } =
+          url instanceof URL
+            ? url
+            : typeof url === 'string'
+            ? new URL(url)
+            : {
+                host: (url.host || url.hostname || 'unknown') + ':' + url.port,
+                pathname: url.path || '/',
+              };
+        const operation = pathname.replace(/\?.*$/g, '');
 
-      const { host: peer, pathname } =
-        url instanceof URL
-          ? url
-          : typeof url === 'string'
-          ? new URL(url)
-          : {
-              host: url.host || url.hostname || 'unknown',
-              pathname: url.path || '/',
-            };
-      const operation = (pathname || '/').replace(/\?.*$/g, '');
+        const span = ContextManager.current.newExitSpan(operation, host).start();
+        span.component = Component.HTTP;
+        span.layer = SpanLayer.HTTP;
+        span.tag(Tag.httpURL(host + pathname));
 
-      const span = ContextManager.current.newExitSpan(operation, peer).start();
-      span.component = Component.HTTP;
-      span.layer = SpanLayer.HTTP;
-      span.tag(Tag.httpURL(peer + pathname));
+        const snapshot = ContextManager.current.capture();
 
-      const snapshot = ContextManager.current.capture();
+        const request: ClientRequest = original.apply(this, arguments);
 
-      const request = originalRequest(url, options, (res) => {
-        span.tag(Tag.httpStatusCode(res.statusCode)).tag(Tag.httpStatusMsg(res.statusMessage));
+        span.extract().items.forEach((item) => {
+          request.setHeader(item.key, item.value);
+        });
 
-        const callbackSpan = ContextManager.current.newLocalSpan('callback').start();
-        callbackSpan.layer = SpanLayer.HTTP;
-        callbackSpan.component = Component.HTTP;
+        request.on('response', (res) => {
+          res.prependListener('end', () => {
+            span.tag(Tag.httpStatusCode(res.statusCode)).tag(Tag.httpStatusMsg(res.statusMessage));
 
-        ContextManager.current.restore(snapshot);
+            const callbackSpan = ContextManager.current.newLocalSpan('callback').start();
+            callbackSpan.layer = SpanLayer.HTTP;
+            callbackSpan.component = Component.HTTP;
 
-        if (typeof options === 'function') {
-          options(res);
-        }
-        if (callback) {
-          callback(res);
-        }
+            ContextManager.current.restore(snapshot);
 
-        callbackSpan.stop();
-      });
+            if (callback) {
+              callback(res);
+            }
 
-      span.extract().items.forEach((item) => {
-        request.setHeader(item.key, item.value);
-      });
+            callbackSpan.stop();
+          });
+        });
+        span.stop();
 
-      span.stop();
-
-      return request;
-    };
+        return request;
+      };
+    })(http.request);
   }
 
   private interceptServerRequest() {
     const http = require('http');
 
     ((original) => {
-      http.Server.prototype.emit = function (event: string | symbol, ...args: any[]): boolean {
-        logger.debug('Intercepting http.Server.prototype.emit');
-        if (event === 'request') {
-          if (!(args[0] instanceof IncomingMessage) && !(args[1] instanceof ServerResponse)) {
-            logger.debug('args[0] is not IncomingMessage or args[1] is not ServerResponse');
-            return original.apply(this, arguments);
-          }
-          const req = args[0] as IncomingMessage;
-          const res = args[1] as ServerResponse;
-
-          const headers = req.rawHeaders;
-          const headersMap: { [key: string]: string } = {};
-
-          for (let i = 0; i < headers.length / 2; i += 2) {
-            headersMap[headers[i]] = headers[i + 1];
-          }
-
-          const carrier = new ContextCarrier();
-          carrier.items.forEach((item) => {
-            if (headersMap.hasOwnProperty(item.key)) {
-              item.value = headersMap[item.key];
-            }
-          });
-
-          const span = ContextManager.current.newEntrySpan('/', carrier).start();
-          span.operation = (req.url || '/').replace(/\?.*/g, '');
-          span.component = Component.HTTP_SERVER;
-          span.layer = SpanLayer.HTTP;
-          span.tag(Tag.httpURL(req.url));
-
-          res.on('finish', () => {
-            span.tag(Tag.httpStatusCode(res.statusCode)).tag(Tag.httpStatusMsg(res.statusMessage)).stop();
-          });
+      http.Server.prototype.emit = function () {
+        if (arguments[0] !== 'request') {
+          return original.apply(this, arguments);
         }
+
+        const [req, res] = [arguments[1] as IncomingMessage, arguments[2] as ServerResponse];
+
+        const headers = req.rawHeaders || [];
+        const headersMap: { [key: string]: string } = {};
+
+        for (let i = 0; i < headers.length / 2; i += 2) {
+          headersMap[headers[i]] = headers[i + 1];
+        }
+
+        const carrier = ContextCarrier.from(headersMap);
+
+        const span = ContextManager.current.newEntrySpan('/', carrier).start();
+        span.operation = (req.url || '/').replace(/\?.*/g, '');
+        span.component = Component.HTTP_SERVER;
+        span.layer = SpanLayer.HTTP;
+        span.tag(Tag.httpURL(req.url));
+
+        span.tag(Tag.httpStatusCode(res.statusCode)).tag(Tag.httpStatusMsg(res.statusMessage)).stop();
+
         return original.apply(this, arguments);
       };
     })(http.Server.prototype.emit);

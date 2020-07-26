@@ -17,11 +17,26 @@
  *
  */
 
-export class Component {
-  static UNKNOWN = new Component(0);
-  static HTTP = new Component(2);
-  static MONGODB = new Component(9);
-  static HTTP_SERVER = new Component(49);
+export default function wait({
+  times = 200,
+  interval = 3000,
+  condition,
+  done,
+}: {
+  times?: number;
+  interval?: number;
+  condition: () => boolean;
+  done: (success: boolean) => void;
+}) {
+  let count = 0;
 
-  constructor(public id: number) {}
+  const timer = setInterval(() => {
+    if (condition()) {
+      done(true);
+      clearInterval(timer);
+    } else if (count++ >= times) {
+      done(false);
+      clearInterval(timer);
+    }
+  }, interval);
 }

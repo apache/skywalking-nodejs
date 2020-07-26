@@ -35,13 +35,13 @@ export class ContextCarrier extends CarrierItem {
     this.items.push(this);
   }
 
-  private encode(s: string): string {
+  private encode = (s: string): string => {
     return Buffer.from(s).toString('base64');
-  }
+  };
 
-  private decode(s: string): string {
+  private decode = (s: string): string => {
     return Buffer.from(s, 'base64').toString();
-  }
+  };
 
   get value(): string {
     return [
@@ -76,5 +76,13 @@ export class ContextCarrier extends CarrierItem {
       this.endpoint !== undefined &&
       this.clientAddress !== undefined
     );
+  }
+
+  public static from(map: { [key: string]: string }): ContextCarrier {
+    const carrier = new ContextCarrier();
+
+    carrier.items.filter((item) => map.hasOwnProperty(item.key)).forEach((item) => (item.value = map[item.key]));
+
+    return carrier;
   }
 }

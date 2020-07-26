@@ -17,11 +17,28 @@
  *
  */
 
-export class Component {
-  static UNKNOWN = new Component(0);
-  static HTTP = new Component(2);
-  static MONGODB = new Component(9);
-  static HTTP_SERVER = new Component(49);
+// @ts-ignore
+import { setUp, tearDown } from '../common';
+import * as path from 'path';
 
-  constructor(public id: number) {}
-}
+const composeFile = path.resolve(__dirname, 'docker-compose.yml');
+
+describe('', () => {
+  before(function () {
+    this.timeout(10_000);
+
+    return setUp(composeFile, () => true);
+  });
+
+  after(function () {
+    this.timeout(120_000);
+
+    return tearDown(composeFile);
+  });
+
+  it(`test ${__dirname}`, function (done) {
+    this.timeout(10_000);
+
+    done();
+  });
+});
