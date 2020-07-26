@@ -23,8 +23,8 @@ github:
     - observability
     - apm
     - distributed-tracing
-    - NodeJS
-    - TypeScript
+    - nodejs
+    - typescript
     - dapper
   enabled_merge_buttons:
     squash:  true
