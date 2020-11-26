@@ -17,28 +17,30 @@
  *
  */
 
-// @ts-ignore
-import { setUp, tearDown } from '../common';
-import * as path from 'path';
+import Agent from '../../../src';
+import * as http from 'http';
 
-const composeFile = path.resolve(__dirname, 'docker-compose.yml');
-
-describe('', () => {
-  before(function () {
-    this.timeout(60_000);
-
-    return setUp(composeFile, () => true);
-  });
-
-  after(function () {
-    this.timeout(120_000);
-
-    return tearDown(composeFile);
-  });
-
-  it(`test ${__dirname}`, function (done) {
-    this.timeout(60_000);
-
-    done();
-  });
+Agent.start({
+  serviceName: 'server',
+  maxBufferSize: 1000,
 });
+
+const server = http.createServer((req, res) => {
+  http
+    .request('http://httpbin.org/json', (r) => {
+      let data = '';
+      r.on('data', (chunk) => (data += chunk));
+      r.on('end', () => setImmediate(() => res.write(data)));
+    })
+    .end();
+
+  http
+    .request('http://httpbin.org/xml', async (r) => {
+      let data = '';
+      r.on('data', (chunk) => (data += chunk));
+      r.on('end', () => setTimeout(() => res.end(data), 1000));
+    })
+    .end();
+});
+
+server.listen(5000, () => console.info('Listening on port 5000...'));

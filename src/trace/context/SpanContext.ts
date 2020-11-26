@@ -23,7 +23,6 @@ import Segment from '../../trace/context/Segment';
 import EntrySpan from '../../trace/span/EntrySpan';
 import ExitSpan from '../../trace/span/ExitSpan';
 import LocalSpan from '../../trace/span/LocalSpan';
-import * as packageInfo from '../../../package.json';
 import buffer from '../../agent/Buffer';
 import { createLogger } from '../../logging';
 import { executionAsyncId } from 'async_hooks';
@@ -37,8 +36,7 @@ export default class SpanContext implements Context {
   spanId = 0;
   spans: Span[] = [];
   segment: Segment = new Segment();
-
-  constructor(public asyncId: number) {}
+  asyncCount: number = 0;
 
   get parent(): Span | null {
     if (this.spans.length > 0) {
@@ -117,20 +115,15 @@ export default class SpanContext implements Context {
   stop(span: Span): boolean {
     logger.info('Stopping span', { span, spans: this.spans });
 
-    if (this.spans[this.spans.length - 1] !== span) {
-      logger.error(`Stopping unexpected span. Consider report this to ${packageInfo.bugs.url}`);
-      return true;
-    }
-
     if (this.tryFinish(span)) {
-      this.spans.splice(0, 1);
+      this.spans.splice(this.spans.length - 1, 1);
     }
 
-    return this.spans.length === 0;
+    return this.asyncCount === 0 && this.spans.length === 0;
   }
 
   tryFinish(span: Span): boolean {
-    if (span.finish(this.segment)) {
+    if (span.finish(this.segment) && !span.isAsync) {
       if (logger.isDebugEnabled()) {
         logger.debug('Finishing span', { span });
       }
@@ -158,5 +151,14 @@ export default class SpanContext implements Context {
     this.segment.refer(ref);
     this.currentSpan()?.refer(ref);
     this.segment.relate(ref.traceId);
+  }
+
+  async(span: Span) {
+    this.asyncCount++;
+    this.spans.splice(this.spans.indexOf(span), 1);
+  }
+
+  await(span: Span) {
+    this.asyncCount--;
   }
 }

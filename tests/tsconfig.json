@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "module": "commonjs",
+    "strict": true,
+    "importHelpers": true,
+    "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "rootDir": "..",
+    "baseUrl": "..",
+    "resolveJsonModule": true,
+    "declaration": true,
+    "allowJs": true,
+    "sourceMap": true
+  }
+}

@@ -25,7 +25,6 @@ import SegmentRef from '../../trace/context/SegmentRef';
 export default class Segment {
   segmentId = new ID();
   spans: Span[] = [];
-  timestamp: number = 0;
   relatedTraces: ID[] = [new NewID()];
   references: SegmentRef[] = [];
 

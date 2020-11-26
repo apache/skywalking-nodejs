@@ -17,28 +17,22 @@
  *
  */
 
-// @ts-ignore
-import { setUp, tearDown } from '../common';
-import * as path from 'path';
+import * as http from 'http';
+import Agent from '../../../src';
 
-const composeFile = path.resolve(__dirname, 'docker-compose.yml');
-
-describe('', () => {
-  before(function () {
-    this.timeout(60_000);
-
-    return setUp(composeFile, () => true);
-  });
-
-  after(function () {
-    this.timeout(120_000);
-
-    return tearDown(composeFile);
-  });
-
-  it(`test ${__dirname}`, function (done) {
-    this.timeout(60_000);
-
-    done();
-  });
+Agent.start({
+  serviceName: 'client',
+  maxBufferSize: 1000,
 });
+
+http
+  .request('http://localhost:5000', (res) => {
+    let data = '';
+    res.on('data', (chunk) => (data += chunk));
+    res.on('end', () => console.info(data));
+  })
+  .end();
+
+setTimeout(() => {
+  console.info();
+}, 3000);

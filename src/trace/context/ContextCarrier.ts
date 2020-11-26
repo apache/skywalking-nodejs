@@ -46,13 +46,13 @@ export class ContextCarrier extends CarrierItem {
   get value(): string {
     return [
       '1',
-      this.encode(this.traceId!.toString()),
-      this.encode(this.segmentId!.toString()),
-      this.spanId!.toString(),
-      this.encode(this.service!),
-      this.encode(this.serviceInstance!),
-      this.encode(this.endpoint!),
-      this.encode(this.clientAddress!),
+      this.encode(this.traceId?.toString() || ''),
+      this.encode(this.segmentId?.toString() || ''),
+      this.spanId?.toString(),
+      this.encode(this.service || ''),
+      this.encode(this.serviceInstance || ''),
+      this.encode(this.endpoint || ''),
+      this.encode(this.clientAddress || ''),
     ].join('-');
   }
 

@@ -59,6 +59,8 @@ export default abstract class Span {
   endTime = 0;
   errored = false;
 
+  _async = false;
+
   constructor(options: SpanCtorOptions & { type: SpanType }) {
     this.context = options.context;
     this.operation = options.operation;
@@ -94,7 +96,7 @@ export default abstract class Span {
   // noinspection JSUnusedLocalSymbols
   extract(): ContextCarrier {
     throw new Error(`
-      can only inject context carrier into ExitSpan, this may be a potential bug in the agent,
+      can only extract context carrier into ExitSpan, this may be a potential bug in the agent,
       please report this in ${packageInfo.bugs.url} if you encounter this.
     `);
   }
@@ -140,5 +142,21 @@ export default abstract class Span {
       this.refs.push(ref);
     }
     return this;
+  }
+
+  async(): this {
+    this._async = true;
+    this.context.async(this);
+    return this;
+  }
+
+  await(): this {
+    this._async = false;
+    this.context.await(this);
+    return this;
+  }
+
+  get isAsync(): boolean {
+    return this._async;
   }
 }

@@ -19,25 +19,17 @@
 
 import Context from '../../trace/context/Context';
 import SpanContext from '../../trace/context/SpanContext';
-import { executionAsyncId, createHook } from 'async_hooks';
+import { AsyncLocalStorage } from 'async_hooks';
+
+const store = new AsyncLocalStorage<Context>();
 
 class ContextManager {
-  contextKeyedByAsyncId: { [asyncId: number]: Context } = {};
-
-  constructor() {
-    createHook({
-      destroy: (asyncId: number) => {
-        delete this.contextKeyedByAsyncId[asyncId];
-      },
-    }).enable();
+  get current(): Context {
+    return store.getStore() || new SpanContext();
   }
 
-  get current(): Context {
-    const thisAsyncId = executionAsyncId();
-
-    this.contextKeyedByAsyncId[thisAsyncId] = this.contextKeyedByAsyncId[thisAsyncId] || new SpanContext(thisAsyncId);
-
-    return this.contextKeyedByAsyncId[thisAsyncId];
+  withContext(callback: (...args: any[]) => void, ...args: any[]) {
+    return store.run(new SpanContext(), callback);
   }
 }
 

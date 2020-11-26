@@ -41,4 +41,8 @@ export default interface Context {
   capture(): Snapshot;
 
   restore(snapshot: Snapshot): void;
+
+  async(span: Span): void;
+
+  await(span: Span): void;
 }

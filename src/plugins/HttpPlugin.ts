@@ -34,6 +34,9 @@ class HttpPlugin implements SwPlugin {
   readonly versions = '*';
 
   install(): void {
+    if (logger.isDebugEnabled()) {
+      logger.debug('installing http plugin');
+    }
     this.interceptClientRequest();
     this.interceptServerRequest();
   }
@@ -43,11 +46,7 @@ class HttpPlugin implements SwPlugin {
 
     ((original) => {
       http.request = function () {
-        const argc = arguments.length;
-
         const url: URL | string | RequestOptions = arguments[0];
-        const options = argc > 1 ? (typeof arguments[1] === 'function' ? {} : arguments[1]) : {};
-        const callback = typeof arguments[argc - 1] === 'function' ? arguments[argc - 1] : undefined;
 
         const { host, pathname } =
           url instanceof URL
@@ -65,32 +64,17 @@ class HttpPlugin implements SwPlugin {
         span.layer = SpanLayer.HTTP;
         span.tag(Tag.httpURL(host + pathname));
 
-        const snapshot = ContextManager.current.capture();
-
         const request: ClientRequest = original.apply(this, arguments);
 
         span.extract().items.forEach((item) => {
           request.setHeader(item.key, item.value);
         });
 
-        request.on('response', (res) => {
-          res.prependListener('end', () => {
-            span.tag(Tag.httpStatusCode(res.statusCode)).tag(Tag.httpStatusMsg(res.statusMessage));
+        span.async();
 
-            const callbackSpan = ContextManager.current.newLocalSpan('callback').start();
-            callbackSpan.layer = SpanLayer.HTTP;
-            callbackSpan.component = Component.HTTP;
-
-            ContextManager.current.restore(snapshot);
-
-            if (callback) {
-              callback(res);
-            }
-
-            callbackSpan.stop();
-          });
+        request.on('close', () => {
+          span.await().stop();
         });
-        span.stop();
 
         return request;
       };
@@ -106,26 +90,36 @@ class HttpPlugin implements SwPlugin {
           return original.apply(this, arguments);
         }
 
-        const [req, res] = [arguments[1] as IncomingMessage, arguments[2] as ServerResponse];
+        const args = arguments;
+        const self = this;
 
-        const headers = req.rawHeaders || [];
-        const headersMap: { [key: string]: string } = {};
+        return ContextManager.withContext(() => {
+          const [req, res] = [args[1] as IncomingMessage, args[2] as ServerResponse];
 
-        for (let i = 0; i < headers.length / 2; i += 2) {
-          headersMap[headers[i]] = headers[i + 1];
-        }
+          const headers = req.rawHeaders || [];
+          const headersMap: { [key: string]: string } = {};
 
-        const carrier = ContextCarrier.from(headersMap);
+          for (let i = 0; i < headers.length / 2; i += 2) {
+            headersMap[headers[i]] = headers[i + 1];
+          }
 
-        const span = ContextManager.current.newEntrySpan('/', carrier).start();
-        span.operation = (req.url || '/').replace(/\?.*/g, '');
-        span.component = Component.HTTP_SERVER;
-        span.layer = SpanLayer.HTTP;
-        span.tag(Tag.httpURL(req.url));
+          const carrier = ContextCarrier.from(headersMap);
 
-        span.tag(Tag.httpStatusCode(res.statusCode)).tag(Tag.httpStatusMsg(res.statusMessage)).stop();
+          const span = ContextManager.current.newEntrySpan('/', carrier).start();
+          span.operation = (req.url || '/').replace(/\?.*/g, '');
+          span.component = Component.HTTP_SERVER;
+          span.layer = SpanLayer.HTTP;
+          span.tag(Tag.httpURL(req.url));
 
-        return original.apply(this, arguments);
+          span.tag(Tag.httpStatusCode(res.statusCode)).tag(Tag.httpStatusMsg(res.statusMessage));
+
+          res.on('close', () => {
+            console.info('jjj');
+            span.stop();
+          });
+
+          return original.apply(self, args);
+        });
       };
     })(http.Server.prototype.emit);
   }
