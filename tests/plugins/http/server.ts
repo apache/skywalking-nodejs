@@ -30,15 +30,7 @@ const server = http.createServer((req, res) => {
     .request('http://httpbin.org/json', (r) => {
       let data = '';
       r.on('data', (chunk) => (data += chunk));
-      r.on('end', () => setImmediate(() => res.write(data)));
-    })
-    .end();
-
-  http
-    .request('http://httpbin.org/xml', async (r) => {
-      let data = '';
-      r.on('data', (chunk) => (data += chunk));
-      r.on('end', () => setTimeout(() => res.end(data), 1000));
+      r.on('end', () => res.end(data));
     })
     .end();
 });
