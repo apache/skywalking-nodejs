@@ -19,13 +19,16 @@ version: '2.1'
 
 services:
   collector:
-    image: kezhenxu94/skywalking-agent-test-tool
+    build:
+      context: ../../../
+      dockerfile: tests/plugins/common/Dockerfile.tool
+    container_name: collector
     ports:
       - 12800:12800
     networks:
       - traveling-light
     healthcheck:
-      test: ["CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/12800"]
+      test: [ "CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/12800" ]
       interval: 5s
       timeout: 60s
       retries: 120
@@ -35,9 +38,7 @@ services:
       context: ../../../
       dockerfile: tests/plugins/common/Dockerfile.agent
     environment:
-      COLLECTOR_ADDRESS: collector:19876
-    volumes:
-      - ../..:/app/tests
+      SW_AGENT_COLLECTOR_BACKEND_SERVICES: collector:19876
     networks:
       - traveling-light
 

@@ -72,9 +72,13 @@ class HttpPlugin implements SwPlugin {
 
         span.async();
 
-        request.on('close', () => {
-          span.await().stop();
+        request.prependListener('response', (res) => {
+          span.tag(Tag.httpStatusCode(res.statusCode));
+          if (res.statusCode && res.statusCode >= 400) {
+            span.errored = true;
+          }
         });
+        request.on('close', () => span.await().stop());
 
         return request;
       };
@@ -105,16 +109,21 @@ class HttpPlugin implements SwPlugin {
 
           const carrier = ContextCarrier.from(headersMap);
 
-          const span = ContextManager.current.newEntrySpan('/', carrier).start();
-          span.operation = (req.url || '/').replace(/\?.*/g, '');
+          const operation = (req.url || '/').replace(/\?.*/g, '');
+          const span = ContextManager.current.newEntrySpan(operation, carrier).start();
           span.component = Component.HTTP_SERVER;
           span.layer = SpanLayer.HTTP;
           span.tag(Tag.httpURL(req.url));
 
-          span.tag(Tag.httpStatusCode(res.statusCode)).tag(Tag.httpStatusMsg(res.statusMessage));
+          span.tag(Tag.httpStatusCode(res.statusCode));
+          if (res.statusCode && res.statusCode >= 400) {
+            span.errored = true;
+          }
+          if (res.statusMessage) {
+            span.tag(Tag.httpStatusMsg(res.statusMessage));
+          }
 
           res.on('close', () => {
-            console.info('jjj');
             span.stop();
           });
 

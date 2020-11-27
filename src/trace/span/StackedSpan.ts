@@ -32,9 +32,6 @@ export default class StackedSpan extends Span {
   }
 
   finish(segment: Segment): boolean {
-    if (logger.isDebugEnabled()) {
-      logger.debug('Finishing span', this);
-    }
     return --this.depth === 0 && super.finish(segment);
   }
 }

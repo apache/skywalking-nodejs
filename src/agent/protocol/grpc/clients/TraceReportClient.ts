@@ -51,14 +51,16 @@ class TraceReportClient implements Client {
           return;
         }
 
+        logger.info({ 'buffer.length': buffer.length });
+
         const stream = this.reporterClient.collect((error, _) => {
           if (error) {
             logger.error('Failed to report trace data', error);
           }
         });
 
-        while (buffer.buffer.length > 0) {
-          const segment = buffer.buffer.pop();
+        while (buffer.length > 0) {
+          const segment = buffer.buffer.splice(0, 1)[0];
           if (segment) {
             if (logger.isDebugEnabled()) {
               logger.debug('Sending segment ', { segment });

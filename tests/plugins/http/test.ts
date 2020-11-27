@@ -17,28 +17,40 @@
  *
  */
 
-// @ts-ignore
-import { setUp, tearDown } from '../common';
 import * as path from 'path';
+import { DockerComposeEnvironment, Wait } from 'testcontainers';
+import axios from 'axios';
+import waitForExpect from 'wait-for-expect';
+import { promises as fs } from 'fs';
 
-const composeFile = path.resolve(__dirname, 'docker-compose.yml');
+const rootDir = path.resolve(__dirname);
 
-describe('', () => {
-  before(function () {
-    this.timeout(60_000);
+describe('plugin tests', () => {
+  let compose;
 
-    return setUp(composeFile, () => true);
+  beforeAll(async () => {
+    compose = await new DockerComposeEnvironment(rootDir, 'docker-compose.yml')
+      .withWaitStrategy('client', Wait.forHealthCheck())
+      .up();
   });
 
-  after(function () {
-    this.timeout(120_000);
-
-    return tearDown(composeFile);
+  afterAll(async () => {
+    await compose.down();
   });
 
-  it(`test ${__dirname}`, function (done) {
-    this.timeout(60_000);
+  it(__filename, async () => {
+    await waitForExpect(async () => expect((await axios.get('http://localhost:5001/test')).status).toBe(200));
 
-    done();
+    const expectedData = await fs.readFile(path.join(rootDir, 'expected.data.yaml'), 'utf8');
+
+    try {
+      await waitForExpect(async () =>
+        expect((await axios.post('http://localhost:12800/dataValidate', expectedData)).status).toBe(200),
+      );
+    } catch (e) {
+      const actualData = (await axios.get('http://localhost:12800/receiveData')).data;
+      console.info({ actualData });
+      throw e;
+    }
   });
 });

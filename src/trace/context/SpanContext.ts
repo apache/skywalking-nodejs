@@ -113,24 +113,20 @@ export default class SpanContext implements Context {
   }
 
   stop(span: Span): boolean {
-    logger.info('Stopping span', { span, spans: this.spans });
+    logger.info('Stopping span', { span: span.operation, spans: this.spans });
 
-    if (this.tryFinish(span)) {
-      this.spans.splice(this.spans.length - 1, 1);
-    }
-
-    return this.asyncCount === 0 && this.spans.length === 0;
-  }
-
-  tryFinish(span: Span): boolean {
-    if (span.finish(this.segment) && !span.isAsync) {
-      if (logger.isDebugEnabled()) {
-        logger.debug('Finishing span', { span });
+    if (span.finish(this.segment)) {
+      const idx = this.spans.indexOf(span);
+      if (idx >= 0) {
+        this.spans.splice(idx, 1);
       }
-      buffer.put(this.segment);
-      return true;
     }
-    return false;
+
+    const finished = this.asyncCount === 0 && this.spans.length === 0;
+    if (finished) {
+      buffer.put(this.segment);
+    }
+    return finished;
   }
 
   currentSpan(): Span | undefined {

@@ -29,16 +29,17 @@ services:
     extends:
       file: ../common/base-compose.yml
       service: agent
+    container_name: server
     ports:
       - 5000:5000
     volumes:
       - .:/app/tests/plugins/http
     healthcheck:
-      test: ["CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/5000"]
+      test: [ "CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/5000" ]
       interval: 5s
       timeout: 60s
       retries: 120
-    entrypoint: ['bash', '-c', 'npx ts-node /app/tests/plugins/http/server.ts']
+    entrypoint: [ 'bash', '-c', 'npx ts-node /app/tests/plugins/http/server.ts' ]
     depends_on:
       collector:
         condition: service_healthy
@@ -47,11 +48,17 @@ services:
     extends:
       file: ../common/base-compose.yml
       service: agent
+    container_name: client
     ports:
       - 5001:5001
     environment:
-      PROVIDER: server:5000
-    entrypoint: ['bash', '-c', 'npx ts-node /app/tests/plugins/http/client.ts']
+      SERVER: server:5000
+    healthcheck:
+      test: [ "CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/5001" ]
+      interval: 5s
+      timeout: 60s
+      retries: 120
+    entrypoint: [ 'bash', '-c', 'npx ts-node /app/tests/plugins/http/client.ts' ]
     depends_on:
       server:
         condition: service_healthy

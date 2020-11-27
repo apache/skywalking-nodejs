@@ -82,6 +82,9 @@ export default abstract class Span {
 
   stop(): this {
     logger.debug(`Stopping span ${this.operation}`, this);
+    if (this.operation === '/test') {
+      console.info('kkkkkkkkkkkkkkkkkkkkkkkkkl')
+    }
     this.context.stop(this);
     return this;
   }
@@ -151,8 +154,8 @@ export default abstract class Span {
   }
 
   await(): this {
-    this._async = false;
     this.context.await(this);
+    this._async = false;
     return this;
   }
 
