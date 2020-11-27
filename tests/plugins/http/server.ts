@@ -34,13 +34,15 @@ const server = http.createServer((req, res) => {
     })
     .end();
 
-  http
-    .request('http://httpbin.org/xml', async (r) => {
-      let data = '';
-      r.on('data', (chunk) => (data += chunk));
-      r.on('end', () => setTimeout(() => res.end(data), 3000));
-    })
-    .end();
+  setTimeout(() => {
+    http
+      .request('http://httpbin.org/xml', async (r) => {
+        let data = '';
+        r.on('data', (chunk) => (data += chunk));
+        r.on('end', () => setTimeout(() => res.end(data), 2000));
+      })
+      .end();
+  }, 1000);
 });
 
 server.listen(5000, () => console.info('Listening on port 5000...'));

@@ -21,21 +21,6 @@ segmentItems:
     segments:
       - segmentId: not null
         spans:
-          - operationName: /xml
-            operationId: 0
-            parentSpanId: 0
-            spanId: 2
-            spanLayer: Http
-            startTime: gt 0
-            endTime: gt 0
-            componentId: 2
-            isError: false
-            spanType: Exit
-            peer: httpbin.org
-            skipAnalysis: false
-            tags:
-              - { key: http.url, value: httpbin.org/xml }
-              - { key: http.status.code, value: '200' }
           - operationName: /json
             operationId: 0
             parentSpanId: 0
@@ -50,6 +35,21 @@ segmentItems:
             skipAnalysis: false
             tags:
               - { key: http.url, value: httpbin.org/json }
+              - { key: http.status.code, value: '200' }
+          - operationName: /xml
+            operationId: 0
+            parentSpanId: 0
+            spanId: 2
+            spanLayer: Http
+            startTime: gt 0
+            endTime: gt 0
+            componentId: 2
+            isError: false
+            spanType: Exit
+            peer: httpbin.org
+            skipAnalysis: false
+            tags:
+              - { key: http.url, value: httpbin.org/xml }
               - { key: http.status.code, value: '200' }
           - operationName: /test
             operationId: 0
