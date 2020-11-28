@@ -30,3 +30,7 @@ github:
     squash:  true
     merge:   false
     rebase:  false
+  protected_branches:
+    master:
+      required_pull_request_reviews:
+        dismiss_stale_reviews: true

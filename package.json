@@ -8,7 +8,7 @@
     "prepare": "npm run generate-source",
     "generate-source": "scripts/protoc.sh",
     "build": "tsc --build src",
-    "lint": "tslint -p tsconfig.json",
+    "lint": "tslint -p src/tsconfig.json src/**/*.ts",
     "test": "DEBUG=testcontainers* jest",
     "format": "prettier --write \"src/**/*.ts\"",
     "clean": "(rm -rf src/proto || true) && (rm -rf src/proto || true) && (rm -rf lib || true)"

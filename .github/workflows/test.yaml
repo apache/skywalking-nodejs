@@ -50,4 +50,5 @@ jobs:
       - name: Test
         run: |
           npm i
+          npm run lint
           npm run test
