@@ -31,6 +31,13 @@ export default class StackedSpan extends Span {
     super(options);
   }
 
+  start(): this {
+    if (++this.depth === 1) {
+      super.start();
+    }
+    return this;
+  }
+
   finish(segment: Segment): boolean {
     return --this.depth === 0 && super.finish(segment);
   }

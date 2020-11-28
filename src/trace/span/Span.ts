@@ -59,8 +59,6 @@ export default abstract class Span {
   endTime = 0;
   errored = false;
 
-  _async = false;
-
   constructor(options: SpanCtorOptions & { type: SpanType }) {
     this.context = options.context;
     this.operation = options.operation;
@@ -86,6 +84,18 @@ export default abstract class Span {
       console.info('kkkkkkkkkkkkkkkkkkkkkkkkkl')
     }
     this.context.stop(this);
+    return this;
+  }
+
+  async(): this {
+    logger.debug(`Async span ${this.operation}`, this);
+    this.context.async(this);
+    return this;
+  }
+
+  resync(): this {
+    logger.debug(`Resync span ${this.operation}`, this);
+    this.context.resync(this);
     return this;
   }
 
@@ -145,21 +155,5 @@ export default abstract class Span {
       this.refs.push(ref);
     }
     return this;
-  }
-
-  async(): this {
-    this._async = true;
-    this.context.async(this);
-    return this;
-  }
-
-  await(): this {
-    this.context.await(this);
-    this._async = false;
-    return this;
-  }
-
-  get isAsync(): boolean {
-    return this._async;
   }
 }

@@ -24,7 +24,6 @@ import { ContextCarrier } from './ContextCarrier';
 
 export default interface Context {
   segment: Segment;
-  spans: Span[];
 
   newLocalSpan(operation: string): Span;
 
@@ -36,13 +35,13 @@ export default interface Context {
 
   stop(span: Span): boolean;
 
+  async(span: Span): void;
+
+  resync(span: Span): void;
+
   currentSpan(): Span | undefined;
 
   capture(): Snapshot;
 
   restore(snapshot: Snapshot): void;
-
-  async(span: Span): void;
-
-  await(span: Span): void;
 }

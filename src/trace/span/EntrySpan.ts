@@ -25,8 +25,6 @@ import { SpanLayer, SpanType } from '../../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from '../context/ContextCarrier';
 
 export default class EntrySpan extends StackedSpan {
-  maxDepth = 0;
-
   constructor(options: SpanCtorOptions) {
     super(
       Object.assign(options, {
@@ -36,10 +34,7 @@ export default class EntrySpan extends StackedSpan {
   }
 
   start(): this {
-    this.maxDepth = ++this.depth;
-    if (this.maxDepth === 1) {
-      super.start();
-    }
+    super.start();
     this.layer = SpanLayer.UNKNOWN;
     this.component = Component.UNKNOWN;
     this.logs.splice(0, this.logs.length);
