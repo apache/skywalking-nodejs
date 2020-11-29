@@ -36,7 +36,8 @@ segmentItems:
             tags:
               - { key: http.url, value: /test }
               - { key: http.status.code, value: '200' }
-            refs:
+              - { key: http.status.msg, value: OK }
+             refs:
               - { parentEndpoint: '', networkAddress: 'server:5000', refType: CrossProcess,
                   parentSpanId: 1, parentTraceSegmentId: not null, parentServiceInstance: not null,
                   parentService: client, traceId: not null }
@@ -55,6 +56,7 @@ segmentItems:
             tags:
               - { key: http.url, value: httpbin.org/json }
               - { key: http.status.code, value: '200' }
+              - { key: http.status.msg, value: OK }
   - serviceName: client
     segmentSize: 1
     segments:
@@ -75,6 +77,7 @@ segmentItems:
             tags:
               - { key: http.url, value: /test }
               - { key: http.status.code, value: '200' }
+              - { key: http.status.msg, value: OK }
           - operationName: /test
             operationId: 0
             parentSpanId: 0
@@ -90,3 +93,4 @@ segmentItems:
             tags:
               - { key: http.url, value: 'server:5000/test' }
               - { key: http.status.code, value: '200' }
+              - { key: http.status.msg, value: OK }

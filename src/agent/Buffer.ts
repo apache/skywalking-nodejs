@@ -20,6 +20,7 @@
 import { createLogger } from '../logging';
 import Segment from '../trace/context/Segment';
 import config from '../config/AgentConfig';
+import TraceReportClient from '../agent/protocol/grpc/clients/TraceReportClient';
 
 const logger = createLogger(__filename);
 
@@ -42,6 +43,7 @@ class Buffer {
       return this;
     }
     this.buffer.push(segment);
+    TraceReportClient.ref();  // this is currently hard-coded for grpc, if other protocols added need to change
 
     return this;
   }
