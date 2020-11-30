@@ -80,9 +80,6 @@ export default abstract class Span {
 
   stop(): this {
     logger.debug(`Stopping span ${this.operation}`, this);
-    if (this.operation === '/test') {
-      console.info('kkkkkkkkkkkkkkkkkkkkkkkkkl')
-    }
     this.context.stop(this);
     return this;
   }

@@ -26,8 +26,6 @@ import LocalSpan from '../../trace/span/LocalSpan';
 import buffer from '../../agent/Buffer';
 import { createLogger } from '../../logging';
 import { executionAsyncId } from 'async_hooks';
-import Snapshot from '../../trace/context/Snapshot';
-import SegmentRef from '../../trace/context/SegmentRef';
 import { ContextCarrier } from './ContextCarrier';
 import ContextManager from './ContextManager';
 
@@ -131,7 +129,7 @@ export default class SpanContext implements Context {
       }
     }
 
-    if (--this.nSpans == 0) {
+    if (--this.nSpans === 0) {
       buffer.put(this.segment);
       ContextManager.clear();
       return true;
@@ -149,7 +147,8 @@ export default class SpanContext implements Context {
       ContextManager.spans.splice(idx, 1);
     }
 
-    if (this.nSpans === 1) {  // this will pass the context to child async task so it doesn't mess with other tasks here
+    if (this.nSpans === 1) {
+      // this will pass the context to child async task so it doesn't mess with other tasks here
       ContextManager.clear();
     }
   }
@@ -166,21 +165,5 @@ export default class SpanContext implements Context {
 
   currentSpan(): Span | undefined {
     return ContextManager.spans[ContextManager.spans.length - 1];
-  }
-
-  capture(): Snapshot {
-    return {
-      segmentId: this.segment.segmentId,
-      spanId: this.currentSpan()?.id ?? -1,
-      traceId: this.segment.relatedTraces[0],
-      parentEndpoint: ContextManager.spans[0].operation,
-    };
-  }
-
-  restore(snapshot: Snapshot) {
-    const ref = SegmentRef.fromSnapshot(snapshot);
-    this.segment.refer(ref);
-    this.currentSpan()?.refer(ref);
-    this.segment.relate(ref.traceId);
   }
 }
