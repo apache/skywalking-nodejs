@@ -31,6 +31,7 @@ const logger = createLogger(__filename);
 
 class TraceReportClient implements Client {
   reporterClient: TraceSegmentReportServiceClient;
+  timeout: any;
 
   constructor() {
     this.reporterClient = new TraceSegmentReportServiceClient(
@@ -42,6 +43,10 @@ class TraceReportClient implements Client {
 
   get isConnected(): boolean {
     return this.reporterClient.getChannel().getConnectivityState(true) === connectivityState.READY;
+  }
+
+  ref() {
+    this.timeout.ref();
   }
 
   start() {
@@ -72,11 +77,11 @@ class TraceReportClient implements Client {
 
         stream.end();
       } finally {
-        setTimeout(reportFunction, 1000).unref();
+        this.timeout = setTimeout(reportFunction, 1000).unref();
       }
     };
 
-    setTimeout(reportFunction, 1000).unref();
+    this.timeout = setTimeout(reportFunction, 1000).unref();
   }
 }
 

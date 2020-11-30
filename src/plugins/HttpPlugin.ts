@@ -23,6 +23,7 @@ import { ClientRequest, IncomingMessage, RequestOptions, ServerResponse } from '
 import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
 import Tag from '../Tag';
+import Span from '../trace/span/Span';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from '../trace/context/ContextCarrier';
 import { createLogger } from '../logging';
@@ -59,26 +60,42 @@ class HttpPlugin implements SwPlugin {
               };
         const operation = pathname.replace(/\?.*$/g, '');
 
-        const span = ContextManager.current.newExitSpan(operation, host).start();
-        span.component = Component.HTTP;
-        span.layer = SpanLayer.HTTP;
-        span.tag(Tag.httpURL(host + pathname));
+        const [span, request]: [Span, ClientRequest] = ContextManager.withSpanNoStop(
+            ContextManager.current.newExitSpan(operation, host), (_span: Span, args) => {
 
-        const request: ClientRequest = original.apply(this, arguments);
+          _span.component = Component.HTTP;
+          _span.layer = SpanLayer.HTTP;
+          _span.tag(Tag.httpURL(host + pathname));
 
-        span.extract().items.forEach((item) => {
-          request.setHeader(item.key, item.value);
-        });
+          const _request = original.apply(this, args);
+
+          _span.extract().items.forEach((item) => {
+            _request.setHeader(item.key, item.value);
+          });
+
+          return [_span, _request];
+
+        }, arguments);
 
         span.async();
 
+        let stopped = 0;  // compensating if request aborted right after creation 'close' is not emitted
+        const stopIfNotStopped = () => !stopped++ ? span.stop() : null;
+        request.on('abort', stopIfNotStopped);  // make sure we stop only once
+        request.on('close', stopIfNotStopped);
+        request.on('error', stopIfNotStopped);
+
         request.prependListener('response', (res) => {
+          span.resync();
           span.tag(Tag.httpStatusCode(res.statusCode));
           if (res.statusCode && res.statusCode >= 400) {
             span.errored = true;
           }
+          if (res.statusMessage) {
+            span.tag(Tag.httpStatusMsg(res.statusMessage));
+          }
+          stopIfNotStopped();
         });
-        request.on('close', () => span.await().stop());
 
         return request;
       };
@@ -94,26 +111,26 @@ class HttpPlugin implements SwPlugin {
           return original.apply(this, arguments);
         }
 
-        const args = arguments;
-        const self = this;
+        const [req, res] = [arguments[1] as IncomingMessage, arguments[2] as ServerResponse];
 
-        return ContextManager.withContext(() => {
-          const [req, res] = [args[1] as IncomingMessage, args[2] as ServerResponse];
+        const headers = req.rawHeaders || [];
+        const headersMap: { [key: string]: string } = {};
 
-          const headers = req.rawHeaders || [];
-          const headersMap: { [key: string]: string } = {};
+        for (let i = 0; i < headers.length / 2; i += 2) {
+          headersMap[headers[i]] = headers[i + 1];
+        }
 
-          for (let i = 0; i < headers.length / 2; i += 2) {
-            headersMap[headers[i]] = headers[i + 1];
-          }
+        const carrier = ContextCarrier.from(headersMap);
+        const operation = (req.url || '/').replace(/\?.*/g, '');
 
-          const carrier = ContextCarrier.from(headersMap);
+        return ContextManager.withSpan(ContextManager.current.newEntrySpan(operation, carrier),
+            (span, self, args) => {
 
-          const operation = (req.url || '/').replace(/\?.*/g, '');
-          const span = ContextManager.current.newEntrySpan(operation, carrier).start();
           span.component = Component.HTTP_SERVER;
           span.layer = SpanLayer.HTTP;
-          span.tag(Tag.httpURL(req.url));
+          span.tag(Tag.httpURL((req.headers.host || '') + req.url));
+
+          const ret = original.apply(self, args);
 
           span.tag(Tag.httpStatusCode(res.statusCode));
           if (res.statusCode && res.statusCode >= 400) {
@@ -123,12 +140,9 @@ class HttpPlugin implements SwPlugin {
             span.tag(Tag.httpStatusMsg(res.statusMessage));
           }
 
-          res.on('close', () => {
-            span.stop();
-          });
+          return ret;
 
-          return original.apply(self, args);
-        });
+        }, this, arguments);
       };
     })(http.Server.prototype.emit);
   }

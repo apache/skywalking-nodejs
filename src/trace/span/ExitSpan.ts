@@ -22,6 +22,7 @@ import { SpanCtorOptions } from './Span';
 import config from '../../config/AgentConfig';
 import { SpanType } from '../../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from '../context/ContextCarrier';
+import ContextManager from '../context/ContextManager';
 
 export default class ExitSpan extends StackedSpan {
   constructor(options: SpanCtorOptions) {
@@ -32,11 +33,6 @@ export default class ExitSpan extends StackedSpan {
     );
   }
 
-  start(): this {
-    this.depth++;
-    return super.start();
-  }
-
   extract(): ContextCarrier {
     return new ContextCarrier(
       this.context.segment.relatedTraces[0],
@@ -44,7 +40,7 @@ export default class ExitSpan extends StackedSpan {
       this.id,
       config.serviceName,
       config.serviceInstance,
-      this.context.spans[0].operation,
+      ContextManager.spans[0].operation,
       this.peer,
       [],
     );

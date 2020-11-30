@@ -29,18 +29,18 @@ import { executionAsyncId } from 'async_hooks';
 import Snapshot from '../../trace/context/Snapshot';
 import SegmentRef from '../../trace/context/SegmentRef';
 import { ContextCarrier } from './ContextCarrier';
+import ContextManager from './ContextManager';
 
 const logger = createLogger(__filename);
 
 export default class SpanContext implements Context {
   spanId = 0;
-  spans: Span[] = [];
+  nSpans = 0;
   segment: Segment = new Segment();
-  asyncCount: number = 0;
 
   get parent(): Span | null {
-    if (this.spans.length > 0) {
-      return this.spans[this.spans.length - 1];
+    if (ContextManager.spans.length > 0) {
+      return ContextManager.spans[ContextManager.spans.length - 1];
     }
     return null;
   }
@@ -56,6 +56,8 @@ export default class SpanContext implements Context {
         executionAsyncId: executionAsyncId(),
       });
     }
+
+    ContextManager.spansDup();
 
     const span = new EntrySpan({
       id: this.spanId++,
@@ -79,6 +81,8 @@ export default class SpanContext implements Context {
       });
     }
 
+    ContextManager.spansDup();
+
     return new ExitSpan({
       id: this.spanId++,
       parentId: this.parentId,
@@ -96,6 +100,8 @@ export default class SpanContext implements Context {
       });
     }
 
+    ContextManager.spansDup();
+
     return new LocalSpan({
       id: this.spanId++,
       parentId: this.parentId,
@@ -105,32 +111,61 @@ export default class SpanContext implements Context {
   }
 
   start(span: Span): Context {
-    if (this.spans.every((s) => s.id !== span.id)) {
-      this.spans.push(span);
+    logger.debug('Starting span', { span: span.operation, spans: ContextManager.spans, nSpans: this.nSpans });
+
+    this.nSpans += 1;
+    if (ContextManager.spans.every((s) => s.id !== span.id)) {
+      ContextManager.spans.push(span);
     }
 
     return this;
   }
 
   stop(span: Span): boolean {
-    logger.info('Stopping span', { span: span.operation, spans: this.spans });
+    logger.debug('Stopping span', { span: span.operation, spans: ContextManager.spans, nSpans: this.nSpans });
 
     if (span.finish(this.segment)) {
-      const idx = this.spans.indexOf(span);
-      if (idx >= 0) {
-        this.spans.splice(idx, 1);
+      const idx = ContextManager.spans.indexOf(span);
+      if (idx !== -1) {
+        ContextManager.spans.splice(idx, 1);
       }
     }
 
-    const finished = this.asyncCount === 0 && this.spans.length === 0;
-    if (finished) {
+    if (--this.nSpans == 0) {
       buffer.put(this.segment);
+      ContextManager.clear();
+      return true;
     }
-    return finished;
+
+    return false;
+  }
+
+  async(span: Span) {
+    logger.debug('Async span', { span: span.operation, spans: ContextManager.spans, nSpans: this.nSpans });
+
+    const idx = ContextManager.spans.indexOf(span);
+
+    if (idx !== -1) {
+      ContextManager.spans.splice(idx, 1);
+    }
+
+    if (this.nSpans === 1) {  // this will pass the context to child async task so it doesn't mess with other tasks here
+      ContextManager.clear();
+    }
+  }
+
+  resync(span: Span) {
+    logger.debug('Resync span', { span: span.operation, spans: ContextManager.spans, nSpans: this.nSpans });
+
+    if ((span.context as SpanContext).nSpans === 1) {
+      ContextManager.restore(span.context, [span]);
+    } else if (ContextManager.spans.every((s) => s.id !== span.id)) {
+      ContextManager.spans.push(span);
+    }
   }
 
   currentSpan(): Span | undefined {
-    return this.spans[this.spans.length - 1];
+    return ContextManager.spans[ContextManager.spans.length - 1];
   }
 
   capture(): Snapshot {
@@ -138,7 +173,7 @@ export default class SpanContext implements Context {
       segmentId: this.segment.segmentId,
       spanId: this.currentSpan()?.id ?? -1,
       traceId: this.segment.relatedTraces[0],
-      parentEndpoint: this.spans[0].operation,
+      parentEndpoint: ContextManager.spans[0].operation,
     };
   }
 
@@ -147,14 +182,5 @@ export default class SpanContext implements Context {
     this.segment.refer(ref);
     this.currentSpan()?.refer(ref);
     this.segment.relate(ref.traceId);
-  }
-
-  async(span: Span) {
-    this.asyncCount++;
-    this.spans.splice(this.spans.indexOf(span), 1);
-  }
-
-  await(span: Span) {
-    this.asyncCount--;
   }
 }

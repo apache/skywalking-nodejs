@@ -18,18 +18,76 @@
  */
 
 import Context from '../../trace/context/Context';
+import Span from '../../trace/span/Span';
 import SpanContext from '../../trace/context/SpanContext';
 import { AsyncLocalStorage } from 'async_hooks';
 
-const store = new AsyncLocalStorage<Context>();
+type AsyncState = {context: Context, spans: Span[]};
+
+const store = new AsyncLocalStorage<AsyncState>();
 
 class ContextManager {
-  get current(): Context {
-    return store.getStore() || new SpanContext();
+  get asyncState(): AsyncState {
+    let asyncState = store.getStore();
+
+    if (asyncState === undefined) {
+      asyncState = {context: new SpanContext(), spans: []};
+      store.enterWith(asyncState);
+    }
+
+    return asyncState;
   }
 
-  withContext(callback: (...args: any[]) => void, ...args: any[]) {
-    return store.run(new SpanContext(), callback);
+  get current(): Context { return this.asyncState.context; }
+  get spans(): Span[] { return this.asyncState.spans; }
+
+  spansDup(): Span[] {
+    let asyncState = store.getStore();
+
+    if (asyncState === undefined) {
+      asyncState = {context: new SpanContext(), spans: []};
+    } else {
+      asyncState = {context: asyncState.context, spans: [...asyncState.spans]};
+    }
+
+    store.enterWith(asyncState);
+
+    return asyncState.spans;
+  }
+
+  clear(): void {
+    store.enterWith(undefined as unknown as AsyncState);
+  }
+
+  restore(context: Context, spans: Span[]): void {
+    store.enterWith({context, spans: spans || []});
+  }
+
+  withSpan(span: Span, callback: (...args: any[]) => any, ...args: any[]): any {
+    if(!span.startTime)
+      span.start();
+
+    try {
+      return callback(span, ...args);
+    } catch (e) {
+      span.error(e);
+      throw e;
+    } finally {
+      span.stop();
+    }
+  }
+
+  withSpanNoStop(span: Span, callback: (...args: any[]) => any, ...args: any[]): any {
+    if(!span.startTime)
+      span.start();
+
+    try {
+      return callback(span, ...args);
+    } catch (e) {
+      span.error(e);
+      span.stop();
+      throw e;
+    }
   }
 }
 

@@ -24,7 +24,6 @@ import { ContextCarrier } from './ContextCarrier';
 
 export default interface Context {
   segment: Segment;
-  spans: Span[];
 
   newLocalSpan(operation: string): Span;
 
@@ -36,13 +35,18 @@ export default interface Context {
 
   stop(span: Span): boolean;
 
+  /* This should be called just before a span is passed to a different async context, like for example a callback from
+     an asynchronous operation the code belonging to the span initiated. After this is called a span should only call
+     .resync() or .stop(). See HttpPlugin.interceptClientRequest() in plugins/HttpPlugin.ts for example of usage. */
+  async(span: Span): void;
+
+  /* This should be called upon entering the new async context for a span that has previously executed .async(), it
+     should be the first thing the callback function belonging to the span does. */
+  resync(span: Span): void;
+
   currentSpan(): Span | undefined;
 
   capture(): Snapshot;
 
   restore(snapshot: Snapshot): void;
-
-  async(span: Span): void;
-
-  await(span: Span): void;
 }

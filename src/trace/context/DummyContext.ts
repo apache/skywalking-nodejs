@@ -32,26 +32,23 @@ export default class DummyContext implements Context {
     operation: '',
     type: SpanType.LOCAL,
   });
-  spans: Span[] = [];
   segment: Segment = new Segment();
   depth = 0;
 
   newEntrySpan(operation: string, carrier?: ContextCarrier): Span {
-    this.depth++;
     return this.span;
   }
 
   newExitSpan(operation: string, peer: string, carrier?: ContextCarrier): Span {
-    this.depth++;
     return this.span;
   }
 
   newLocalSpan(operation: string): Span {
-    this.depth++;
     return this.span;
   }
 
   start(): Context {
+    this.depth++;
     return this;
   }
 
@@ -59,8 +56,16 @@ export default class DummyContext implements Context {
     return --this.depth === 0;
   }
 
+  async(span: Span) {
+    return;
+  }
+
+  resync(span: Span) {
+    return;
+  }
+
   currentSpan(): Span {
-    return this.spans[this.spans.length - 1];
+    throw new Error('DummyContext.currentSpan() should never be called!');
   }
 
   capture(): Snapshot {
@@ -73,14 +78,6 @@ export default class DummyContext implements Context {
   }
 
   restore(snapshot: Snapshot) {
-    return;
-  }
-
-  async(span: Span) {
-    return;
-  }
-
-  await(span: Span) {
     return;
   }
 }
