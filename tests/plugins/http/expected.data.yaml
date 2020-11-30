@@ -34,10 +34,9 @@ segmentItems:
             peer: ''
             skipAnalysis: false
             tags:
-              - { key: http.url, value: /test }
+              - { key: http.url, value: server:5000/test }
               - { key: http.status.code, value: '200' }
-              - { key: http.status.msg, value: OK }
-             refs:
+            refs:
               - { parentEndpoint: '', networkAddress: 'server:5000', refType: CrossProcess,
                   parentSpanId: 1, parentTraceSegmentId: not null, parentServiceInstance: not null,
                   parentService: client, traceId: not null }
@@ -75,9 +74,8 @@ segmentItems:
             peer: ''
             skipAnalysis: false
             tags:
-              - { key: http.url, value: /test }
+              - { key: http.url, value: localhost:5001/test }
               - { key: http.status.code, value: '200' }
-              - { key: http.status.msg, value: OK }
           - operationName: /test
             operationId: 0
             parentSpanId: 0
