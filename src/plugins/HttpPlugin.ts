@@ -60,44 +60,49 @@ class HttpPlugin implements SwPlugin {
               };
         const operation = pathname.replace(/\?.*$/g, '');
 
-        const [span, request]: [Span, ClientRequest] = ContextManager.withSpanNoStop(
-            ContextManager.current.newExitSpan(operation, host), (_span: Span, args) => {
+        let stopped = 0;  // compensating if request aborted right after creation 'close' is not emitted
+        const span = ContextManager.current.newExitSpan(operation, host).start();
+        const stopIfNotStopped = () => !stopped++ ? span.stop() : null;  // make sure we stop only once
 
-          _span.component = Component.HTTP;
-          _span.layer = SpanLayer.HTTP;
-          _span.tag(Tag.httpURL(host + pathname));
+        try {
+          span.component = Component.HTTP;
+          span.layer = SpanLayer.HTTP;
+          span.tag(Tag.httpURL(host + pathname));
 
-          const _request = original.apply(this, args);
+          const request: ClientRequest = original.apply(this, arguments);
 
-          _span.extract().items.forEach((item) => {
-            _request.setHeader(item.key, item.value);
+          span.extract().items.forEach((item) => {
+            request.setHeader(item.key, item.value);
           });
 
-          return [_span, _request];
+          request.on('close', stopIfNotStopped);
+          request.on('abort', () => (span.errored = true, stopIfNotStopped()));
+          request.on('error', (err) => (span.error(err), stopIfNotStopped()));
 
-        }, arguments);
+          request.prependListener('response', (res) => {
+            span.resync();
+            span.tag(Tag.httpStatusCode(res.statusCode));
+            if (res.statusCode && res.statusCode >= 400) {
+              span.errored = true;
+            }
+            if (res.statusMessage) {
+              span.tag(Tag.httpStatusMsg(res.statusMessage));
+            }
+            stopIfNotStopped();
+          });
 
-        span.async();
+          span.async();
 
-        let stopped = 0;  // compensating if request aborted right after creation 'close' is not emitted
-        const stopIfNotStopped = () => !stopped++ ? span.stop() : null;  // make sure we stop only once
-        request.on('close', stopIfNotStopped);
-        request.on('abort', () => (span.errored = true, stopIfNotStopped()));
-        request.on('error', (err) => (span.error(err), stopIfNotStopped()));
+          return request;
 
-        request.prependListener('response', (res) => {
-          span.resync();
-          span.tag(Tag.httpStatusCode(res.statusCode));
-          if (res.statusCode && res.statusCode >= 400) {
-            span.errored = true;
+        } catch (e) {
+          if (!stopped) {
+            span.error(e);
+            stopIfNotStopped();
           }
-          if (res.statusMessage) {
-            span.tag(Tag.httpStatusMsg(res.statusMessage));
-          }
-          stopIfNotStopped();
-        });
 
-        return request;
+          throw e;
+        }
       };
     })(http.request);
   }
@@ -122,10 +127,9 @@ class HttpPlugin implements SwPlugin {
 
         const carrier = ContextCarrier.from(headersMap);
         const operation = (req.url || '/').replace(/\?.*/g, '');
+        const span = ContextManager.current.newEntrySpan(operation, carrier);
 
-        return ContextManager.withSpan(ContextManager.current.newEntrySpan(operation, carrier),
-            (span, self, args) => {
-
+        return ContextManager.withSpan(span, (self, args) => {
           span.component = Component.HTTP_SERVER;
           span.layer = SpanLayer.HTTP;
           span.tag(Tag.httpURL((req.headers.host || '') + req.url));
