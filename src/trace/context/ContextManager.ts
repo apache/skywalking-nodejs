@@ -77,6 +77,20 @@ class ContextManager {
     }
   }
 
+  async withSpanAwait(span: Span, callback: (...args: any[]) => any, ...args: any[]): Promise<any> {
+    if(!span.startTime)
+      span.start();
+
+    try {
+      return await callback(span, ...args);
+    } catch (e) {
+      span.error(e);
+      throw e;
+    } finally {
+      span.stop();
+    }
+  }
+
   withSpanNoStop(span: Span, callback: (...args: any[]) => any, ...args: any[]): any {
     if(!span.startTime)
       span.start();
