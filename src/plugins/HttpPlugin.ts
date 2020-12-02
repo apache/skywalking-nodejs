@@ -80,10 +80,10 @@ class HttpPlugin implements SwPlugin {
         span.async();
 
         let stopped = 0;  // compensating if request aborted right after creation 'close' is not emitted
-        const stopIfNotStopped = () => !stopped++ ? span.stop() : null;
-        request.on('abort', stopIfNotStopped);  // make sure we stop only once
+        const stopIfNotStopped = () => !stopped++ ? span.stop() : null;  // make sure we stop only once
         request.on('close', stopIfNotStopped);
-        request.on('error', stopIfNotStopped);
+        request.on('abort', () => (span.errored = true, stopIfNotStopped()));
+        request.on('error', (err) => (span.error(err), stopIfNotStopped()));
 
         request.prependListener('response', (res) => {
           span.resync();
