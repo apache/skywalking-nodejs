@@ -25,6 +25,11 @@ import * as semver from 'semver';
 
 const logger = createLogger(__filename);
 
+let topModule = module;
+for (; topModule.parent; topModule = topModule.parent);
+
+const topResolve = (request: string) => (module.constructor as any)._resolveFilename(request, topModule)
+
 class PluginInstaller {
   pluginDir: string;
 
@@ -32,18 +37,25 @@ class PluginInstaller {
     this.pluginDir = path.resolve(__dirname, '..', 'plugins');
   }
 
-  private isBuiltIn = (module: string): boolean => require.resolve(module) === module;
+  private isBuiltIn = (module: string): boolean => topResolve(module) === module;
 
   private checkModuleVersion = (plugin: SwPlugin): { version: string; isSupported: boolean } => {
-    if (this.isBuiltIn(plugin.module)) {
+    try {
+      if (this.isBuiltIn(plugin.module)) {
+        return {
+          version: '*',
+          isSupported: true,
+        };
+      }
+    } catch {  // module not found
       return {
-        version: '*',
-        isSupported: true,
+        version: 'not found,',
+        isSupported: false,
       };
     }
 
-    const packageJsonPath = require.resolve(`${plugin.module}/package.json`);
-    const version = require(packageJsonPath).version;
+    const packageJsonPath = topResolve(`${plugin.module}/package.json`);
+    const version = topModule.require(packageJsonPath).version;
 
     if (!semver.satisfies(version, plugin.versions)) {
       logger.info(`Plugin ${plugin.module} ${version} doesn't satisfy the supported version ${plugin.versions}`);
