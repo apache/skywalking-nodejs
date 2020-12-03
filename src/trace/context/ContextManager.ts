@@ -68,7 +68,7 @@ class ContextManager {
       span.start();
 
     try {
-      return callback(span, ...args);
+      return callback(...args);
     } catch (e) {
       span.error(e);
       throw e;
@@ -82,25 +82,12 @@ class ContextManager {
       span.start();
 
     try {
-      return await callback(span, ...args);
+      return await callback(...args);
     } catch (e) {
       span.error(e);
       throw e;
     } finally {
       span.stop();
-    }
-  }
-
-  withSpanNoStop(span: Span, callback: (...args: any[]) => any, ...args: any[]): any {
-    if(!span.startTime)
-      span.start();
-
-    try {
-      return callback(span, ...args);
-    } catch (e) {
-      span.error(e);
-      span.stop();
-      throw e;
     }
   }
 }
