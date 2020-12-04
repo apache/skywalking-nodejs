@@ -66,6 +66,7 @@ class HttpPlugin implements SwPlugin {
         try {
           span.component = Component.HTTP;
           span.layer = SpanLayer.HTTP;
+          span.peer = host;
           span.tag(Tag.httpURL(host + pathname));
 
           const request: ClientRequest = original.apply(this, arguments);
@@ -131,7 +132,8 @@ class HttpPlugin implements SwPlugin {
         return ContextManager.withSpan(span, (self, args) => {
           span.component = Component.HTTP_SERVER;
           span.layer = SpanLayer.HTTP;
-          span.tag(Tag.httpURL((req.headers.host || '') + req.url));
+          span.peer = req.headers.host || '';
+          span.tag(Tag.httpURL(span.peer + req.url));
 
           const ret = original.apply(self, args);
 

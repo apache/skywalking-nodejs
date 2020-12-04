@@ -30,6 +30,7 @@ import Snapshot from '../../trace/context/Snapshot';
 import SegmentRef from '../../trace/context/SegmentRef';
 import { ContextCarrier } from './ContextCarrier';
 import ContextManager from './ContextManager';
+import { SpanType } from '../../proto/language-agent/Tracing_pb';
 
 const logger = createLogger(__filename);
 
@@ -57,23 +58,32 @@ export default class SpanContext implements Context {
       });
     }
 
-    ContextManager.spansDup();
+    const spans = ContextManager.spansDup();
+    const parent = spans[spans.length - 1];
 
-    const span = new EntrySpan({
-      id: this.spanId++,
-      parentId: this.parentId,
-      context: this,
-      operation,
-    });
+    let span;
 
-    if (carrier && carrier.isValid()) {
-      span.inject(carrier);
+    if (parent && parent.type === SpanType.ENTRY) {
+      span = parent;
+      parent.operation = operation;
+
+    } else {
+      span = new EntrySpan({
+        id: this.spanId++,
+        parentId: this.parentId,
+        context: this,
+        operation,
+      });
+
+      if (carrier && carrier.isValid()) {
+        span.inject(carrier);
+      }
     }
 
     return span;
   }
 
-  newExitSpan(operation: string, peer: string): Span {
+  newExitSpan(operation: string, peer: string, carrier?: ContextCarrier): Span {
     if (logger.isDebugEnabled()) {
       logger.debug('Creating exit span', {
         parentId: this.parentId,
@@ -81,15 +91,29 @@ export default class SpanContext implements Context {
       });
     }
 
-    ContextManager.spansDup();
+    const spans = ContextManager.spansDup();
+    const parent = spans[spans.length - 1];
 
-    return new ExitSpan({
-      id: this.spanId++,
-      parentId: this.parentId,
-      context: this,
-      peer,
-      operation,
-    });
+    let span;
+
+    if (parent && parent.type === SpanType.EXIT) {
+      span = parent;
+
+    } else {
+      span = new ExitSpan({
+        id: this.spanId++,
+        parentId: this.parentId,
+        context: this,
+        peer,
+        operation,
+      });
+
+      // if (carrier && carrier.isValid()) {  // is this right?
+      //   Object.assign(carrier, span.extract());
+      // }
+    }
+
+    return span;
   }
 
   newLocalSpan(operation: string): Span {
@@ -124,11 +148,11 @@ export default class SpanContext implements Context {
   stop(span: Span): boolean {
     logger.debug('Stopping span', { span: span.operation, spans: ContextManager.spans, nSpans: this.nSpans });
 
-    if (span.finish(this.segment)) {
-      const idx = ContextManager.spans.indexOf(span);
-      if (idx !== -1) {
-        ContextManager.spans.splice(idx, 1);
-      }
+    span.finish(this.segment);
+
+    const idx = ContextManager.spans.indexOf(span);
+    if (idx !== -1) {
+      ContextManager.spans.splice(idx, 1);
     }
 
     if (--this.nSpans == 0) {

@@ -32,6 +32,7 @@ const topResolve = (request: string) => (module.constructor as any)._resolveFile
 
 class PluginInstaller {
   pluginDir: string;
+  require: (name: string) => any = topModule.require.bind(topModule);
 
   constructor() {
     this.pluginDir = path.resolve(__dirname, '..', 'plugins');
@@ -55,7 +56,7 @@ class PluginInstaller {
     }
 
     const packageJsonPath = topResolve(`${plugin.module}/package.json`);
-    const version = topModule.require(packageJsonPath).version;
+    const version = this.require(packageJsonPath).version;
 
     if (!semver.satisfies(version, plugin.versions)) {
       logger.info(`Plugin ${plugin.module} ${version} doesn't satisfy the supported version ${plugin.versions}`);
@@ -75,7 +76,6 @@ class PluginInstaller {
       .filter((file) => !(file.endsWith('.d.ts') || file.endsWith('.js.map')))
       .forEach((file) => {
         const plugin = require(path.join(this.pluginDir, file)).default as SwPlugin;
-
         const { isSupported, version } = this.checkModuleVersion(plugin);
 
         if (!isSupported) {
@@ -85,7 +85,11 @@ class PluginInstaller {
 
         logger.info(`Installing plugin ${plugin.module} ${plugin.versions}`);
 
-        plugin.install();
+        try {
+          plugin.install();
+        } catch (e) {
+          logger.error(`Error installing plugin ${plugin.module} ${plugin.versions}`);
+        }
       });
   }
 }

@@ -22,6 +22,7 @@ export class Component {
   static HTTP = new Component(2);
   static MONGODB = new Component(9);
   static HTTP_SERVER = new Component(49);
+  // static EXPRESS = new Component(???);
 
   constructor(public id: number) {}
 }
