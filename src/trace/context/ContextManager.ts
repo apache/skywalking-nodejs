@@ -20,11 +20,29 @@
 import Context from '../../trace/context/Context';
 import Span from '../../trace/span/Span';
 import SpanContext from '../../trace/context/SpanContext';
-import { AsyncLocalStorage } from 'async_hooks';
 
 type AsyncState = {context: Context, spans: Span[]};
 
-const store = new AsyncLocalStorage<AsyncState>();
+const async_hooks = require('async_hooks');
+let   store: any;
+
+if (async_hooks.AsyncLocalStorage) {
+  store = new async_hooks.AsyncLocalStorage();
+
+} else {  // Node 10 doesn't have AsyncLocalStore, so recreate it
+  const executionAsyncId = async_hooks.executionAsyncId;
+  const asyncLocalStore: {[index: string]: any} = {};
+
+  store = new class {
+    getStore(): AsyncState | undefined { return asyncLocalStore[executionAsyncId()] as unknown as AsyncState; }
+    enterWith(store: AsyncState): void { asyncLocalStore[executionAsyncId()] = store; }
+  }();
+
+  async_hooks.createHook({
+    init(asyncId: number, type: string, triggerId: number) { asyncLocalStore[asyncId] = asyncLocalStore[triggerId]; },
+    destroy(asyncId: number) { delete asyncLocalStore[asyncId]; }
+  }).enable();
+}
 
 class ContextManager {
   get asyncState(): AsyncState {

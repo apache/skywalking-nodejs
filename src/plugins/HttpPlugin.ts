@@ -23,7 +23,6 @@ import { ClientRequest, IncomingMessage, RequestOptions, ServerResponse } from '
 import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
 import Tag from '../Tag';
-import Span from '../trace/span/Span';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from '../trace/context/ContextCarrier';
 import { createLogger } from '../logging';
