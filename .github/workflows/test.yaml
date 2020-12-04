@@ -30,6 +30,8 @@ jobs:
     strategy:
       matrix:
         node-version: [ 10, 12, 14 ]
+    env:
+      SW_NODE_VERSION: ${{ matrix.node-version }}
     steps:
       - uses: actions/checkout@v2
         with:

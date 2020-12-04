@@ -37,6 +37,8 @@ services:
     build:
       context: ../../../
       dockerfile: tests/plugins/common/Dockerfile.agent
+      args:
+        - SW_NODE_VERSION=${SW_NODE_VERSION:-latest}
     environment:
       SW_AGENT_COLLECTOR_BACKEND_SERVICES: collector:19876
     networks:
