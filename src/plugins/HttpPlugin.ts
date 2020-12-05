@@ -60,8 +60,8 @@ class HttpPlugin implements SwPlugin {
         const operation = pathname.replace(/\?.*$/g, '');
 
         let stopped = 0;  // compensating if request aborted right after creation 'close' is not emitted
-        const span = ContextManager.current.newExitSpan(operation, host).start();
         const stopIfNotStopped = () => !stopped++ ? span.stop() : null;  // make sure we stop only once
+        const span = ContextManager.current.newExitSpan(operation, host).start();
 
         try {
           span.component = Component.HTTP;

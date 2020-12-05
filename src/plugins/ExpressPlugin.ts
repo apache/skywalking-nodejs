@@ -41,6 +41,7 @@ class ExpressPlugin implements SwPlugin {
   }
 
   private interceptServerRequest() {
+    const onFinished = PluginInstaller.require('on-finished');
     const router = PluginInstaller.require('express/lib/router');
     const _handle = router.handle;
 
@@ -56,28 +57,44 @@ class ExpressPlugin implements SwPlugin {
       const operation = (req.url || '/').replace(/\?.*/g, '');
       const span = ContextManager.current.newEntrySpan(operation, carrier).start();
 
-      return ContextManager.withSpan(span, () => {
+      let stopped = 0;
+      const stopIfNotStopped = () => {
+        if (!stopped++) {
+          span.stop();
+          span.tag(Tag.httpStatusCode(res.statusCode));
+          if (res.statusCode && res.statusCode >= 400) {
+            span.errored = true;
+          }
+          if (res.statusMessage) {
+            span.tag(Tag.httpStatusMsg(res.statusMessage));
+          }
+        }
+      };
+
+      try {
         span.layer = SpanLayer.HTTP;
         span.component = Component.UNKNOWN;  // Component.EXPRESS;
-        span.peer =req.headers.host || '';
+        span.peer = req.headers.host || '';
         span.tag(Tag.httpURL(span.peer + req.url));
 
         const ret = _handle.call(this, req, res, (err: Error) => {
+          if (err)
+            span.error(err);
+          else
+            span.errored = true;
           out.call(this, err);
-          span.error(err);
+          stopped -= 1;  // skip first stop attempt, make sure stop executes once status code and message is set
+          onFinished(req, stopIfNotStopped);  // this must run after any handlers deferred in 'out'
         });
-
-        span.tag(Tag.httpStatusCode(res.statusCode));
-        if (res.statusCode && res.statusCode >= 400) {
-          span.errored = true;
-        }
-        if (res.statusMessage) {
-          span.tag(Tag.httpStatusMsg(res.statusMessage));
-        }
+        onFinished(req, stopIfNotStopped);
 
         return ret;
 
-      });
+      } catch (e) {
+        span.error(e);
+        stopIfNotStopped();
+        throw e;
+      }
     };
   }
 }
