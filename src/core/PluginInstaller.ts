@@ -75,20 +75,28 @@ class PluginInstaller {
     fs.readdirSync(this.pluginDir)
       .filter((file) => !(file.endsWith('.d.ts') || file.endsWith('.js.map')))
       .forEach((file) => {
-        const plugin = require(path.join(this.pluginDir, file)).default as SwPlugin;
-        const { isSupported, version } = this.checkModuleVersion(plugin);
-
-        if (!isSupported) {
-          logger.info(`Plugin ${plugin.module} ${version} doesn't satisfy the supported version ${plugin.versions}`);
-          return;
-        }
-
-        logger.info(`Installing plugin ${plugin.module} ${plugin.versions}`);
+        let plugin;
+        const pluginFile = path.join(this.pluginDir, file);
 
         try {
+          plugin = require(pluginFile).default as SwPlugin;
+          const { isSupported, version } = this.checkModuleVersion(plugin);
+
+          if (!isSupported) {
+            logger.info(`Plugin ${plugin.module} ${version} doesn't satisfy the supported version ${plugin.versions}`);
+            return;
+          }
+
+          logger.info(`Installing plugin ${plugin.module} ${plugin.versions}`);
+
           plugin.install();
+
         } catch (e) {
-          logger.error(`Error installing plugin ${plugin.module} ${plugin.versions}`);
+          if (plugin) {
+            logger.error(`Error installing plugin ${plugin.module} ${plugin.versions}`);
+          } else {
+            logger.error(`Error processing plugin ${pluginFile}`);
+          }
         }
       });
   }
