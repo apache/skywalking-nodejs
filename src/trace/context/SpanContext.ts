@@ -76,7 +76,7 @@ export default class SpanContext implements Context {
       });
 
       if (carrier && carrier.isValid()) {
-        span.inject(carrier);
+        span.extract(carrier);
       }
     }
 
@@ -109,7 +109,7 @@ export default class SpanContext implements Context {
       });
 
       // if (carrier && carrier.isValid()) {  // is this right?
-      //   Object.assign(carrier, span.extract());
+      //   Object.assign(carrier, span.inject());
       // }
     }
 

@@ -71,7 +71,7 @@ class HttpPlugin implements SwPlugin {
 
           const request: ClientRequest = original.apply(this, arguments);
 
-          span.extract().items.forEach((item) => {
+          span.inject().items.forEach((item) => {
             request.setHeader(item.key, item.value);
           });
 
