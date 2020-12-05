@@ -73,7 +73,7 @@ class ExpressPlugin implements SwPlugin {
 
       try {
         span.layer = SpanLayer.HTTP;
-        span.component = Component.UNKNOWN;  // Component.EXPRESS;
+        span.component = Component.EXPRESS;
         span.peer = req.headers.host || '';
         span.tag(Tag.httpURL(span.peer + req.url));
 
