@@ -28,17 +28,16 @@ const logger = createLogger(__filename);
 let topModule = module;
 for (; topModule.parent; topModule = topModule.parent);
 
-const topResolve = (request: string) => (module.constructor as any)._resolveFilename(request, topModule)
-
 class PluginInstaller {
   pluginDir: string;
   require: (name: string) => any = topModule.require.bind(topModule);
+  resolve = (request: string) => (module.constructor as any)._resolveFilename(request, topModule);
 
   constructor() {
     this.pluginDir = path.resolve(__dirname, '..', 'plugins');
   }
 
-  private isBuiltIn = (module: string): boolean => topResolve(module) === module;
+  private isBuiltIn = (module: string): boolean => this.resolve(module) === module;
 
   private checkModuleVersion = (plugin: SwPlugin): { version: string; isSupported: boolean } => {
     try {
@@ -55,7 +54,7 @@ class PluginInstaller {
       };
     }
 
-    const packageJsonPath = topResolve(`${plugin.module}/package.json`);
+    const packageJsonPath = this.resolve(`${plugin.module}/package.json`);
     const version = this.require(packageJsonPath).version;
 
     if (!semver.satisfies(version, plugin.versions)) {

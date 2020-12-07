@@ -23,6 +23,7 @@ import { ClientRequest, IncomingMessage, RequestOptions, ServerResponse } from '
 import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
 import Tag from '../Tag';
+import ExitSpan from '../trace/span/ExitSpan';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from '../trace/context/ContextCarrier';
 import { createLogger } from '../logging';
@@ -57,7 +58,7 @@ class HttpPlugin implements SwPlugin {
         url instanceof URL
           ? url
           : typeof url === 'string'
-          ? new URL(url)
+          ? new URL(url)  // TODO: this may throw invalid URL
           : {
               host: (url.host || url.hostname || 'unknown') + ':' + url.port,
               pathname: url.path || '/',
@@ -66,13 +67,15 @@ class HttpPlugin implements SwPlugin {
 
       let stopped = 0;  // compensating if request aborted right after creation 'close' is not emitted
       const stopIfNotStopped = () => !stopped++ ? span.stop() : null;  // make sure we stop only once
-      const span = ContextManager.current.newExitSpan(operation, host).start();
+      const span: ExitSpan = ContextManager.current.newExitSpan(operation, host).start() as ExitSpan;
 
       try {
-        span.component = Component.HTTP;
-        span.layer = SpanLayer.HTTP;
-        span.peer = host;
-        span.tag(Tag.httpURL(host + pathname));
+        if (span.depth === 1) {
+          span.component = Component.HTTP;
+          span.layer = SpanLayer.HTTP;
+          span.peer = host;
+          span.tag(Tag.httpURL(host + pathname));
+        }
 
         const request: ClientRequest = _request.apply(this, arguments);
 
