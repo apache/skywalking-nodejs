@@ -17,8 +17,11 @@
  *
  */
 
+import config from '../../config/AgentConfig';
 import Context from '../../trace/context/Context';
+import DummyContext from '../../trace/context/DummyContext';
 import Span from '../../trace/span/Span';
+import DummySpan from '../../trace/span/DummySpan';
 import Segment from '../../trace/context/Segment';
 import EntrySpan from '../../trace/span/EntrySpan';
 import ExitSpan from '../../trace/span/ExitSpan';
@@ -50,6 +53,18 @@ export default class SpanContext implements Context {
     return this.parent ? this.parent.id : -1;
   }
 
+  ignoreCheck(operation: string, type: SpanType): Span | undefined {
+    if (operation.match(config.reIgnoreOperation)) {
+      return new DummySpan({
+        context: new DummyContext(),
+        operation: '',
+        type,
+      });
+    }
+
+    return undefined;
+  }
+
   newEntrySpan(operation: string, carrier?: ContextCarrier): Span {
     if (logger.isDebugEnabled()) {
       logger.debug('Creating entry span', {
@@ -58,10 +73,13 @@ export default class SpanContext implements Context {
       });
     }
 
+    let span = this.ignoreCheck(operation, SpanType.ENTRY);
+
+    if (span)
+      return span;
+
     const spans = ContextManager.spansDup();
     const parent = spans[spans.length - 1];
-
-    let span;
 
     if (parent && parent.type === SpanType.ENTRY) {
       span = parent;
@@ -91,10 +109,13 @@ export default class SpanContext implements Context {
       });
     }
 
+    let span = this.ignoreCheck(operation, SpanType.EXIT);
+
+    if (span)
+      return span;
+
     const spans = ContextManager.spansDup();
     const parent = spans[spans.length - 1];
-
-    let span;
 
     if (parent && parent.type === SpanType.EXIT) {
       span = parent;
@@ -123,6 +144,11 @@ export default class SpanContext implements Context {
         executionAsyncId: executionAsyncId(),
       });
     }
+
+    let span = this.ignoreCheck(operation, SpanType.LOCAL);
+
+    if (span)
+      return span;
 
     ContextManager.spansDup();
 
