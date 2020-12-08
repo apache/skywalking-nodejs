@@ -17,7 +17,7 @@
  *
  */
 
-import config, { AgentConfig } from './config/AgentConfig';
+import config, { AgentConfig, finalizeConfig } from './config/AgentConfig';
 import GrpcProtocol from './agent/protocol/grpc/GrpcProtocol';
 import { createLogger } from './logging';
 import Protocol from './agent/protocol/Protocol';
@@ -36,6 +36,7 @@ class Agent {
     }
 
     Object.assign(config, options);
+    finalizeConfig(config);
 
     if (this.started) {
       throw new Error('SkyWalking agent is already started and can only be started once.');

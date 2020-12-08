@@ -80,9 +80,6 @@ export default abstract class Span {
 
   stop(): this {
     logger.debug(`Stopping span ${this.operation}`, this);
-    if (this.operation === '/test') {
-      console.info('kkkkkkkkkkkkkkkkkkkkkkkkkl')
-    }
     this.context.stop(this);
     return this;
   }
@@ -107,14 +104,14 @@ export default abstract class Span {
   }
 
   // noinspection JSUnusedLocalSymbols
-  extract(): ContextCarrier {
+  inject(): ContextCarrier {
     throw new Error(`
-      can only extract context carrier into ExitSpan, this may be a potential bug in the agent,
+      can only inject context carrier into ExitSpan, this may be a potential bug in the agent,
       please report this in ${packageInfo.bugs.url} if you encounter this.
     `);
   }
 
-  inject(carrier: ContextCarrier): this {
+  extract(carrier: ContextCarrier): this {
     this.context.segment.relate(carrier.traceId!);
 
     return this;

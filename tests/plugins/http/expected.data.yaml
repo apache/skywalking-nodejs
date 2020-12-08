@@ -31,7 +31,7 @@ segmentItems:
             componentId: 49
             isError: false
             spanType: Entry
-            peer: ''
+            peer: server:5000
             skipAnalysis: false
             tags:
               - { key: http.url, value: server:5000/test }
@@ -71,7 +71,7 @@ segmentItems:
             componentId: 49
             isError: false
             spanType: Entry
-            peer: ''
+            peer: localhost:5001
             skipAnalysis: false
             tags:
               - { key: http.url, value: localhost:5001/test }

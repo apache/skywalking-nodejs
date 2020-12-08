@@ -42,8 +42,8 @@ export default class EntrySpan extends StackedSpan {
     return this;
   }
 
-  inject(carrier: ContextCarrier): this {
-    super.inject(carrier);
+  extract(carrier: ContextCarrier): this {
+    super.extract(carrier);
 
     const ref = SegmentRef.fromCarrier(carrier);
 

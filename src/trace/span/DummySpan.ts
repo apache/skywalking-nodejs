@@ -18,5 +18,14 @@
  */
 
 import Span from '../../trace/span/Span';
+import { ContextCarrier } from '../context/ContextCarrier';
 
-export default class DummySpan extends Span {}
+export default class DummySpan extends Span {
+  inject(): ContextCarrier {
+    return new ContextCarrier();
+  }
+
+  extract(carrier: ContextCarrier): this {
+    return this;
+  }
+}

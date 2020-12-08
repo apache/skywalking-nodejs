@@ -33,7 +33,7 @@ export default class ExitSpan extends StackedSpan {
     );
   }
 
-  extract(): ContextCarrier {
+  inject(): ContextCarrier {
     return new ContextCarrier(
       this.context.segment.relatedTraces[0],
       this.context.segment.segmentId,

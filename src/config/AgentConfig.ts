@@ -25,7 +25,26 @@ export type AgentConfig = {
   collectorAddress?: string;
   authorization?: string;
   maxBufferSize?: number;
+  ignoreSuffix?: string;
+  traceIgnorePath?: string;
+  // the following is internal state computed from config values
+  reIgnoreOperation?: RegExp;
 };
+
+export function finalizeConfig(config: AgentConfig): void {
+  const escapeRegExp = (s: string) => s.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1");
+
+  const ignoreSuffix =`^.+(?:${config.ignoreSuffix!.split(',').map(s => escapeRegExp(s.trim())).join('|')})$`;
+  const ignorePath = '^(?:' + config.traceIgnorePath!.split(',').map(
+    s1 => s1.trim().split('**').map(
+      s2 => s2.split('*').map(
+        s3 => s3.split('?').map(escapeRegExp).join('[^/]')  // replaces "**"
+      ).join('[^/]*')                                       // replaces "*"
+    ).join('(?:(?:[^/]+\.)*[^/]+)?')                        // replaces "?"
+  ).join('|') + ')$';                                       // replaces ","
+
+  config.reIgnoreOperation = RegExp(`${ignoreSuffix}|${ignorePath}`);
+}
 
 export default {
   serviceName: process.env.SW_AGENT_NAME || 'your-nodejs-service',
@@ -36,5 +55,9 @@ export default {
     })(),
   collectorAddress: process.env.SW_AGENT_COLLECTOR_BACKEND_SERVICES || '127.0.0.1:11800',
   authorization: process.env.SW_AGENT_AUTHENTICATION,
-  maxBufferSize: process.env.SW_AGENT_MAX_BUFFER_SIZE || '1000',
+  maxBufferSize: Number.isSafeInteger(process.env.SW_AGENT_MAX_BUFFER_SIZE) ?
+    Number.parseInt(process.env.SW_AGENT_MAX_BUFFER_SIZE as string, 10) : 1000,
+  ignoreSuffix: process.env.SW_IGNORE_SUFFIX ?? '.jpg,.jpeg,.js,.css,.png,.bmp,.gif,.ico,.mp3,.mp4,.html,.svg',
+  traceIgnorePath: process.env.SW_TRACE_IGNORE_PATH || '',
+  reIgnoreOperation: RegExp(''),  // temporary placeholder so Typescript doesn't throw a fit
 };
