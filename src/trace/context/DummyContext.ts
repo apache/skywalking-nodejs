@@ -22,8 +22,6 @@ import Span from '../../trace/span/Span';
 import DummySpan from '../../trace/span/DummySpan';
 import Segment from '../../trace/context/Segment';
 import { SpanType } from '../../proto/language-agent/Tracing_pb';
-import Snapshot from '../../trace/context/Snapshot';
-import ID from '../../trace/ID';
 import { ContextCarrier } from './ContextCarrier';
 
 export default class DummyContext implements Context {
@@ -66,18 +64,5 @@ export default class DummyContext implements Context {
 
   currentSpan(): Span {
     throw new Error('DummyContext.currentSpan() should never be called!');
-  }
-
-  capture(): Snapshot {
-    return {
-      parentEndpoint: '',
-      segmentId: new ID(),
-      spanId: 0,
-      traceId: new ID(),
-    };
-  }
-
-  restore(snapshot: Snapshot) {
-    return;
   }
 }
