@@ -28,7 +28,7 @@ export default interface Context {
 
   newEntrySpan(operation: string, carrier?: ContextCarrier): Span;
 
-  newExitSpan(operation: string, peer: string, carrier?: ContextCarrier): Span;
+  newExitSpan(operation: string, peer: string): Span;
 
   start(span: Span): Context;
 

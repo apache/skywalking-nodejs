@@ -117,6 +117,10 @@ export default abstract class Span {
     return this;
   }
 
+  hasTag(key: string) {
+    return !this.tags.every((t) => t.key !== key);
+  }
+
   tag(tag: Tag): this {
     if (!tag.overridable) {
       this.tags.push(Object.assign({}, tag));

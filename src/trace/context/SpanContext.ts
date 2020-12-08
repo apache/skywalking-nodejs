@@ -99,7 +99,7 @@ export default class SpanContext implements Context {
     return span;
   }
 
-  newExitSpan(operation: string, peer: string, carrier?: ContextCarrier): Span {
+  newExitSpan(operation: string, peer: string): Span {
     if (logger.isDebugEnabled()) {
       logger.debug('Creating exit span', {
         parentId: this.parentId,
@@ -126,10 +126,6 @@ export default class SpanContext implements Context {
         peer,
         operation,
       });
-
-      // if (carrier && carrier.isValid()) {  // is this right?
-      //   Object.assign(carrier, span.inject());
-      // }
     }
 
     return span;

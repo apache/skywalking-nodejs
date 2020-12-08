@@ -70,11 +70,16 @@ class HttpPlugin implements SwPlugin {
       const span: ExitSpan = ContextManager.current.newExitSpan(operation, host).start() as ExitSpan;
 
       try {
-        if (span.depth === 1) {
+        if (span.depth === 1) {  // only set HTTP if this span is not overridden by a higher level one
           span.component = Component.HTTP;
           span.layer = SpanLayer.HTTP;
+        }
+        if (!span.peer) {
           span.peer = host;
-          span.tag(Tag.httpURL(host + pathname));
+        }
+        const httpURL = host + pathname;
+        if (!span.hasTag(httpURL)) {
+          span.tag(Tag.httpURL(httpURL));
         }
 
         const request: ClientRequest = _request.apply(this, arguments);
@@ -104,7 +109,7 @@ class HttpPlugin implements SwPlugin {
         return request;
 
       } catch (e) {
-        if (!stopped) {
+        if (!stopped) {  // don't want to set error if exception occurs after clean close
           span.error(e);
           stopIfNotStopped();
         }

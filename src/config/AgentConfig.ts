@@ -34,14 +34,14 @@ export type AgentConfig = {
 export function finalizeConfig(config: AgentConfig): void {
   const escapeRegExp = (s: string) => s.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1");
 
-  const ignoreSuffix =`^.+(?:${config.ignoreSuffix!.split(',').map(s => escapeRegExp(s.trim())).join('|')})$`;
+  const ignoreSuffix =`^.+(?:${config.ignoreSuffix!.split(',').map((s) => escapeRegExp(s.trim())).join('|')})$`;
   const ignorePath = '^(?:' + config.traceIgnorePath!.split(',').map(
-    s1 => s1.trim().split('**').map(
-      s2 => s2.split('*').map(
-        s3 => s3.split('?').map(escapeRegExp).join('[^/]')  // replaces "**"
-      ).join('[^/]*')                                       // replaces "*"
-    ).join('(?:(?:[^/]+\.)*[^/]+)?')                        // replaces "?"
-  ).join('|') + ')$';                                       // replaces ","
+    (s1) => s1.trim().split('**').map(
+      (s2) => s2.split('*').map(
+        (s3) => s3.split('?').map(escapeRegExp).join('[^/]')  // replaces "**"
+      ).join('[^/]*')                                         // replaces "*"
+    ).join('(?:(?:[^/]+\.)*[^/]+)?')                          // replaces "?"
+  ).join('|') + ')$';                                         // replaces ","
 
   config.reIgnoreOperation = RegExp(`${ignoreSuffix}|${ignorePath}`);
 }

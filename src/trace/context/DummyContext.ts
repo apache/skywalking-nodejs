@@ -37,7 +37,7 @@ export default class DummyContext implements Context {
     return this.span;
   }
 
-  newExitSpan(operation: string, peer: string, carrier?: ContextCarrier): Span {
+  newExitSpan(operation: string, peer: string): Span {
     return this.span;
   }
 
