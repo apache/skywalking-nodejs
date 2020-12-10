@@ -19,7 +19,6 @@
 
 import Span from '../../trace/span/Span';
 import Segment from '../../trace/context/Segment';
-import Snapshot from '../../trace/context/Snapshot';
 import { ContextCarrier } from './ContextCarrier';
 
 export default interface Context {
@@ -29,7 +28,7 @@ export default interface Context {
 
   newEntrySpan(operation: string, carrier?: ContextCarrier): Span;
 
-  newExitSpan(operation: string, peer: string, carrier?: ContextCarrier): Span;
+  newExitSpan(operation: string, peer: string): Span;
 
   start(span: Span): Context;
 
@@ -45,8 +44,4 @@ export default interface Context {
   resync(span: Span): void;
 
   currentSpan(): Span | undefined;
-
-  capture(): Snapshot;
-
-  restore(snapshot: Snapshot): void;
 }

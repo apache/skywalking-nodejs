@@ -97,7 +97,7 @@ class AxiosPlugin implements SwPlugin {
       const span = ContextManager.current.newExitSpan(operation, host).start();
 
       try {
-        span.component = Component.UNKNOWN;
+        span.component = Component.HTTP;  // TODO: add Component.AXIOS (to main Skywalking project)
         span.layer = SpanLayer.HTTP;
         span.peer = host;
         span.tag(Tag.httpURL(host + operation));

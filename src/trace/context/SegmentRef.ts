@@ -17,9 +17,7 @@
  *
  */
 
-import Snapshot from '../../trace/context/Snapshot';
 import ID from '../../trace/ID';
-import config from '../../config/AgentConfig';
 import { ContextCarrier } from './ContextCarrier';
 
 export default class SegmentRef {
@@ -52,19 +50,6 @@ export default class SegmentRef {
       carrier.serviceInstance!,
       carrier.endpoint!,
       carrier.clientAddress!,
-    );
-  }
-
-  static fromSnapshot(snapshot: Snapshot): SegmentRef {
-    return new SegmentRef(
-      'CrossThread',
-      new ID(snapshot.traceId.toString()),
-      new ID(snapshot.segmentId.toString()),
-      snapshot.spanId,
-      config.serviceName,
-      config.serviceInstance,
-      snapshot.parentEndpoint,
-      '',
     );
   }
 }
