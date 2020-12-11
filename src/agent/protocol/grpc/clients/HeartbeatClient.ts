@@ -56,38 +56,18 @@ class HeartbeatClient implements Client {
       return;
     }
 
-    const keepAlivePkg = new InstancePingPkg();
-    keepAlivePkg.setService(config.serviceName);
-    keepAlivePkg.setServiceinstance(config.serviceInstance);
+    const keepAlivePkg = new InstancePingPkg()
+    .setService(config.serviceName)
+    .setServiceinstance(config.serviceInstance);
 
-    const instanceProperties = new InstanceProperties();
-    instanceProperties.setService(config.serviceName);
-    instanceProperties.setServiceinstance(config.serviceInstance);
-    instanceProperties.setPropertiesList([
-      (() => {
-        const lang = new KeyStringValuePair();
-        lang.setKey('language');
-        lang.setValue('NodeJS');
-        return lang;
-      })(),
-      (() => {
-        const osName = new KeyStringValuePair();
-        osName.setKey('OS Name');
-        osName.setValue(os.platform());
-        return osName;
-      })(),
-      (() => {
-        const hostname = new KeyStringValuePair();
-        hostname.setValue('hostname');
-        hostname.setValue(os.hostname());
-        return hostname;
-      })(),
-      (() => {
-        const p = new KeyStringValuePair();
-        p.setValue('Process No.');
-        p.setValue(`${process.pid}`);
-        return p;
-      })(),
+    const instanceProperties = new InstanceProperties()
+    .setService(config.serviceName)
+    .setServiceinstance(config.serviceInstance)
+    .setPropertiesList([
+      new KeyStringValuePair().setKey('language').setValue('NodeJS'),
+      new KeyStringValuePair().setKey('OS Name').setValue(os.platform()),
+      new KeyStringValuePair().setValue('hostname').setValue(os.hostname()),
+      new KeyStringValuePair().setValue('Process No.').setValue(`${process.pid}`),
     ]);
 
     this.heartbeatTimer = setInterval(() => {

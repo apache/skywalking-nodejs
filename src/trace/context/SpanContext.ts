@@ -139,7 +139,7 @@ export default class SpanContext implements Context {
       });
     }
 
-    let span = this.ignoreCheck(operation, SpanType.LOCAL);
+    const span = this.ignoreCheck(operation, SpanType.LOCAL);
 
     if (span)
       return span;

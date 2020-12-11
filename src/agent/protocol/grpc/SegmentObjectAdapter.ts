@@ -17,10 +17,16 @@
  *
  */
 
-import { Log, RefType, SegmentObject, SegmentReference, SpanObject } from '../../../proto/language-agent/Tracing_pb';
 import config from '../../../config/AgentConfig';
 import { KeyStringValuePair } from '../../../proto/common/Common_pb';
 import Segment from '../../../trace/context/Segment';
+import {
+  Log,
+  RefType,
+  SegmentObject,
+  SegmentReference,
+  SpanObject,
+} from '../../../proto/language-agent/Tracing_pb';
 
 /**
  * An adapter that adapts {@link Segment} objects to gRPC object {@link SegmentObject}.
@@ -28,61 +34,56 @@ import Segment from '../../../trace/context/Segment';
 export default class SegmentObjectAdapter extends SegmentObject {
   constructor(segment: Segment) {
     super();
-    this.setService(config.serviceName);
-    this.setServiceinstance(config.serviceInstance);
-    this.setTraceid(segment.relatedTraces[0].toString());
-    this.setTracesegmentid(segment.segmentId.toString());
-    this.setSpansList(
-      segment.spans.map((span) => {
-        const spanObj = new SpanObject();
-        spanObj.setSpanid(span.id);
-        spanObj.setParentspanid(span.parentId);
-        spanObj.setStarttime(span.startTime);
-        spanObj.setEndtime(span.endTime);
-        spanObj.setOperationname(span.operation);
-        spanObj.setPeer(span.peer);
-        spanObj.setSpantype(span.type);
-        spanObj.setSpanlayer(span.layer);
-        spanObj.setComponentid(span.component.id);
-        spanObj.setIserror(span.errored);
-        spanObj.setLogsList(
-          span.logs.map((log) => {
-            const l = new Log();
-            l.setTime(log.timestamp);
-            l.setDataList(
-              log.items.map((logItem) => {
-                const item = new KeyStringValuePair();
-                item.setKey(logItem.key);
-                item.setValue(logItem.val);
-                return item;
-              }),
-            );
-            return l;
-          }),
-        );
-        spanObj.setTagsList(
-          span.tags.map((tag) => {
-            const item = new KeyStringValuePair();
-            item.setKey(tag.key);
-            item.setValue(tag.val);
-            return item;
-          }),
-        );
-        spanObj.setRefsList(
-          span.refs.map((ref) => {
-            const segmentRef = new SegmentReference();
-            segmentRef.setReftype(RefType.CROSSPROCESS);
-            segmentRef.setTraceid(ref.traceId.toString());
-            segmentRef.setParenttracesegmentid(ref.segmentId.toString());
-            segmentRef.setParentspanid(ref.spanId);
-            segmentRef.setParentservice(ref.service);
-            segmentRef.setParentserviceinstance(ref.serviceInstance);
-            segmentRef.setNetworkaddressusedatpeer(ref.clientAddress);
-            return segmentRef;
-          }),
-        );
-        return spanObj;
-      }),
+    super
+    .setService(config.serviceName)
+    .setServiceinstance(config.serviceInstance)
+    .setTraceid(segment.relatedTraces[0].toString())
+    .setTracesegmentid(segment.segmentId.toString())
+    .setSpansList(
+      segment.spans.map((span) =>
+        new SpanObject()
+        .setSpanid(span.id)
+        .setParentspanid(span.parentId)
+        .setStarttime(span.startTime)
+        .setEndtime(span.endTime)
+        .setOperationname(span.operation)
+        .setPeer(span.peer)
+        .setSpantype(span.type)
+        .setSpanlayer(span.layer)
+        .setComponentid(span.component.id)
+        .setIserror(span.errored)
+        .setLogsList(
+          span.logs.map((log) =>
+            new Log()
+            .setTime(log.timestamp)
+            .setDataList(
+              log.items.map((logItem) =>
+                new KeyStringValuePair()
+                .setKey(logItem.key)
+                .setValue(logItem.val)),
+            ),
+          ),
+        )
+        .setTagsList(
+          span.tags.map((tag) =>
+            new KeyStringValuePair()
+            .setKey(tag.key)
+            .setValue(tag.val),
+          ),
+        )
+        .setRefsList(
+          span.refs.map((ref) =>
+            new SegmentReference()
+            .setReftype(RefType.CROSSPROCESS)
+            .setTraceid(ref.traceId.toString())
+            .setParenttracesegmentid(ref.segmentId.toString())
+            .setParentspanid(ref.spanId)
+            .setParentservice(ref.service)
+            .setParentserviceinstance(ref.serviceInstance)
+            .setNetworkaddressusedatpeer(ref.clientAddress),
+          ),
+        ),
+      ),
     );
   }
 }

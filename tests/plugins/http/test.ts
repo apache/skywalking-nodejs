@@ -18,7 +18,7 @@
  */
 
 import * as path from 'path';
-import { DockerComposeEnvironment, Wait } from 'testcontainers';
+import { DockerComposeEnvironment, StartedDockerComposeEnvironment, Wait } from 'testcontainers';
 import axios from 'axios';
 import waitForExpect from 'wait-for-expect';
 import { promises as fs } from 'fs';
@@ -26,7 +26,7 @@ import { promises as fs } from 'fs';
 const rootDir = path.resolve(__dirname);
 
 describe('plugin tests', () => {
-  let compose;
+  let compose: StartedDockerComposeEnvironment;
 
   beforeAll(async () => {
     compose = await new DockerComposeEnvironment(rootDir, 'docker-compose.yml')
