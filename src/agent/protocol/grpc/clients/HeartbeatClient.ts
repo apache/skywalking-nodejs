@@ -47,6 +47,13 @@ class HeartbeatClient implements Client {
   }
 
   start() {
+    /*
+    init  the heartbeatClient again
+    */
+    this.heartbeatClient = new ManagementServiceClient(config.collectorAddress, grpc.credentials.createInsecure(), {
+      interceptors: [AuthInterceptor],
+    });
+
     if (this.heartbeatTimer) {
       logger.warn(`
         The heartbeat timer has already been scheduled,
