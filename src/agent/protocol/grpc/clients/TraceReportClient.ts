@@ -50,6 +50,14 @@ class TraceReportClient implements Client {
   }
 
   start() {
+    /*
+    init the reporterClient again
+    */
+    this.reporterClient = new TraceSegmentReportServiceClient(
+      config.collectorAddress,
+      grpc.credentials.createInsecure(),
+      { interceptors: [AuthInterceptor] },
+    );
     const reportFunction = () => {
       try {
         if (buffer.length === 0) {
