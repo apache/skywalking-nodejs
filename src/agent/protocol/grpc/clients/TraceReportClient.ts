@@ -30,19 +30,11 @@ import SegmentObjectAdapter from '../SegmentObjectAdapter';
 const logger = createLogger(__filename);
 
 class TraceReportClient implements Client {
-  reporterClient: TraceSegmentReportServiceClient;
+  reporterClient?: TraceSegmentReportServiceClient;
   timeout: any;
 
-  constructor() {
-    this.reporterClient = new TraceSegmentReportServiceClient(
-      config.collectorAddress,
-      grpc.credentials.createInsecure(),
-      { interceptors: [AuthInterceptor] },
-    );
-  }
-
   get isConnected(): boolean {
-    return this.reporterClient.getChannel().getConnectivityState(true) === connectivityState.READY;
+    return this.reporterClient?.getChannel().getConnectivityState(true) === connectivityState.READY;
   }
 
   ref() {
@@ -50,9 +42,6 @@ class TraceReportClient implements Client {
   }
 
   start() {
-    /*
-    init the reporterClient again
-    */
     this.reporterClient = new TraceSegmentReportServiceClient(
       config.collectorAddress,
       grpc.credentials.createInsecure(),
@@ -66,7 +55,7 @@ class TraceReportClient implements Client {
 
         logger.info({ 'buffer.length': buffer.length });
 
-        const stream = this.reporterClient.collect((error, _) => {
+        const stream = this.reporterClient?.collect((error, _) => {
           if (error) {
             logger.error('Failed to report trace data', error);
           }
@@ -79,11 +68,11 @@ class TraceReportClient implements Client {
               logger.debug('Sending segment ', { segment });
             }
 
-            stream.write(new SegmentObjectAdapter(segment));
+            stream?.write(new SegmentObjectAdapter(segment));
           }
         }
 
-        stream.end();
+        stream?.end();
       } finally {
         this.timeout = setTimeout(reportFunction, 1000).unref();
       }
