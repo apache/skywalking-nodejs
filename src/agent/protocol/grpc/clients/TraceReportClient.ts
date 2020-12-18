@@ -49,11 +49,11 @@ class TraceReportClient implements Client {
     );
     const reportFunction = () => {
       try {
-        if (buffer.length === 0) {
+        if (buffer.length === 0 || !this.reporterClient) {
           return;
         }
 
-        const stream = this.reporterClient?.collect((error, _) => {
+        const stream = this.reporterClient.collect((error, _) => {
           if (error) {
             logger.error('Failed to report trace data', error);
           }
@@ -66,11 +66,11 @@ class TraceReportClient implements Client {
               logger.debug('Sending segment ', { segment });
             }
 
-            stream?.write(new SegmentObjectAdapter(segment));
+            stream.write(new SegmentObjectAdapter(segment));
           }
         }
 
-        stream?.end();
+        stream.end();
       } finally {
         this.timeout = setTimeout(reportFunction, 1000).unref();
       }
