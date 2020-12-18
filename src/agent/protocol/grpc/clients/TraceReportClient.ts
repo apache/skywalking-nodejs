@@ -30,19 +30,11 @@ import SegmentObjectAdapter from '../SegmentObjectAdapter';
 const logger = createLogger(__filename);
 
 class TraceReportClient implements Client {
-  reporterClient: TraceSegmentReportServiceClient;
+  reporterClient?: TraceSegmentReportServiceClient;
   timeout: any;
 
-  constructor() {
-    this.reporterClient = new TraceSegmentReportServiceClient(
-      config.collectorAddress,
-      grpc.credentials.createInsecure(),
-      { interceptors: [AuthInterceptor] },
-    );
-  }
-
   get isConnected(): boolean {
-    return this.reporterClient.getChannel().getConnectivityState(true) === connectivityState.READY;
+    return this.reporterClient?.getChannel().getConnectivityState(true) === connectivityState.READY;
   }
 
   ref() {
@@ -50,9 +42,14 @@ class TraceReportClient implements Client {
   }
 
   start() {
+    this.reporterClient = new TraceSegmentReportServiceClient(
+      config.collectorAddress,
+      grpc.credentials.createInsecure(),
+      { interceptors: [AuthInterceptor] },
+    );
     const reportFunction = () => {
       try {
-        if (buffer.length === 0) {
+        if (buffer.length === 0 || !this.reporterClient) {
           return;
         }
 
