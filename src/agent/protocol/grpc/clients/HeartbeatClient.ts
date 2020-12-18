@@ -33,23 +33,14 @@ import * as os from 'os';
 const logger = createLogger(__filename);
 
 class HeartbeatClient implements Client {
-  heartbeatClient: ManagementServiceClient;
+  heartbeatClient?: ManagementServiceClient;
   heartbeatTimer?: NodeJS.Timeout;
 
-  constructor() {
-    this.heartbeatClient = new ManagementServiceClient(config.collectorAddress, grpc.credentials.createInsecure(), {
-      interceptors: [AuthInterceptor],
-    });
-  }
-
   get isConnected(): boolean {
-    return this.heartbeatClient.getChannel().getConnectivityState(true) === connectivityState.READY;
+    return this.heartbeatClient?.getChannel().getConnectivityState(true) === connectivityState.READY;
   }
 
   start() {
-    /*
-    init  the heartbeatClient again
-    */
     this.heartbeatClient = new ManagementServiceClient(config.collectorAddress, grpc.credentials.createInsecure(), {
       interceptors: [AuthInterceptor],
     });
@@ -78,7 +69,7 @@ class HeartbeatClient implements Client {
     ]);
 
     this.heartbeatTimer = setInterval(() => {
-      this.heartbeatClient.reportInstanceProperties(
+      this.heartbeatClient?.reportInstanceProperties(
         instanceProperties,
 
         (error, _) => {
@@ -87,7 +78,7 @@ class HeartbeatClient implements Client {
           }
         },
       );
-      this.heartbeatClient.keepAlive(
+      this.heartbeatClient?.keepAlive(
         keepAlivePkg,
 
         (error, _) => {
