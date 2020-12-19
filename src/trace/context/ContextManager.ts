@@ -21,26 +21,38 @@ import Context from '../../trace/context/Context';
 import Span from '../../trace/span/Span';
 import SpanContext from '../../trace/context/SpanContext';
 
-type AsyncState = {context: Context, spans: Span[]};
+import async_hooks from 'async_hooks';
 
-const async_hooks = require('async_hooks');
-let   store: any;
+type AsyncState = { context: Context, spans: Span[] };
+
+let store: {
+  getStore(): AsyncState | undefined;
+  enterWith(s: AsyncState): void;
+};
 
 if (async_hooks.AsyncLocalStorage) {
   store = new async_hooks.AsyncLocalStorage();
-
 } else {  // Node 10 doesn't have AsyncLocalStore, so recreate it
   const executionAsyncId = async_hooks.executionAsyncId;
-  const asyncLocalStore: {[index: string]: any} = {};
+  const asyncLocalStore: { [index: string]: any } = {};
 
-  store = new class {
-    getStore(): AsyncState | undefined { return asyncLocalStore[executionAsyncId()] as unknown as AsyncState; }
-    enterWith(store: AsyncState): void { asyncLocalStore[executionAsyncId()] = store; }
-  }();
+  store = {
+    getStore(): AsyncState | undefined {
+      return asyncLocalStore[executionAsyncId()] as unknown as AsyncState;
+    },
+
+    enterWith(s: AsyncState): void {
+      asyncLocalStore[executionAsyncId()] = s;
+    },
+  };
 
   async_hooks.createHook({
-    init(asyncId: number, type: string, triggerId: number) { asyncLocalStore[asyncId] = asyncLocalStore[triggerId]; },
-    destroy(asyncId: number) { delete asyncLocalStore[asyncId]; }
+    init(asyncId: number, type: string, triggerId: number) {
+      asyncLocalStore[asyncId] = asyncLocalStore[triggerId];
+    },
+    destroy(asyncId: number) {
+      delete asyncLocalStore[asyncId];
+    },
   }).enable();
 }
 
@@ -49,23 +61,28 @@ class ContextManager {
     let asyncState = store.getStore();
 
     if (asyncState === undefined) {
-      asyncState = {context: new SpanContext(), spans: []};
+      asyncState = { context: new SpanContext(), spans: [] };
       store.enterWith(asyncState);
     }
 
     return asyncState;
   }
 
-  get current(): Context { return this.asyncState.context; }
-  get spans(): Span[] { return this.asyncState.spans; }
+  get current(): Context {
+    return this.asyncState.context;
+  }
+
+  get spans(): Span[] {
+    return this.asyncState.spans;
+  }
 
   spansDup(): Span[] {
     let asyncState = store.getStore();
 
     if (asyncState === undefined) {
-      asyncState = {context: new SpanContext(), spans: []};
+      asyncState = { context: new SpanContext(), spans: [] };
     } else {
-      asyncState = {context: asyncState.context, spans: [...asyncState.spans]};
+      asyncState = { context: asyncState.context, spans: [...asyncState.spans] };
     }
 
     store.enterWith(asyncState);
@@ -78,13 +95,12 @@ class ContextManager {
   }
 
   restore(context: Context, spans: Span[]): void {
-    store.enterWith({context, spans: spans || []});
+    store.enterWith({ context, spans: spans || [] });
   }
 
   withSpan(span: Span, callback: (...args: any[]) => any, ...args: any[]): any {
-    if(!span.startTime)
+    if (!span.startTime)
       span.start();
-
     try {
       return callback(...args);
     } catch (e) {
@@ -96,9 +112,8 @@ class ContextManager {
   }
 
   async withSpanAwait(span: Span, callback: (...args: any[]) => any, ...args: any[]): Promise<any> {
-    if(!span.startTime)
+    if (!span.startTime)
       span.start();
-
     try {
       return await callback(...args);
     } catch (e) {

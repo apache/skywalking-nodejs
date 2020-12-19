@@ -18,11 +18,7 @@
  */
 
 import Span, { SpanCtorOptions } from '../../trace/span/Span';
-import Segment from '../../trace/context/Segment';
-import { createLogger } from '../../logging';
 import { SpanType } from '../../proto/language-agent/Tracing_pb';
-
-const logger = createLogger(__filename);
 
 export default class StackedSpan extends Span {
   depth = 0;

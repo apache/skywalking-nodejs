@@ -18,18 +18,16 @@
  */
 
 import { createLogger } from '../logging';
-import Segment from '../trace/context/Segment';
 import config from '../config/AgentConfig';
-import TraceReportClient from '../agent/protocol/grpc/clients/TraceReportClient';
 
 const logger = createLogger(__filename);
 
-class Buffer {
-  maxSize: number;
-  buffer: Segment[];
+export default class Buffer<T> {
+  private readonly maxSize: number;
+  private readonly buffer: T[];
 
-  constructor(maxSize: number = 1000) {
-    this.maxSize = maxSize;
+  constructor() {
+    this.maxSize = config.maxBufferSize;
     this.buffer = [];
   }
 
@@ -37,16 +35,17 @@ class Buffer {
     return this.buffer.length;
   }
 
-  put(segment: Segment): this {
-    if (this.buffer.length > this.maxSize) {
-      logger.warn('Drop the data because of the buffer is oversized');
-      return this;
+  put(element: T): boolean {
+    if (this.length > this.maxSize) {
+      logger.warn('Drop the data because of the buffer is oversize');
+      return false;
     }
-    this.buffer.push(segment);
-    TraceReportClient.ref();  // this is currently hard-coded for grpc, if other protocols added need to change
+    this.buffer.push(element);
 
-    return this;
+    return true;
+  }
+
+  take(): T {
+    return this.buffer.splice(0, 1)[0];
   }
 }
-
-export default new Buffer(config.maxBufferSize);

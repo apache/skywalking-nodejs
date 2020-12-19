@@ -24,32 +24,40 @@ import { createLogger } from '../../../../logging';
 import Client from './Client';
 import { TraceSegmentReportServiceClient } from '../../../../proto/language-agent/Tracing_grpc_pb';
 import AuthInterceptor from '../AuthInterceptor';
-import buffer from '../../../../agent/Buffer';
+import Buffer from '../../../../agent/Buffer';
 import SegmentObjectAdapter from '../SegmentObjectAdapter';
+import { emitter } from '../../../../lib/EventEmitter';
+import Segment from '../../../../trace/context/Segment';
 
 const logger = createLogger(__filename);
 
-class TraceReportClient implements Client {
-  reporterClient?: TraceSegmentReportServiceClient;
-  timeout: any;
+export default class TraceReportClient implements Client {
+  private readonly reporterClient: TraceSegmentReportServiceClient;
+  private readonly buffer: Buffer<Segment>;
+  private timeout?: NodeJS.Timeout;
 
-  get isConnected(): boolean {
-    return this.reporterClient?.getChannel().getConnectivityState(true) === connectivityState.READY;
-  }
-
-  ref() {
-    this.timeout.ref();
-  }
-
-  start() {
+  constructor() {
+    this.buffer = new Buffer();
     this.reporterClient = new TraceSegmentReportServiceClient(
       config.collectorAddress,
       grpc.credentials.createInsecure(),
       { interceptors: [AuthInterceptor] },
     );
+    emitter.on('segment-finished', (segment) => {
+      if (this.buffer.put(segment)) {
+        this.timeout?.ref();
+      }
+    });
+  }
+
+  get isConnected(): boolean {
+    return this.reporterClient?.getChannel().getConnectivityState(true) === connectivityState.READY;
+  }
+
+  start() {
     const reportFunction = () => {
       try {
-        if (buffer.length === 0 || !this.reporterClient) {
+        if (this.buffer.length === 0) {
           return;
         }
 
@@ -59,8 +67,8 @@ class TraceReportClient implements Client {
           }
         });
 
-        while (buffer.length > 0) {
-          const segment = buffer.buffer.splice(0, 1)[0];
+        while (this.buffer.length > 0) {
+          const segment = this.buffer.take();
           if (segment) {
             if (logger.isDebugEnabled()) {
               logger.debug('Sending segment ', { segment });
@@ -79,5 +87,3 @@ class TraceReportClient implements Client {
     this.timeout = setTimeout(reportFunction, 1000).unref();
   }
 }
-
-export default new TraceReportClient();

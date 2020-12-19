@@ -18,21 +18,21 @@
  */
 
 import * as http from 'http';
-import Agent from '../../../src';
+import agent from '../../../src';
 
-Agent.start({
+agent.start({
   serviceName: 'client',
   maxBufferSize: 1000,
 });
 
 const server = http.createServer((req, res) => {
   http
-    .request(`http://${process.env.SERVER || 'localhost:5000'}${req.url}`, (r) => {
-      let data = '';
-      r.on('data', (chunk) => (data += chunk));
-      r.on('end', () => res.end(data));
-    })
-    .end();
+  .request(`http://${process.env.SERVER || 'localhost:5000'}${req.url}`, (r) => {
+    let data = '';
+    r.on('data', (chunk) => (data += chunk));
+    r.on('end', () => res.end(data));
+  })
+  .end();
 });
 
 server.listen(5001, () => console.info('Listening on port 5001...'));

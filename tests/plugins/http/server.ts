@@ -17,22 +17,22 @@
  *
  */
 
-import Agent from '../../../src';
+import agent from '../../../src';
 import * as http from 'http';
 
-Agent.start({
+agent.start({
   serviceName: 'server',
   maxBufferSize: 1000,
 });
 
 const server = http.createServer((req, res) => {
   http
-    .request('http://httpbin.org/json', (r) => {
-      let data = '';
-      r.on('data', (chunk) => (data += chunk));
-      r.on('end', () => res.end(data));
-    })
-    .end();
+  .request('http://httpbin.org/json', (r) => {
+    let data = '';
+    r.on('data', (chunk) => (data += chunk));
+    r.on('end', () => res.end(data));
+  })
+  .end();
 });
 
 server.listen(5000, () => console.info('Listening on port 5000...'));

@@ -15,33 +15,51 @@
 # limitations under the License.
 #
 
-version: '2.1'
+version: '3.8'
 
 services:
   collector:
-    build:
-      context: ../../../
-      dockerfile: tests/plugins/common/Dockerfile.tool
-    ports:
-      - 12800:12800
+    extends:
+      file: ../common/base-compose.yml
+      service: collector
     networks:
       - traveling-light
+
+  server:
+    extends:
+      file: ../common/base-compose.yml
+      service: agent
+    ports:
+      - 5000:5000
+    volumes:
+      - .:/app/tests/plugins/express
     healthcheck:
-      test: [ "CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/12800" ]
+      test: [ "CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/5000" ]
       interval: 5s
       timeout: 60s
       retries: 120
+    entrypoint: [ 'bash', '-c', 'npx ts-node /app/tests/plugins/express/server.ts' ]
+    depends_on:
+      collector:
+        condition: service_healthy
 
-  agent:
-    build:
-      context: ../../../
-      dockerfile: tests/plugins/common/Dockerfile.agent
-      args:
-        - SW_NODE_VERSION=${SW_NODE_VERSION:-latest}
+  client:
+    extends:
+      file: ../common/base-compose.yml
+      service: agent
+    ports:
+      - 5001:5001
     environment:
-      SW_AGENT_COLLECTOR_BACKEND_SERVICES: collector:19876
-    networks:
-      - traveling-light
+      SERVER: server:5000
+    healthcheck:
+      test: [ "CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/5001" ]
+      interval: 5s
+      timeout: 60s
+      retries: 120
+    entrypoint: [ 'bash', '-c', 'npx ts-node /app/tests/plugins/express/client.ts' ]
+    depends_on:
+      server:
+        condition: service_healthy
 
 networks:
   traveling-light:

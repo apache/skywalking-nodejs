@@ -24,25 +24,18 @@ import { Component } from '../trace/Component';
 import Tag from '../Tag';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from '../trace/context/ContextCarrier';
-import { createLogger } from '../logging';
-import PluginInstaller from '../core/PluginInstaller';
-
-const logger = createLogger(__filename);
+import onFinished from 'on-finished';
 
 class ExpressPlugin implements SwPlugin {
   readonly module = 'express';
   readonly versions = '*';
 
   install(): void {
-    if (logger.isDebugEnabled()) {
-      logger.debug('installing express plugin');
-    }
     this.interceptServerRequest();
   }
 
   private interceptServerRequest() {
-    const onFinished = PluginInstaller.require('on-finished');
-    const router = PluginInstaller.require('express/lib/router');
+    const router = require('express/lib/router');
     const _handle = router.handle;
 
     router.handle = function(req: IncomingMessage, res: ServerResponse, out: any) {
@@ -58,12 +51,15 @@ class ExpressPlugin implements SwPlugin {
       const span = ContextManager.current.newEntrySpan(operation, carrier).start();
 
       let stopped = 0;
-      const stopIfNotStopped = () => {
+      const stopIfNotStopped = (err: Error | null) => {
         if (!stopped++) {
           span.stop();
           span.tag(Tag.httpStatusCode(res.statusCode));
           if (res.statusCode && res.statusCode >= 400) {
             span.errored = true;
+          }
+          if (err) {
+            span.error(err);
           }
           if (res.statusMessage) {
             span.tag(Tag.httpStatusMsg(res.statusMessage));
@@ -78,21 +74,19 @@ class ExpressPlugin implements SwPlugin {
         span.tag(Tag.httpURL(span.peer + req.url));
 
         const ret = _handle.call(this, req, res, (err: Error) => {
-          if (err)
+          if (err) {
             span.error(err);
-          else
+          } else {
             span.errored = true;
+          }
           out.call(this, err);
           stopped -= 1;  // skip first stop attempt, make sure stop executes once status code and message is set
-          onFinished(req, stopIfNotStopped);  // this must run after any handlers deferred in 'out'
         });
-        onFinished(req, stopIfNotStopped);
+        onFinished(res, stopIfNotStopped); // this must run after any handlers deferred in 'out'
 
         return ret;
-
       } catch (e) {
-        span.error(e);
-        stopIfNotStopped();
+        stopIfNotStopped(e);
         throw e;
       }
     };

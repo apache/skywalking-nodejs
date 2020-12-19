@@ -39,7 +39,7 @@ describe('plugin tests', () => {
   });
 
   it(__filename, async () => {
-    await waitForExpect(async () => expect((await axios.get('http://localhost:5001/test')).status).toBe(200));
+    await waitForExpect(async () => expect((await axios.get('http://localhost:5001/express')).status).toBe(200));
 
     const expectedData = await fs.readFile(path.join(rootDir, 'expected.data.yaml'), 'utf8');
 
