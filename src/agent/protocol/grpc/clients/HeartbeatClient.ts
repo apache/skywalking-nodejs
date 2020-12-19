@@ -32,19 +32,21 @@ import * as os from 'os';
 
 const logger = createLogger(__filename);
 
-class HeartbeatClient implements Client {
-  heartbeatClient?: ManagementServiceClient;
-  heartbeatTimer?: NodeJS.Timeout;
+export default class HeartbeatClient implements Client {
+  private readonly managementServiceClient: ManagementServiceClient;
+  private heartbeatTimer?: NodeJS.Timeout;
+
+  constructor() {
+    this.managementServiceClient = new ManagementServiceClient(config.collectorAddress, grpc.credentials.createInsecure(), {
+      interceptors: [AuthInterceptor],
+    });
+  }
 
   get isConnected(): boolean {
-    return this.heartbeatClient?.getChannel().getConnectivityState(true) === connectivityState.READY;
+    return this.managementServiceClient.getChannel().getConnectivityState(true) === connectivityState.READY;
   }
 
   start() {
-    this.heartbeatClient = new ManagementServiceClient(config.collectorAddress, grpc.credentials.createInsecure(), {
-      interceptors: [AuthInterceptor],
-    });
-
     if (this.heartbeatTimer) {
       logger.warn(`
         The heartbeat timer has already been scheduled,
@@ -69,7 +71,7 @@ class HeartbeatClient implements Client {
     ]);
 
     this.heartbeatTimer = setInterval(() => {
-      this.heartbeatClient?.reportInstanceProperties(
+      this.managementServiceClient.reportInstanceProperties(
         instanceProperties,
 
         (error, _) => {
@@ -78,7 +80,7 @@ class HeartbeatClient implements Client {
           }
         },
       );
-      this.heartbeatClient?.keepAlive(
+      this.managementServiceClient.keepAlive(
         keepAlivePkg,
 
         (error, _) => {
@@ -90,5 +92,3 @@ class HeartbeatClient implements Client {
     }, 20000).unref();
   }
 }
-
-export default new HeartbeatClient();

@@ -25,14 +25,13 @@ import Span from '../trace/span/Span';
 import Tag from '../Tag';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import { createLogger } from '../logging';
-import PluginInstaller from '../core/PluginInstaller';
 
 const logger = createLogger(__filename);
 
 class AxiosPlugin implements SwPlugin {
   readonly module = 'axios';
   readonly versions = '*';
-  axios = PluginInstaller.require('axios').default;
+  axios = require('axios').default;
 
   install(): void {
     if (logger.isDebugEnabled()) {
@@ -53,7 +52,7 @@ class AxiosPlugin implements SwPlugin {
       }
 
       span.stop();
-    }
+    };
 
     this.axios.interceptors.request.use(
       (config: any) => {
@@ -71,7 +70,7 @@ class AxiosPlugin implements SwPlugin {
         error.config.span.stop();
 
         return Promise.reject(error);
-      }
+      },
     );
 
     this.axios.interceptors.response.use(
@@ -87,26 +86,23 @@ class AxiosPlugin implements SwPlugin {
         copyStatusAndStop(error.config.span, error.response);
 
         return Promise.reject(error);
-      }
+      },
     );
 
     const _request = this.axios.Axios.prototype.request;
 
-    this.axios.Axios.prototype.request = function (config: any) {
+    this.axios.Axios.prototype.request = function(config: any) {
       const { host, pathname: operation } = new URL(config.url);  // TODO: this may throw invalid URL
       const span = ContextManager.current.newExitSpan(operation, host).start();
 
       try {
-        span.component = Component.HTTP;  // TODO: add Component.AXIOS (to main Skywalking project)
+        span.component = Component.AXIOS;  // TODO: add Component.AXIOS (to main Skywalking project)
         span.layer = SpanLayer.HTTP;
         span.peer = host;
         span.tag(Tag.httpURL(host + operation));
         span.async();
 
-        const request = _request.call(this, {...config, span});
-
-        return request;
-
+        return _request.call(this, { ...config, span });
       } catch (e) {
         span.error(e);
         span.stop();

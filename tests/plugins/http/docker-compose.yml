@@ -29,7 +29,6 @@ services:
     extends:
       file: ../common/base-compose.yml
       service: agent
-    container_name: server
     ports:
       - 5000:5000
     volumes:
@@ -48,7 +47,6 @@ services:
     extends:
       file: ../common/base-compose.yml
       service: agent
-    container_name: client
     ports:
       - 5001:5001
     environment:

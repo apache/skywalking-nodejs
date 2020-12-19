@@ -26,12 +26,12 @@ import Segment from '../../trace/context/Segment';
 import EntrySpan from '../../trace/span/EntrySpan';
 import ExitSpan from '../../trace/span/ExitSpan';
 import LocalSpan from '../../trace/span/LocalSpan';
-import buffer from '../../agent/Buffer';
 import { createLogger } from '../../logging';
 import { executionAsyncId } from 'async_hooks';
 import { ContextCarrier } from './ContextCarrier';
 import ContextManager from './ContextManager';
 import { SpanType } from '../../proto/language-agent/Tracing_pb';
+import { emitter } from '../../lib/EventEmitter';
 
 const logger = createLogger(__filename);
 
@@ -155,7 +155,11 @@ export default class SpanContext implements Context {
   }
 
   start(span: Span): Context {
-    logger.debug('Starting span', { span: span.operation, spans: ContextManager.spans, nSpans: this.nSpans });
+    logger.debug('Starting span', {
+      span: span.operation,
+      spans: ContextManager.spans,
+      nSpans: this.nSpans,
+    });
 
     this.nSpans += 1;
     if (ContextManager.spans.every((s) => s.id !== span.id)) {
@@ -166,7 +170,11 @@ export default class SpanContext implements Context {
   }
 
   stop(span: Span): boolean {
-    logger.debug('Stopping span', { span: span.operation, spans: ContextManager.spans, nSpans: this.nSpans });
+    logger.debug('Stopping span', {
+      span: span.operation,
+      spans: ContextManager.spans,
+      nSpans: this.nSpans,
+    });
 
     span.finish(this.segment);
 
@@ -176,7 +184,7 @@ export default class SpanContext implements Context {
     }
 
     if (--this.nSpans === 0) {
-      buffer.put(this.segment);
+      emitter.emit('segment-finished', this.segment);
       ContextManager.clear();
       return true;
     }
@@ -185,7 +193,11 @@ export default class SpanContext implements Context {
   }
 
   async(span: Span) {
-    logger.debug('Async span', { span: span.operation, spans: ContextManager.spans, nSpans: this.nSpans });
+    logger.debug('Async span', {
+      span: span.operation,
+      spans: ContextManager.spans,
+      nSpans: this.nSpans,
+    });
 
     const idx = ContextManager.spans.indexOf(span);
 
@@ -199,7 +211,11 @@ export default class SpanContext implements Context {
   }
 
   resync(span: Span) {
-    logger.debug('Resync span', { span: span.operation, spans: ContextManager.spans, nSpans: this.nSpans });
+    logger.debug('Resync span', {
+      span: span.operation,
+      spans: ContextManager.spans,
+      nSpans: this.nSpans,
+    });
 
     if ((span.context as SpanContext).nSpans === 1) {
       ContextManager.restore(span.context, [span]);

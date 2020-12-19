@@ -47,9 +47,7 @@ export default class EntrySpan extends StackedSpan {
 
     const ref = SegmentRef.fromCarrier(carrier);
 
-    if (!this.refs.includes(ref)) {
-      this.refs.push(ref);
-    }
+    this.refer(ref);
 
     return this;
   }

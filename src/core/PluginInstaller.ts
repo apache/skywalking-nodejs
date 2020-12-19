@@ -26,12 +26,14 @@ import * as semver from 'semver';
 const logger = createLogger(__filename);
 
 let topModule = module;
-for (; topModule.parent; topModule = topModule.parent);
+while (topModule.parent) {
+  topModule = topModule.parent;
+}
 
-class PluginInstaller {
-  pluginDir: string;
-  require: (name: string) => any = topModule.require.bind(topModule);
-  resolve = (request: string) => (module.constructor as any)._resolveFilename(request, topModule);
+export default class PluginInstaller {
+  private readonly pluginDir: string;
+  private readonly require: (name: string) => any = topModule.require.bind(topModule);
+  private readonly resolve = (request: string) => (module.constructor as any)._resolveFilename(request, topModule);
 
   constructor() {
     this.pluginDir = path.resolve(__dirname, '..', 'plugins');
@@ -72,33 +74,30 @@ class PluginInstaller {
 
   install(): void {
     fs.readdirSync(this.pluginDir)
-      .filter((file) => !(file.endsWith('.d.ts') || file.endsWith('.js.map')))
-      .forEach((file) => {
-        let plugin;
-        const pluginFile = path.join(this.pluginDir, file);
+    .filter((file) => !(file.endsWith('.d.ts') || file.endsWith('.js.map')))
+    .forEach((file) => {
+      let plugin;
+      const pluginFile = path.join(this.pluginDir, file);
 
-        try {
-          plugin = require(pluginFile).default as SwPlugin;
-          const { isSupported, version } = this.checkModuleVersion(plugin);
+      try {
+        plugin = require(pluginFile).default as SwPlugin;
+        const { isSupported, version } = this.checkModuleVersion(plugin);
 
-          if (!isSupported) {
-            logger.info(`Plugin ${plugin.module} ${version} doesn't satisfy the supported version ${plugin.versions}`);
-            return;
-          }
-
-          logger.info(`Installing plugin ${plugin.module} ${plugin.versions}`);
-
-          plugin.install();
-
-        } catch (e) {
-          if (plugin) {
-            logger.error(`Error installing plugin ${plugin.module} ${plugin.versions}`);
-          } else {
-            logger.error(`Error processing plugin ${pluginFile}`);
-          }
+        if (!isSupported) {
+          logger.info(`Plugin ${plugin.module} ${version} doesn't satisfy the supported version ${plugin.versions}`);
+          return;
         }
-      });
+
+        logger.info(`Installing plugin ${plugin.module} ${plugin.versions}`);
+
+        plugin.install();
+      } catch (e) {
+        if (plugin) {
+          logger.error(`Error installing plugin ${plugin.module} ${plugin.versions}`);
+        } else {
+          logger.error(`Error processing plugin ${pluginFile}`);
+        }
+      }
+    });
   }
 }
-
-export default new PluginInstaller();

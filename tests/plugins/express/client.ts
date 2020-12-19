@@ -17,13 +17,25 @@
  *
  */
 
-export class Component {
-  static readonly UNKNOWN = new Component(0);
-  static readonly HTTP = new Component(2);
-  static readonly MONGODB = new Component(9);
-  static readonly HTTP_SERVER = new Component(49);
-  static readonly EXPRESS = new Component(4002);
-  static readonly AXIOS = new Component(4005);
+import * as http from 'http';
+import agent from '../../../src';
+import express from 'express';
 
-  constructor(public readonly id: number) {}
-}
+agent.start({
+  serviceName: 'client',
+  maxBufferSize: 1000,
+});
+
+const app = express();
+
+app.get('/express', (req, res) => {
+  http
+  .request(`http://${process.env.SERVER || 'localhost:5000'}${req.url}`, (r) => {
+    let data = '';
+    r.on('data', (chunk) => (data += chunk));
+    r.on('end', () => res.send(data));
+  })
+  .end();
+});
+
+app.listen(5001, () => console.info('Listening on port 5001...'));

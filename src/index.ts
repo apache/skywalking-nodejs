@@ -20,14 +20,12 @@
 import config, { AgentConfig, finalizeConfig } from './config/AgentConfig';
 import GrpcProtocol from './agent/protocol/grpc/GrpcProtocol';
 import { createLogger } from './logging';
-import Protocol from './agent/protocol/Protocol';
 import PluginInstaller from './core/PluginInstaller';
 
 const logger = createLogger(__filename);
 
 class Agent {
-  started = false;
-  protocol: Protocol = new GrpcProtocol();
+  private started = false;
 
   start(options: AgentConfig = {}): void {
     if (process.env.SW_DISABLE === 'true') {
@@ -45,10 +43,9 @@ class Agent {
 
     this.started = true;
 
-    PluginInstaller.install();
+    new PluginInstaller().install();
 
-    this.protocol.heartbeat();
-    this.protocol.report();
+    new GrpcProtocol().heartbeat().report();
   }
 }
 

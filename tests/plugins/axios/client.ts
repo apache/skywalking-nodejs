@@ -17,13 +17,20 @@
  *
  */
 
-export class Component {
-  static readonly UNKNOWN = new Component(0);
-  static readonly HTTP = new Component(2);
-  static readonly MONGODB = new Component(9);
-  static readonly HTTP_SERVER = new Component(49);
-  static readonly EXPRESS = new Component(4002);
-  static readonly AXIOS = new Component(4005);
+import * as http from 'http';
+import agent from '../../../src';
+import axios from 'axios';
 
-  constructor(public readonly id: number) {}
-}
+agent.start({
+  serviceName: 'client',
+  maxBufferSize: 1000,
+});
+
+const server = http.createServer((req, res) => {
+  axios
+  .get(`http://${process.env.SERVER || 'localhost:5000'}${req.url}`)
+  .then((r) => res.end(JSON.stringify(r.data)))
+  .catch(err => res.end(JSON.stringify(err)));
+});
+
+server.listen(5001, () => console.info('Listening on port 5001...'));

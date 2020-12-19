@@ -23,7 +23,7 @@
 export default interface Protocol {
   isConnected: boolean;
 
-  heartbeat(): void;
+  heartbeat(): this;
 
-  report(): void;
+  report(): this;
 }

@@ -26,33 +26,27 @@ segmentItems:
             parentSpanId: 0
             spanId: 1
             spanLayer: Http
-            startTime: gt 0
-            endTime: gt 0
-            componentId: 2
-            spanType: Exit
-            peer: httpbin.org
-            skipAnalysis: false
             tags:
               - key: http.url
-                value: httpbin.org/json
+                value: httpbin.org:80/json
               - key: http.status.code
                 value: '200'
               - key: http.status.msg
                 value: OK
-          - operationName: /test
+            startTime: gt 0
+            endTime: gt 0
+            componentId: 4005
+            spanType: Exit
+            peer: httpbin.org
+            skipAnalysis: false
+          - operationName: /axios
             operationId: 0
             parentSpanId: -1
             spanId: 0
             spanLayer: Http
-            startTime: gt 0
-            endTime: gt 0
-            componentId: 49
-            spanType: Entry
-            peer: server:5000
-            skipAnalysis: false
             tags:
               - key: http.url
-                value: server:5000/test
+                value: server:5000/axios
               - key: http.status.code
                 value: '200'
               - key: http.status.msg
@@ -66,44 +60,50 @@ segmentItems:
                 parentServiceInstance: not null
                 parentService: client
                 traceId: not null
+            startTime: gt 0
+            endTime: gt 0
+            componentId: 49
+            spanType: Entry
+            peer: server:5000
+            skipAnalysis: false
   - serviceName: client
     segmentSize: 1
     segments:
       - segmentId: not null
         spans:
-          - operationName: /test
+          - operationName: /axios
             operationId: 0
             parentSpanId: 0
             spanId: 1
             spanLayer: Http
-            startTime: gt 0
-            endTime: gt 0
-            componentId: 2
-            spanType: Exit
-            peer: server:5000
-            skipAnalysis: false
             tags:
               - key: http.url
-                value: server:5000/test
+                value: server:5000/axios
               - key: http.status.code
                 value: '200'
               - key: http.status.msg
                 value: OK
-          - operationName: /test
+            startTime: gt 0
+            endTime: gt 0
+            componentId: 4005
+            spanType: Exit
+            peer: server:5000
+            skipAnalysis: false
+          - operationName: /axios
             operationId: 0
             parentSpanId: -1
             spanId: 0
             spanLayer: Http
+            tags:
+              - key: http.url
+                value: localhost:5001/axios
+              - key: http.status.code
+                value: '200'
+              - key: http.status.msg
+                value: OK
             startTime: gt 0
             endTime: gt 0
             componentId: 49
             spanType: Entry
             peer: localhost:5001
             skipAnalysis: false
-            tags:
-              - key: http.url
-                value: localhost:5001/test
-              - key: http.status.code
-                value: '200'
-              - key: http.status.msg
-                value: OK

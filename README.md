@@ -15,12 +15,12 @@ microservices, cloud native and container-based (Docker, Kubernetes, Mesos) arch
 
 ## Set up NodeJS Agent
 
-SkyWalking NodeJS SDK requires SkyWalking 8.0+.
+SkyWalking NodeJS SDK requires SkyWalking backend (OAP) 8.0+ and NodeJS >= 10.
 
 ```typescript
-import Agent from 'skywalking';
+import agent from 'skywalking';
 
-Agent.start({
+agent.start({
   serviceName: '',
   serviceInstance: '',
   collectorAddress: '',
@@ -38,15 +38,19 @@ Environment Variable | Description | Default
 | `SW_AGENT_COLLECTOR_BACKEND_SERVICES` | The backend OAP server address | `127.0.0.1:11800` |
 | `SW_AGENT_AUTHENTICATION` | The authentication token to verify that the agent is trusted by the backend OAP, as for how to configure the backend, refer to [the yaml](https://github.com/apache/skywalking/blob/4f0f39ffccdc9b41049903cc540b8904f7c9728e/oap-server/server-bootstrap/src/main/resources/application.yml#L155-L158). | not set |
 | `SW_AGENT_LOGGING_LEVEL` | The logging level, could be one of `CRITICAL`, `FATAL`, `ERROR`, `WARN`(`WARNING`), `INFO`, `DEBUG` | `INFO` |
+| `SW_IGNORE_SUFFIX` | The suffices of endpoints that will be ignored (not traced), comma separated | `.jpg,.jpeg,.js,.css,.png,.bmp,.gif,.ico,.mp3,.mp4,.html,.svg` |
+| `SW_TRACE_IGNORE_PATH` | The paths of endpoints that will be ignored (not traced), comma separated | `` |
 | `SW_AGENT_MAX_BUFFER_SIZE` | The maximum buffer size before sending the segment data to backend | `'1000'` |
 
 ## Supported Libraries
 
-There're some built-in plugins that support automatic instrumentation of NodeJS libraries, the complete lists are as follows:
+There are some built-in plugins that support automatic instrumentation of NodeJS libraries, the complete lists are as follows:
 
 Library | Plugin Name
 | :--- | :--- |
-| built-in `http` module | `sw_http` |
+| built-in `http` and `https` module | `http` |
+| [`express`](https://expressjs.com) | `express` |
+| [`axios`](https://github.com/axios/axios) | `axios` |
 
 ## License
 Apache 2.0
