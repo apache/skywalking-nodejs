@@ -20,14 +20,24 @@ SkyWalking NodeJS SDK requires SkyWalking backend (OAP) 8.0+ and NodeJS >= 10.
 ```typescript
 import agent from 'skywalking';
 
+agent.start();
+```
+
+This will use default configurations to start the SkyWalking agent above, if you want to specify your own configurations, here are two methods.
+
+- Pass those values to `agent.start` method, such as:
+
+```typescript
 agent.start({
-  serviceName: '',
-  serviceInstance: '',
-  collectorAddress: '',
-  authorization: '',
-  maxBufferSize: 1000,
+  serviceName: 'my-service-name',
+  serviceInstance: 'my-service-instance-name',
+  collectorAddress: 'my.collector.address:port',
 });
 ```
+
+note that all options given (including empty/null values) will override the corresponding default values, e.g. `agent.start({ collectorAddress: '' })` will override the default value of `collectorAddress` to empty string, causing errors like `DNS resolution failed`.
+
+- Use environment variables.
 
 The supported environment variables are as follows:
 
