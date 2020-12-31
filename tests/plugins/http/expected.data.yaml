@@ -21,24 +21,6 @@ segmentItems:
     segments:
       - segmentId: not null
         spans:
-          - operationName: /json
-            operationId: 0
-            parentSpanId: 0
-            spanId: 1
-            spanLayer: Http
-            startTime: gt 0
-            endTime: gt 0
-            componentId: 2
-            spanType: Exit
-            peer: httpbin.org
-            skipAnalysis: false
-            tags:
-              - key: http.url
-                value: httpbin.org/json
-              - key: http.status.code
-                value: '200'
-              - key: http.status.msg
-                value: OK
           - operationName: /test
             operationId: 0
             parentSpanId: -1
@@ -66,12 +48,7 @@ segmentItems:
                 parentServiceInstance: not null
                 parentService: client
                 traceId: not null
-  - serviceName: client
-    segmentSize: 1
-    segments:
-      - segmentId: not null
-        spans:
-          - operationName: /test
+          - operationName: /json
             operationId: 0
             parentSpanId: 0
             spanId: 1
@@ -80,15 +57,20 @@ segmentItems:
             endTime: gt 0
             componentId: 2
             spanType: Exit
-            peer: server:5000
+            peer: httpbin.org
             skipAnalysis: false
             tags:
               - key: http.url
-                value: server:5000/test
+                value: httpbin.org/json
               - key: http.status.code
                 value: '200'
               - key: http.status.msg
                 value: OK
+  - serviceName: client
+    segmentSize: 1
+    segments:
+      - segmentId: not null
+        spans:
           - operationName: /test
             operationId: 0
             parentSpanId: -1
@@ -103,6 +85,24 @@ segmentItems:
             tags:
               - key: http.url
                 value: localhost:5001/test
+              - key: http.status.code
+                value: '200'
+              - key: http.status.msg
+                value: OK
+          - operationName: /test
+            operationId: 0
+            parentSpanId: 0
+            spanId: 1
+            spanLayer: Http
+            startTime: gt 0
+            endTime: gt 0
+            componentId: 2
+            spanType: Exit
+            peer: server:5000
+            skipAnalysis: false
+            tags:
+              - key: http.url
+                value: server:5000/test
               - key: http.status.code
                 value: '200'
               - key: http.status.msg
