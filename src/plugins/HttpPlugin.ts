@@ -94,7 +94,6 @@ class HttpPlugin implements SwPlugin {
           if (res.statusMessage) {
             span.tag(Tag.httpStatusMsg(res.statusMessage));
           }
-          stopIfNotStopped();
         });
 
         span.async();
