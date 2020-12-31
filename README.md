@@ -12,6 +12,7 @@ microservices, cloud native and container-based (Docker, Kubernetes, Mesos) arch
 
 
 [![Build](https://github.com/apache/skywalking-nodejs/workflows/Build/badge.svg?branch=master)](https://github.com/apache/skywalking-nodejs/actions?query=branch%3Amaster+event%3Apush+workflow%3A%22Build%22)
+[![npm version](https://badge.fury.io/js/skywalking-backend-js.svg)](https://badge.fury.io/js/skywalking-backend-js)
 
 ## Install SkyWalking NodeJS package from npmjs
 

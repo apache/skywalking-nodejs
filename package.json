@@ -12,7 +12,9 @@
     "lint": "tslint -p src/tsconfig.json src/**/*.ts",
     "test": "DEBUG=testcontainers* jest",
     "format": "prettier --write \"src/**/*.ts\"",
-    "clean": "(rm -rf src/proto || true) && (rm -rf src/proto || true) && (rm -rf lib || true)"
+    "clean": "(rm -rf src/proto || true) && (rm -rf src/proto || true) && (rm -rf lib || true)",
+    "package-src": "tar -zcvf skywalking-nodejs-src-$npm_package_version.tgz --exclude bin --exclude .git --exclude .idea --exclude .DS_Store --exclude .github --exclude node_modules --exclude skywalking-nodejs-src-$npm_package_version.tgz .",
+    "release-src": "npm run prepare && npm run package-src && gpg --batch --yes --armor --detach-sig skywalking-nodejs-src-$npm_package_version.tgz && shasum -a 512 skywalking-nodejs-src-$npm_package_version.tgz > skywalking-nodejs-src-$npm_package_version.tgz.sha512"
   },
   "files": [
     "lib/**/*"
