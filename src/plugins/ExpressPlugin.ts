@@ -24,7 +24,6 @@ import { Component } from '../trace/Component';
 import Tag from '../Tag';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from '../trace/context/ContextCarrier';
-import onFinished from 'on-finished';
 import PluginInstaller from '../core/PluginInstaller';
 
 class ExpressPlugin implements SwPlugin {
@@ -37,6 +36,7 @@ class ExpressPlugin implements SwPlugin {
 
   private interceptServerRequest(installer: PluginInstaller) {
     const router = installer.require('express/lib/router');
+    const onFinished = installer.require('on-finished');
     const _handle = router.handle;
 
     router.handle = function(req: IncomingMessage, res: ServerResponse, out: any) {
