@@ -2,7 +2,7 @@
 
 <img src="http://skywalking.apache.org/assets/logo.svg" alt="Sky Walking logo" height="90px" align="right" />
 
-**SkyWalking-NodeJS**: The NodeJS Agent for Apache SkyWalking, which provides the native tracing abilities for NodeJS project.
+**SkyWalking-NodeJS**: The NodeJS Agent for Apache SkyWalking, which provides the native tracing abilities for NodeJS backend project.
 
 **SkyWalking**: an APM(application performance monitor) system, especially designed for
 microservices, cloud native and container-based (Docker, Kubernetes, Mesos) architectures.
@@ -13,12 +13,18 @@ microservices, cloud native and container-based (Docker, Kubernetes, Mesos) arch
 
 [![Build](https://github.com/apache/skywalking-nodejs/workflows/Build/badge.svg?branch=master)](https://github.com/apache/skywalking-nodejs/actions?query=branch%3Amaster+event%3Apush+workflow%3A%22Build%22)
 
+## Install SkyWalking NodeJS package from npmjs
+
+```bash
+$ npm install --save skywalking-backend-js
+```
+
 ## Set up NodeJS Agent
 
 SkyWalking NodeJS SDK requires SkyWalking backend (OAP) 8.0+ and NodeJS >= 10.
 
 ```typescript
-import agent from 'skywalking';
+import agent from 'skywalking-backend-js';
 
 agent.start();
 ```
