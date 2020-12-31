@@ -33,7 +33,7 @@ app.get('/express', (req, res) => {
   .request(`http://${process.env.SERVER || 'localhost:5000'}${req.url}`, (r) => {
     let data = '';
     r.on('data', (chunk) => (data += chunk));
-    r.on('end', () => res.send(data));
+    r.on('close', () => res.send(data));
   })
   .end();
 });
