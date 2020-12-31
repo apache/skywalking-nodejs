@@ -37,8 +37,6 @@ segmentItems:
                 value: server:5000/test
               - key: http.status.code
                 value: '200'
-              - key: http.status.msg
-                value: OK
             refs:
               - parentEndpoint: ''
                 networkAddress: server:5000
@@ -87,8 +85,6 @@ segmentItems:
                 value: localhost:5001/test
               - key: http.status.code
                 value: '200'
-              - key: http.status.msg
-                value: OK
           - operationName: /test
             operationId: 0
             parentSpanId: 0
