@@ -31,8 +31,6 @@ segmentItems:
                 value: server:5000/axios
               - key: http.status.code
                 value: '200'
-              - key: http.status.msg
-                value: OK
             refs:
               - parentEndpoint: ''
                 networkAddress: server:5000
@@ -81,8 +79,6 @@ segmentItems:
                 value: localhost:5001/axios
               - key: http.status.code
                 value: '200'
-              - key: http.status.msg
-                value: OK
             startTime: gt 0
             endTime: gt 0
             componentId: 49

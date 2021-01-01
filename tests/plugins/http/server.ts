@@ -30,7 +30,7 @@ const server = http.createServer((req, res) => {
   .request('http://httpbin.org/json', (r) => {
     let data = '';
     r.on('data', (chunk) => (data += chunk));
-    r.on('close', () => res.end(data));
+    r.on('end', () => res.end(data));
   })
   .end();
 });

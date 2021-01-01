@@ -30,7 +30,7 @@ const server = http.createServer((req, res) => {
   .request(`http://${process.env.SERVER || 'localhost:5000'}${req.url}`, (r) => {
     let data = '';
     r.on('data', (chunk) => (data += chunk));
-    r.on('close', () => res.end(data));
+    r.on('end', () => res.end(data));
   })
   .end();
 });
