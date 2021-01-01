@@ -57,8 +57,6 @@ class AxiosPlugin implements SwPlugin {
 
     axios.interceptors.request.use(
       (config: any) => {
-        config.span.resync();
-
         (config.span as Span).inject().items.forEach((item) => {
           config.headers.common[item.key] = item.value;
         });
@@ -101,7 +99,6 @@ class AxiosPlugin implements SwPlugin {
         span.layer = SpanLayer.HTTP;
         span.peer = host;
         span.tag(Tag.httpURL(host + operation));
-        span.async();
 
         return _request.call(this, { ...config, span });
       } catch (e) {
