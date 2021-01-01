@@ -72,32 +72,27 @@ export default abstract class Span {
   }
 
   start(): this {
-    logger.debug(`Starting span ${this.operation}`, this);
     this.startTime = new Date().getTime();
     this.context.start(this);
     return this;
   }
 
   stop(): this {
-    logger.debug(`Stopping span ${this.operation}`, this);
     this.context.stop(this);
     return this;
   }
 
   async(): this {
-    logger.debug(`Async span ${this.operation}`, this);
     this.context.async(this);
     return this;
   }
 
   resync(): this {
-    logger.debug(`Resync span ${this.operation}`, this);
     this.context.resync(this);
     return this;
   }
 
   finish(segment: Segment): boolean {
-    logger.debug('Finishing span', this);
     this.endTime = new Date().getTime();
     segment.archive(this);
     return true;

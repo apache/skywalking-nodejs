@@ -17,9 +17,11 @@
  *
  */
 
+import PluginInstaller from './PluginInstaller';
+
 export default interface SwPlugin {
   readonly module: string;
   readonly versions: string;
 
-  install(): void;
+  install(installer: PluginInstaller): void;
 }

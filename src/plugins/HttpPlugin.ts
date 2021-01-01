@@ -26,7 +26,6 @@ import Tag from '../Tag';
 import ExitSpan from '../trace/span/ExitSpan';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from '../trace/context/ContextCarrier';
-import onFinished from 'on-finished';
 
 class HttpPlugin implements SwPlugin {
   readonly module = 'http';
@@ -45,7 +44,7 @@ class HttpPlugin implements SwPlugin {
   private interceptClientRequest(module: any) {
     const _request = module.request;
 
-    module.request = function() {
+    module.request = function () {
       const url: URL | string | RequestOptions = arguments[0];
 
       const { host, pathname } =
@@ -59,21 +58,11 @@ class HttpPlugin implements SwPlugin {
           };
       const operation = pathname.replace(/\?.*$/g, '');
 
+      let stopped = 0;  // compensating if request aborted right after creation 'close' is not emitted
+      const stopIfNotStopped = () => !stopped++ ? span.stop() : null;  // make sure we stop only once
       const span: ExitSpan = ContextManager.current.newExitSpan(operation, host).start() as ExitSpan;
 
-      let stopped = 0;  // compensating if request aborted right after creation 'close' is not emitted
-      const stopIfNotStopped = (err?: Error | null) => {
-        if (stopped++) {
-          return;
-        }
-        span.stop();
-        if (err) {
-          span.error(err);
-        }
-      };
-
       try {
-        // TODO: these should go into span class
         if (span.depth === 1) {  // only set HTTP if this span is not overridden by a higher level one
           span.component = Component.HTTP;
           span.layer = SpanLayer.HTTP;
@@ -86,13 +75,17 @@ class HttpPlugin implements SwPlugin {
           span.tag(Tag.httpURL(httpURL));
         }
 
-        const req: ClientRequest = _request.apply(this, arguments);
+        const request: ClientRequest = _request.apply(this, arguments);
 
         span.inject().items.forEach((item) => {
-          req.setHeader(item.key, item.value);
+          request.setHeader(item.key, item.value);
         });
 
-        req.prependListener('response', (res) => {
+        request.on('close', stopIfNotStopped);
+        request.on('abort', () => (span.errored = true, stopIfNotStopped()));
+        request.on('error', (err) => (span.error(err), stopIfNotStopped()));
+
+        request.prependListener('response', (res) => {
           span.resync();
           span.tag(Tag.httpStatusCode(res.statusCode));
           if (res.statusCode && res.statusCode >= 400) {
@@ -102,14 +95,17 @@ class HttpPlugin implements SwPlugin {
             span.tag(Tag.httpStatusMsg(res.statusMessage));
           }
         });
-        onFinished(req, stopIfNotStopped);
 
         span.async();
 
-        return req;
+        return request;
 
       } catch (e) {
-        stopIfNotStopped(e);
+        if (!stopped) {  // don't want to set error if exception occurs after clean close
+          span.error(e);
+          stopIfNotStopped();
+        }
+
         throw e;
       }
     };
@@ -118,7 +114,7 @@ class HttpPlugin implements SwPlugin {
   private interceptServerRequest(module: any) {
     const _emit = module.Server.prototype.emit;
 
-    module.Server.prototype.emit = function() {
+    module.Server.prototype.emit = function () {
       if (arguments[0] !== 'request') {
         return _emit.apply(this, arguments);
       }
@@ -134,37 +130,27 @@ class HttpPlugin implements SwPlugin {
 
       const carrier = ContextCarrier.from(headersMap);
       const operation = (req.url || '/').replace(/\?.*/g, '');
-      const span = ContextManager.current.newEntrySpan(operation, carrier).start();
+      const span = ContextManager.current.newEntrySpan(operation, carrier);
 
-      span.component = Component.HTTP_SERVER;
-      span.layer = SpanLayer.HTTP;
-      span.peer = req.headers.host || '';
-      span.tag(Tag.httpURL(span.peer + req.url));
+      return ContextManager.withSpan(span, (self, args) => {
+        span.component = Component.HTTP_SERVER;
+        span.layer = SpanLayer.HTTP;
+        span.peer = req.headers.host || '';
+        span.tag(Tag.httpURL(span.peer + req.url));
 
-      let stopped = 0;
-      const stopIfNotStopped = (err: Error | null) => {
-        if (!stopped++) {
-          span.stop();
-          span.tag(Tag.httpStatusCode(res.statusCode));
-          if (res.statusCode && res.statusCode >= 400) {
-            span.errored = true;
-          }
-          if (err) {
-            span.error(err);
-          }
-          if (res.statusMessage) {
-            span.tag(Tag.httpStatusMsg(res.statusMessage));
-          }
+        const ret = _emit.apply(self, args);
+
+        span.tag(Tag.httpStatusCode(res.statusCode));
+        if (res.statusCode && res.statusCode >= 400) {
+          span.errored = true;
         }
-      };
-      onFinished(res, stopIfNotStopped);
+        if (res.statusMessage) {
+          span.tag(Tag.httpStatusMsg(res.statusMessage));
+        }
 
-      try {
-        return _emit.apply(this, arguments);
-      } catch (e) {
-        stopIfNotStopped(e);
-        throw e;
-      }
+        return ret;
+
+      }, this, arguments);
     };
   }
 }

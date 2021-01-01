@@ -242,7 +242,6 @@ MIT licenses
 The following components are provided under the MIT License. See project link for details.
 The text of each license is also included at licenses/LICENSE-[project].txt.
 
-    on-finished 2.3.0: https://github.com/jshttp/on-finished, MIT
     uuid 8.1.0: https://github.com/uuidjs/uuid, MIT
     winston 3.2.1: https://github.com/winstonjs/winston, MIT
 

@@ -24,18 +24,19 @@ import { Component } from '../trace/Component';
 import Tag from '../Tag';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from '../trace/context/ContextCarrier';
-import onFinished from 'on-finished';
+import PluginInstaller from '../core/PluginInstaller';
 
 class ExpressPlugin implements SwPlugin {
   readonly module = 'express';
   readonly versions = '*';
 
-  install(): void {
-    this.interceptServerRequest();
+  install(installer: PluginInstaller): void {
+    this.interceptServerRequest(installer);
   }
 
-  private interceptServerRequest() {
-    const router = require('express/lib/router');
+  private interceptServerRequest(installer: PluginInstaller) {
+    const router = installer.require('express/lib/router');
+    const onFinished = installer.require('on-finished');
     const _handle = router.handle;
 
     router.handle = function(req: IncomingMessage, res: ServerResponse, out: any) {
@@ -81,6 +82,7 @@ class ExpressPlugin implements SwPlugin {
           }
           out.call(this, err);
           stopped -= 1;  // skip first stop attempt, make sure stop executes once status code and message is set
+          onFinished(res, stopIfNotStopped);  // this must run after any handlers deferred in 'out'
         });
         onFinished(res, stopIfNotStopped); // this must run after any handlers deferred in 'out'
 

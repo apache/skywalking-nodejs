@@ -32,7 +32,7 @@ while (topModule.parent) {
 
 export default class PluginInstaller {
   private readonly pluginDir: string;
-  private readonly require: (name: string) => any = topModule.require.bind(topModule);
+  readonly require: (name: string) => any = topModule.require.bind(topModule);
   private readonly resolve = (request: string) => (module.constructor as any)._resolveFilename(request, topModule);
 
   constructor() {
@@ -90,7 +90,7 @@ export default class PluginInstaller {
 
         logger.info(`Installing plugin ${plugin.module} ${plugin.versions}`);
 
-        plugin.install();
+        plugin.install(this);
       } catch (e) {
         if (plugin) {
           logger.error(`Error installing plugin ${plugin.module} ${plugin.versions}`);

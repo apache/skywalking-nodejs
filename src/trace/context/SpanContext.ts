@@ -64,13 +64,6 @@ export default class SpanContext implements Context {
   }
 
   newEntrySpan(operation: string, carrier?: ContextCarrier): Span {
-    if (logger.isDebugEnabled()) {
-      logger.debug('Creating entry span', {
-        parentId: this.parentId,
-        executionAsyncId: executionAsyncId(),
-      });
-    }
-
     let span = this.ignoreCheck(operation, SpanType.ENTRY);
 
     if (span)
@@ -78,6 +71,13 @@ export default class SpanContext implements Context {
 
     const spans = ContextManager.spansDup();
     const parent = spans[spans.length - 1];
+
+    if (logger.isDebugEnabled()) {
+      logger.debug('Creating entry span', {
+        spans,
+        parent,
+      });
+    }
 
     if (parent && parent.type === SpanType.ENTRY) {
       span = parent;
@@ -100,13 +100,6 @@ export default class SpanContext implements Context {
   }
 
   newExitSpan(operation: string, peer: string): Span {
-    if (logger.isDebugEnabled()) {
-      logger.debug('Creating exit span', {
-        parentId: this.parentId,
-        executionAsyncId: executionAsyncId(),
-      });
-    }
-
     let span = this.ignoreCheck(operation, SpanType.EXIT);
 
     if (span)
@@ -114,6 +107,15 @@ export default class SpanContext implements Context {
 
     const spans = ContextManager.spansDup();
     const parent = spans[spans.length - 1];
+
+    if (logger.isDebugEnabled()) {
+      logger.debug('Creating exit span', {
+        operation,
+        parent,
+        spans,
+        peer,
+      });
+    }
 
     if (parent && parent.type === SpanType.EXIT) {
       span = parent;
@@ -132,19 +134,19 @@ export default class SpanContext implements Context {
   }
 
   newLocalSpan(operation: string): Span {
-    if (logger.isDebugEnabled()) {
-      logger.debug('Creating local span', {
-        parentId: this.parentId,
-        executionAsyncId: executionAsyncId(),
-      });
-    }
-
     const span = this.ignoreCheck(operation, SpanType.LOCAL);
 
     if (span)
       return span;
 
     ContextManager.spansDup();
+
+    if (logger.isDebugEnabled()) {
+      logger.debug('Creating local span', {
+        parentId: this.parentId,
+        executionAsyncId: executionAsyncId(),
+      });
+    }
 
     return new LocalSpan({
       id: this.spanId++,
@@ -155,8 +157,8 @@ export default class SpanContext implements Context {
   }
 
   start(span: Span): Context {
-    logger.debug('Starting span', {
-      span: span.operation,
+    logger.debug(`Starting span ${span.operation}`, {
+      span,
       spans: ContextManager.spans,
       nSpans: this.nSpans,
     });
@@ -170,8 +172,8 @@ export default class SpanContext implements Context {
   }
 
   stop(span: Span): boolean {
-    logger.debug('Stopping span', {
-      span: span.operation,
+    logger.debug(`Stopping span ${span.operation}`, {
+      span,
       spans: ContextManager.spans,
       nSpans: this.nSpans,
     });
@@ -193,8 +195,8 @@ export default class SpanContext implements Context {
   }
 
   async(span: Span) {
-    logger.debug('Async span', {
-      span: span.operation,
+    logger.debug(`Async span ${span.operation}`, {
+      span,
       spans: ContextManager.spans,
       nSpans: this.nSpans,
     });
@@ -211,8 +213,8 @@ export default class SpanContext implements Context {
   }
 
   resync(span: Span) {
-    logger.debug('Resync span', {
-      span: span.operation,
+    logger.debug(`Resync span ${span.operation}`, {
+      span,
       spans: ContextManager.spans,
       nSpans: this.nSpans,
     });
