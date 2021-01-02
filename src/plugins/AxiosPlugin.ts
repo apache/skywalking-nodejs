@@ -52,12 +52,16 @@ class AxiosPlugin implements SwPlugin {
         }
       }
 
+      // XXX We stop twice because we know we are sitting on top of http and we need the span finish mechanism to proc
+      // here before the promise resolves. The eventual http span stop which will proc after promise resolution will do
+      // nothing.
+      span.stop();
       span.stop();
     };
 
     axios.interceptors.request.use(
       (config: any) => {
-        // config.span.resync(); // TODO: fix this https://github.com/apache/skywalking-nodejs/pull/20#issuecomment-753323425
+        config.span.resync(); // TODO: check fix this https://github.com/apache/skywalking-nodejs/pull/20#issuecomment-753323425
 
         (config.span as Span).inject().items.forEach((item) => {
           config.headers.common[item.key] = item.value;
@@ -69,6 +73,7 @@ class AxiosPlugin implements SwPlugin {
       (error: any) => {
         error.config.span.error(error);
         error.config.span.stop();
+        error.config.span.stop(); // see above XXX
 
         return Promise.reject(error);
       },
@@ -101,7 +106,7 @@ class AxiosPlugin implements SwPlugin {
         span.layer = SpanLayer.HTTP;
         span.peer = host;
         span.tag(Tag.httpURL(host + operation));
-        // span.async(); TODO: fix this https://github.com/apache/skywalking-nodejs/pull/20#issuecomment-753323425
+        span.async();  // TODO: check fix this https://github.com/apache/skywalking-nodejs/pull/20#issuecomment-753323425
 
         return _request.call(this, { ...config, span });
       } catch (e) {

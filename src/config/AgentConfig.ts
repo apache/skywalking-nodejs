@@ -38,9 +38,9 @@ export function finalizeConfig(config: AgentConfig): void {
   const ignorePath = '^(?:' + config.traceIgnorePath!.split(',').map(
     (s1) => s1.trim().split('**').map(
       (s2) => s2.split('*').map(
-        (s3) => s3.split('?').map(escapeRegExp).join('[^/]')  // replaces "**"
+        (s3) => s3.split('?').map(escapeRegExp).join('[^/]')  // replaces "?"
       ).join('[^/]*')                                         // replaces "*"
-    ).join('(?:(?:[^/]+\.)*[^/]+)?')                          // replaces "?"
+    ).join('(?:(?:[^/]+\.)*[^/]+)?')                          // replaces "**"
   ).join('|') + ')$';                                         // replaces ","
 
   config.reIgnoreOperation = RegExp(`${ignoreSuffix}|${ignorePath}`);
