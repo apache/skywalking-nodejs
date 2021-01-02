@@ -46,6 +46,9 @@ class AxiosPlugin implements SwPlugin {
       if (response) {
         if (response.status) {
           span.tag(Tag.httpStatusCode(response.status));
+          if (response.status >= 400) {
+            span.errored = true;
+          }
         }
         if (response.statusText) {
           span.tag(Tag.httpStatusMsg(response.statusText));
@@ -58,6 +61,22 @@ class AxiosPlugin implements SwPlugin {
       span.stop();
       span.stop();
     };
+
+    axios.interceptors.response.use(
+      (response: any) => {
+        copyStatusAndStop(response.config.span, response);
+
+        return response;
+      },
+
+      (error: any) => {
+        error.config.span.error(error);
+
+        copyStatusAndStop(error.config.span, error.response);
+
+        return Promise.reject(error);
+      },
+    );
 
     axios.interceptors.request.use(
       (config: any) => {
@@ -74,22 +93,6 @@ class AxiosPlugin implements SwPlugin {
         error.config.span.error(error);
         error.config.span.stop();
         error.config.span.stop(); // see above XXX
-
-        return Promise.reject(error);
-      },
-    );
-
-    axios.interceptors.response.use(
-      (response: any) => {
-        copyStatusAndStop(response.config.span, response);
-
-        return response;
-      },
-
-      (error: any) => {
-        error.config.span.error(error);
-
-        copyStatusAndStop(error.config.span, error.response);
 
         return Promise.reject(error);
       },
