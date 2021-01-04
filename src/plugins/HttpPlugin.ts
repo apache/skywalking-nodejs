@@ -77,30 +77,33 @@ class HttpPlugin implements SwPlugin {
           span.tag(Tag.httpURL(httpURL));
         }
 
-        const request: ClientRequest = _request.apply(this, arguments);
+        const req: ClientRequest = _request.apply(this, arguments);
 
         span.inject().items.forEach((item) => {
-          request.setHeader(item.key, item.value);
+          req.setHeader(item.key, item.value);
         });
 
-        request.on('close', stopIfNotStopped);
-        request.on('abort', () => (span.errored = true, stopIfNotStopped()));
-        request.on('error', (err) => (span.error(err), stopIfNotStopped()));
+        req.on('close', stopIfNotStopped);
+        req.on('abort', () => (span.errored = true, stopIfNotStopped()));
+        req.on('error', (err) => (span.error(err), stopIfNotStopped()));
 
-        request.prependListener('response', (res) => {
+        req.prependListener('response', (res) => {
           span.resync();
           span.tag(Tag.httpStatusCode(res.statusCode));
+
           if (res.statusCode && res.statusCode >= 400) {
             span.errored = true;
           }
           if (res.statusMessage) {
             span.tag(Tag.httpStatusMsg(res.statusMessage));
           }
+
+          res.on('end', stopIfNotStopped);
         });
 
         span.async();
 
-        return request;
+        return req;
 
       } catch (e) {
         if (!stopped) {  // don't want to set error if exception occurs after clean close
