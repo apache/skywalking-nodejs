@@ -27,6 +27,8 @@ import ExitSpan from '../trace/span/ExitSpan';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from '../trace/context/ContextCarrier';
 
+const NativePromise = (async () => {})().constructor;  // may be different from globally overridden Promise
+
 class HttpPlugin implements SwPlugin {
   readonly module = 'http';
   readonly versions = '*';
@@ -112,45 +114,74 @@ class HttpPlugin implements SwPlugin {
   }
 
   private interceptServerRequest(module: any) {
-    const _emit = module.Server.prototype.emit;
+    /// TODO? full event protocol support not currently implemented (prependListener(), removeListener(), etc...)
+    const _addListener = module.Server.prototype.addListener;
 
-    module.Server.prototype.emit = function () {
-      if (arguments[0] !== 'request') {
-        return _emit.apply(this, arguments);
-      }
+    module.Server.prototype.addListener = module.Server.prototype.on = function (event: any, handler: any, ...args: any[]) {
+      return _addListener.call(this, event, event === 'request' ? _sw_request : handler, ...args);
 
-      const [req, res] = [arguments[1] as IncomingMessage, arguments[2] as ServerResponse];
+      function _sw_request(this: any, req: IncomingMessage, res: ServerResponse, ...args: any[]) {
+        const headers = req.rawHeaders || [];
+        const headersMap: { [key: string]: string } = {};
 
-      const headers = req.rawHeaders || [];
-      const headersMap: { [key: string]: string } = {};
-
-      for (let i = 0; i < headers.length / 2; i += 2) {
-        headersMap[headers[i]] = headers[i + 1];
-      }
-
-      const carrier = ContextCarrier.from(headersMap);
-      const operation = (req.url || '/').replace(/\?.*/g, '');
-      const span = ContextManager.current.newEntrySpan(operation, carrier);
-
-      return ContextManager.withSpan(span, (self, args) => {
-        span.component = Component.HTTP_SERVER;
-        span.layer = SpanLayer.HTTP;
-        span.peer = req.headers.host || '';
-        span.tag(Tag.httpURL(span.peer + req.url));
-
-        const ret = _emit.apply(self, args);
-
-        span.tag(Tag.httpStatusCode(res.statusCode));
-        if (res.statusCode && res.statusCode >= 400) {
-          span.errored = true;
-        }
-        if (res.statusMessage) {
-          span.tag(Tag.httpStatusMsg(res.statusMessage));
+        for (let i = 0; i < headers.length / 2; i += 2) {
+          headersMap[headers[i]] = headers[i + 1];
         }
 
-        return ret;
+        const carrier = ContextCarrier.from(headersMap);
+        const operation = (req.url || '/').replace(/\?.*/g, '');
+        const span = ContextManager.current.newEntrySpan(operation, carrier).start();
 
-      }, this, arguments);
+        const copyStatusAndStop = () => {
+          span.tag(Tag.httpStatusCode(res.statusCode));
+          if (res.statusCode && res.statusCode >= 400) {
+            span.errored = true;
+          }
+          if (res.statusMessage) {
+            span.tag(Tag.httpStatusMsg(res.statusMessage));
+          }
+
+          span.stop();
+        };
+
+        try {
+          span.component = Component.HTTP_SERVER;
+          span.layer = SpanLayer.HTTP;
+          span.peer = req.connection.remoteFamily === 'IPv6'
+            ? `[${req.connection.remoteAddress}]:${req.connection.remotePort}`
+            : `${req.connection.remoteAddress}:${req.connection.remotePort}`;
+          span.tag(Tag.httpURL((req.headers.host || '') + req.url));
+
+          let ret = handler.call(this, req, res, ...args);
+          const type = ret?.constructor;
+
+          if (type !== Promise && type !== NativePromise) {
+            copyStatusAndStop();
+
+          } else {
+            ret = ret.then((r: any) => {
+              copyStatusAndStop();
+
+              return r;
+            },
+
+            (error: any) => {
+              span.error(error);
+              span.stop();
+
+              return Promise.reject(error);
+            })
+          }
+
+          return ret;
+
+        } catch (e) {
+          span.error(e);
+          span.stop();
+
+          throw e;
+        }
+      }
     };
   }
 }

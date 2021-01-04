@@ -26,8 +26,8 @@ agent.start({
   maxBufferSize: 1000,
 });
 
-const server = http.createServer((req, res) => {
-  axios
+const server = http.createServer(async (req, res) => {
+  await axios
   .get(`http://${process.env.SERVER || 'localhost:5000'}${req.url}`)
   .then((r) => res.end(JSON.stringify(r.data)))
   .catch(err => res.end(JSON.stringify(err)));
