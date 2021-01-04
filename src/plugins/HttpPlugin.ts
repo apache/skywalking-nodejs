@@ -27,7 +27,7 @@ import ExitSpan from '../trace/span/ExitSpan';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from '../trace/context/ContextCarrier';
 
-const NativePromise = (async () => {})().constructor;  // may be different from globally overridden Promise
+const NativePromise = (async () => null)().constructor;  // may be different from globally overridden Promise
 
 class HttpPlugin implements SwPlugin {
   readonly module = 'http';
@@ -117,10 +117,10 @@ class HttpPlugin implements SwPlugin {
     /// TODO? full event protocol support not currently implemented (prependListener(), removeListener(), etc...)
     const _addListener = module.Server.prototype.addListener;
 
-    module.Server.prototype.addListener = module.Server.prototype.on = function (event: any, handler: any, ...args: any[]) {
-      return _addListener.call(this, event, event === 'request' ? _sw_request : handler, ...args);
+    module.Server.prototype.addListener = module.Server.prototype.on = function (event: any, handler: any, ...addArgs: any[]) {
+      return _addListener.call(this, event, event === 'request' ? _sw_request : handler, ...addArgs);
 
-      function _sw_request(this: any, req: IncomingMessage, res: ServerResponse, ...args: any[]) {
+      function _sw_request(this: any, req: IncomingMessage, res: ServerResponse, ...reqArgs: any[]) {
         const headers = req.rawHeaders || [];
         const headersMap: { [key: string]: string } = {};
 
@@ -152,7 +152,7 @@ class HttpPlugin implements SwPlugin {
             : `${req.connection.remoteAddress}:${req.connection.remotePort}`;
           span.tag(Tag.httpURL((req.headers.host || '') + req.url));
 
-          let ret = handler.call(this, req, res, ...args);
+          let ret = handler.call(this, req, res, ...reqArgs);
           const type = ret?.constructor;
 
           if (type !== Promise && type !== NativePromise) {
