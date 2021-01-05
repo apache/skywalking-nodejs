@@ -21,7 +21,6 @@ import SwPlugin from '../core/SwPlugin';
 import { URL } from 'url';
 import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
-import Span from '../trace/span/Span';
 import Tag from '../Tag';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import { createLogger } from '../logging';
@@ -37,62 +36,15 @@ class AxiosPlugin implements SwPlugin {
     if (logger.isDebugEnabled()) {
       logger.debug('installing axios plugin');
     }
-    const axios = installer.require('axios').default;
-    this.interceptClientRequest(axios);
+
+    this.interceptClientRequest(installer);
   }
 
-  private interceptClientRequest(axios: any) {
-    const copyStatusAndStop = (span: Span, response: any) => {
-      if (response) {
-        if (response.status) {
-          span.tag(Tag.httpStatusCode(response.status));
-        }
-        if (response.statusText) {
-          span.tag(Tag.httpStatusMsg(response.statusText));
-        }
-      }
+  private interceptClientRequest(installer: PluginInstaller): void {
+    const defaults = installer.require('axios/lib/defaults');
+    const defaultAdapter = defaults.adapter;  // this will be http adapter
 
-      span.stop();
-    };
-
-    axios.interceptors.request.use(
-      (config: any) => {
-        // config.span.resync(); // TODO: fix this https://github.com/apache/skywalking-nodejs/pull/20#issuecomment-753323425
-
-        (config.span as Span).inject().items.forEach((item) => {
-          config.headers.common[item.key] = item.value;
-        });
-
-        return config;
-      },
-
-      (error: any) => {
-        error.config.span.error(error);
-        error.config.span.stop();
-
-        return Promise.reject(error);
-      },
-    );
-
-    axios.interceptors.response.use(
-      (response: any) => {
-        copyStatusAndStop(response.config.span, response);
-
-        return response;
-      },
-
-      (error: any) => {
-        error.config.span.error(error);
-
-        copyStatusAndStop(error.config.span, error.response);
-
-        return Promise.reject(error);
-      },
-    );
-
-    const _request = axios.Axios.prototype.request;
-
-    axios.Axios.prototype.request = function(config: any) {
+    defaults.adapter = (config: any) => {
       const { host, pathname: operation } = new URL(config.url);  // TODO: this may throw invalid URL
       const span = ContextManager.current.newExitSpan(operation, host).start();
 
@@ -101,16 +53,50 @@ class AxiosPlugin implements SwPlugin {
         span.layer = SpanLayer.HTTP;
         span.peer = host;
         span.tag(Tag.httpURL(host + operation));
-        // span.async(); TODO: fix this https://github.com/apache/skywalking-nodejs/pull/20#issuecomment-753323425
 
-        return _request.call(this, { ...config, span });
+        span.inject().items.forEach((item) => {
+          config.headers[item.key] = item.value;
+        });
+
+        const copyStatusAndStop = (response: any) => {
+          if (response) {
+            if (response.status) {
+              span.tag(Tag.httpStatusCode(response.status));
+              if (response.status >= 400) {
+                span.errored = true;
+              }
+            }
+
+            if (response.statusText) {
+              span.tag(Tag.httpStatusMsg(response.statusText));
+            }
+          }
+
+          span.stop();
+        };
+
+        return defaultAdapter(config).then(
+          (response: any) => {
+            copyStatusAndStop(response);
+
+            return response;
+          },
+
+          (error: any) => {
+            span.error(error);
+            copyStatusAndStop(error.response);
+
+            return Promise.reject(error);
+          }
+        );
+
       } catch (e) {
         span.error(e);
         span.stop();
 
         throw e;
       }
-    };
+    }
   }
 }
 

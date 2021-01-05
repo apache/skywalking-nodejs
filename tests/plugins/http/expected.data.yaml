@@ -30,7 +30,7 @@ segmentItems:
             endTime: gt 0
             componentId: 49
             spanType: Entry
-            peer: server:5000
+            peer: not null
             skipAnalysis: false
             tags:
               - key: http.url
@@ -78,7 +78,7 @@ segmentItems:
             endTime: gt 0
             componentId: 49
             spanType: Entry
-            peer: localhost:5001
+            peer: not null
             skipAnalysis: false
             tags:
               - key: http.url

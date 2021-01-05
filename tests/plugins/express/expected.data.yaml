@@ -21,6 +21,24 @@ segmentItems:
     segments:
       - segmentId: not null
         spans:
+          - operationName: /json
+            operationId: 0
+            parentSpanId: 0
+            spanId: 1
+            spanLayer: Http
+            startTime: gt 0
+            endTime: gt 0
+            componentId: 2
+            spanType: Exit
+            peer: httpbin.org
+            skipAnalysis: false
+            tags:
+              - key: http.url
+                value: httpbin.org/json
+              - key: http.status.code
+                value: '200'
+              - key: http.status.msg
+                value: OK
           - operationName: /express
             operationId: 0
             parentSpanId: -1
@@ -48,47 +66,11 @@ segmentItems:
             spanType: Entry
             peer: server:5000
             skipAnalysis: false
-          - operationName: /json
-            operationId: 0
-            parentSpanId: 0
-            spanId: 1
-            spanLayer: Http
-            tags:
-              - key: http.url
-                value: httpbin.org/json
-              - key: http.status.code
-                value: '200'
-              - key: http.status.msg
-                value: OK
-            startTime: gt 0
-            endTime: gt 0
-            componentId: 2
-            spanType: Exit
-            peer: httpbin.org
-            skipAnalysis: false
   - serviceName: client
     segmentSize: 1
     segments:
       - segmentId: not null
         spans:
-          - operationName: /express
-            operationId: 0
-            parentSpanId: -1
-            spanId: 0
-            spanLayer: Http
-            tags:
-              - key: http.url
-                value: localhost:5001/express
-              - key: http.status.code
-                value: '200'
-              - key: http.status.msg
-                value: OK
-            startTime: gt 0
-            endTime: gt 0
-            componentId: 4002
-            spanType: Entry
-            peer: localhost:5001
-            skipAnalysis: false
           - operationName: /express
             operationId: 0
             parentSpanId: 0
@@ -106,4 +88,22 @@ segmentItems:
             componentId: 2
             spanType: Exit
             peer: server:5000
+            skipAnalysis: false
+          - operationName: /express
+            operationId: 0
+            parentSpanId: -1
+            spanId: 0
+            spanLayer: Http
+            tags:
+              - key: http.url
+                value: localhost:5001/express
+              - key: http.status.code
+                value: '200'
+              - key: http.status.msg
+                value: OK
+            startTime: gt 0
+            endTime: gt 0
+            componentId: 4002
+            spanType: Entry
+            peer: not null
             skipAnalysis: false
