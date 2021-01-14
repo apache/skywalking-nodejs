@@ -20,10 +20,12 @@
 export class Component {
   static readonly UNKNOWN = new Component(0);
   static readonly HTTP = new Component(2);
+  static readonly MYSQL = new Component(5);
   static readonly MONGODB = new Component(9);
+  static readonly GRPC = new Component(23);
   static readonly HTTP_SERVER = new Component(49);
   static readonly EXPRESS = new Component(4002);
   static readonly AXIOS = new Component(4005);
 
-  constructor(public readonly id: number) {}
+  constructor(public readonly id: number) { }
 }

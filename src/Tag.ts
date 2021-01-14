@@ -45,4 +45,39 @@ export default {
       val: `${val}`,
     } as Tag;
   },
+  DBType: (val: string | undefined): Tag => {
+    return {
+      key: 'db.type',
+      overridable: true,
+      val: `${val}`,
+    };
+  },
+  DBInstance: (val: string | undefined): Tag => {
+    return {
+      key: 'db.instance',
+      overridable: true,
+      val: `${val}`,
+    };
+  },
+  DBStatement: (val: string | undefined): Tag => {
+    return {
+      key: 'db.statement',
+      overridable: true,
+      val: `${val}`,
+    };
+  },
+  GrpcMetaData: (val: string | undefined): Tag => {
+    return {
+      key: 'grpc.metadata',
+      overridable: true,
+      val: `${val}`,
+    };
+  },
+  GrpcArgument: (val: string | undefined): Tag => {
+    return {
+      key: 'grpc.argument',
+      overridable: true,
+      val: `${val}`,
+    };
+  },
 };
