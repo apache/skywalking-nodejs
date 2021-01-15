@@ -24,7 +24,7 @@ on:
       - master
 
 jobs:
-  Build:
+  TestPlugins:
     runs-on: ubuntu-18.04
     timeout-minutes: 30
     strategy:
@@ -54,3 +54,16 @@ jobs:
           npm i
           npm run lint
           npm run test
+
+  TestLib:
+    runs-on: ubuntu-18.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Test Dist Lib
+        run: |
+          docker build . -f tests/build/Dockerfile -t skywalking-nodejs:${{ github.sha }}
+          docker run --rm skywalking-nodejs:${{ github.sha }}

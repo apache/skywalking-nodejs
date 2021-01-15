@@ -17,9 +17,9 @@
  *
  */
 
-export abstract class CarrierItem {
-  abstract get value(): string;
-  abstract set value(val: string);
+import agent from 'skywalking-backend-js';
 
-  protected constructor(public key: string) {}
-}
+agent.start({
+  serviceName: 'server',
+  maxBufferSize: 1000,
+});

@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-#
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -14,27 +12,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
 
-ROOT_DIR=$(cd "$(dirname "$0")"/..; pwd)
-OUT_DIR="$ROOT_DIR"/${OUT_DIR:-src/proto/}
+FROM node:12
 
-mkdir -p $OUT_DIR || true
+WORKDIR /app
 
-cd "${ROOT_DIR}"/protocol || exit
+ADD . /app
 
-PROTOC_GEN_TS_PATH="${ROOT_DIR}/node_modules/.bin/protoc-gen-ts"
-PROTOC_PLUGIN="${ROOT_DIR}/node_modules/.bin/grpc_tools_node_protoc_plugin"
-PROTOC="${ROOT_DIR}/node_modules/.bin/grpc_tools_node_protoc"
+RUN npm install request && npm install && npm run build
 
-${PROTOC} \
-    --js_out=import_style=commonjs,binary:$OUT_DIR \
-    --grpc_out=$OUT_DIR \
-    --plugin=protoc-gen-grpc="${PROTOC_PLUGIN}" \
-      **/*.proto
+ADD tests/build/main.ts /test/main.ts
+ADD tests/build/package.json /test/package.json
 
-${PROTOC} \
-    --plugin=protoc-gen-ts="${PROTOC_GEN_TS_PATH}" \
-    --ts_out=$OUT_DIR \
-      **/*.proto
+WORKDIR /test
 
+RUN npm install && npm install /app && npm run build
