@@ -1,4 +1,4 @@
 
 module.exports = {
-    "src/**/*.js": ["npm run lint:js", "npm run test:related"],
+    "src/**/*.ts": ["npm run lint:ts", "npm run test:related"],
   };
