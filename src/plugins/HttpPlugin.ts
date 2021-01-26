@@ -58,7 +58,9 @@ class HttpPlugin implements SwPlugin {
             host: (url.host || url.hostname || 'unknown') + ':' + (url.port || 80),
             pathname: url.path || '/',
           };
-      const operation = pathname.replace(/\?.*$/g, '');
+        const httpMethod = arguments[url instanceof URL || typeof url === 'string' ? 1 : 0]?.method || 'GET';
+        const httpURL = host + pathname;
+        const operation = pathname.replace(/\?.*$/g, '');
 
       let stopped = 0;  // compensating if request aborted right after creation 'close' is not emitted
       const stopIfNotStopped = () => !stopped++ ? span.stop() : null;  // make sure we stop only once
@@ -72,9 +74,11 @@ class HttpPlugin implements SwPlugin {
         if (!span.peer) {
           span.peer = host;
         }
-        const httpURL = host + pathname;
-        if (!span.hasTag(httpURL)) {
+        if (!span.hasTag(Tag.httpURLKey)) {  // only set if a higher level plugin with more info did not already set
           span.tag(Tag.httpURL(httpURL));
+        }
+        if (!span.hasTag(Tag.httpMethodKey)) {
+          span.tag(Tag.httpMethod(httpMethod));
         }
 
         const req: ClientRequest = _request.apply(this, arguments);
@@ -154,6 +158,7 @@ class HttpPlugin implements SwPlugin {
             ? `[${req.connection.remoteAddress}]:${req.connection.remotePort}`
             : `${req.connection.remoteAddress}:${req.connection.remotePort}`;
           span.tag(Tag.httpURL((req.headers.host || '') + req.url));
+          span.tag(Tag.httpMethod(req.method));
 
           let ret = handler.call(this, req, res, ...reqArgs);
           const type = ret?.constructor;

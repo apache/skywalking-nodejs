@@ -73,6 +73,7 @@ class ExpressPlugin implements SwPlugin {
         span.component = Component.EXPRESS;
         span.peer = req.headers.host || '';
         span.tag(Tag.httpURL(span.peer + req.url));
+        span.tag(Tag.httpMethod(req.method));
 
         const ret = _handle.call(this, req, res, (err: Error) => {
           if (err) {
