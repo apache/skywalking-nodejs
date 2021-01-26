@@ -35,6 +35,8 @@ segmentItems:
             tags:
               - key: http.url
                 value: httpbin.org/json
+              - key: http.method
+                value: GET
               - key: http.status.code
                 value: '200'
               - key: http.status.msg
@@ -47,6 +49,8 @@ segmentItems:
             tags:
               - key: http.url
                 value: server:5000/express
+              - key: http.method
+                value: GET
               - key: http.status.code
                 value: '200'
               - key: http.status.msg
@@ -79,6 +83,8 @@ segmentItems:
             tags:
               - key: http.url
                 value: server:5000/express
+              - key: http.method
+                value: GET
               - key: http.status.code
                 value: '200'
               - key: http.status.msg
@@ -97,6 +103,8 @@ segmentItems:
             tags:
               - key: http.url
                 value: localhost:5001/express
+              - key: http.method
+                value: GET
               - key: http.status.code
                 value: '200'
               - key: http.status.msg
