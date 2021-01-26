@@ -154,9 +154,14 @@ class HttpPlugin implements SwPlugin {
         try {
           span.component = Component.HTTP_SERVER;
           span.layer = SpanLayer.HTTP;
-          span.peer = req.connection.remoteFamily === 'IPv6'
-            ? `[${req.connection.remoteAddress}]:${req.connection.remotePort}`
-            : `${req.connection.remoteAddress}:${req.connection.remotePort}`;
+          // span.peer = req.connection.remoteFamily === 'IPv6'
+          //   ? `[${req.connection.remoteAddress}]:${req.connection.remotePort}`
+          //   : `${req.connection.remoteAddress}:${req.connection.remotePort}`;
+          span.peer =
+            (typeof req.headers['x-forwarded-for'] === 'string' && req.headers['x-forwarded-for'].split(',').shift())
+            || (req.connection.remoteFamily === 'IPv6'
+              ? `[${req.connection.remoteAddress}]:${req.connection.remotePort}`
+              : `${req.connection.remoteAddress}:${req.connection.remotePort}`);
           span.tag(Tag.httpURL((req.headers.host || '') + req.url));
           span.tag(Tag.httpMethod(req.method));
 

@@ -71,8 +71,12 @@ class ExpressPlugin implements SwPlugin {
       try {
         span.layer = SpanLayer.HTTP;
         span.component = Component.EXPRESS;
-        span.peer = req.headers.host || '';
-        span.tag(Tag.httpURL(span.peer + req.url));
+        span.peer =
+          (typeof req.headers['x-forwarded-for'] === 'string' && req.headers['x-forwarded-for'].split(',').shift())
+          || (req.connection.remoteFamily === 'IPv6'
+            ? `[${req.connection.remoteAddress}]:${req.connection.remotePort}`
+            : `${req.connection.remoteAddress}:${req.connection.remotePort}`);
+        span.tag(Tag.httpURL((req.headers.host || '') + req.url));
         span.tag(Tag.httpMethod(req.method));
 
         const ret = _handle.call(this, req, res, (err: Error) => {
