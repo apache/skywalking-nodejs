@@ -76,7 +76,6 @@ class ExpressPlugin implements SwPlugin {
           || (req.connection.remoteFamily === 'IPv6'
             ? `[${req.connection.remoteAddress}]:${req.connection.remotePort}`
             : `${req.connection.remoteAddress}:${req.connection.remotePort}`);
-        span.tag(Tag.httpURL((req.headers.host || '') + req.url));
         span.tag(Tag.httpMethod(req.method));
 
         const ret = _handle.call(this, req, res, (err: Error) => {
@@ -95,6 +94,8 @@ class ExpressPlugin implements SwPlugin {
       } catch (e) {
         stopIfNotStopped(e);
         throw e;
+      } finally {  // req.protocol is only possibly available after call to _handle()
+        span.tag(Tag.httpURL(((req as any).protocol ? (req as any).protocol + '://' : '') + (req.headers.host || '') + req.url));
       }
     };
   }

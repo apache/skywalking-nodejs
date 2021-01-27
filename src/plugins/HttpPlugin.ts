@@ -38,9 +38,9 @@ class HttpPlugin implements SwPlugin {
     const https = require('https');
 
     this.interceptClientRequest(http);
-    this.interceptServerRequest(http);
+    this.interceptServerRequest(http, 'http');
     this.interceptClientRequest(https);
-    this.interceptServerRequest(https);
+    this.interceptServerRequest(https, 'https');
   }
 
   private interceptClientRequest(module: any) {
@@ -120,7 +120,7 @@ class HttpPlugin implements SwPlugin {
     };
   }
 
-  private interceptServerRequest(module: any) {
+  private interceptServerRequest(module: any, protocol: string) {
     /// TODO? full event protocol support not currently implemented (prependListener(), removeListener(), etc...)
     const _addListener = module.Server.prototype.addListener;
 
@@ -159,7 +159,7 @@ class HttpPlugin implements SwPlugin {
             || (req.connection.remoteFamily === 'IPv6'
               ? `[${req.connection.remoteAddress}]:${req.connection.remotePort}`
               : `${req.connection.remoteAddress}:${req.connection.remotePort}`);
-          span.tag(Tag.httpURL((req.headers.host || '') + req.url));
+          span.tag(Tag.httpURL(protocol + '://' + (req.headers.host || '') + req.url));
           span.tag(Tag.httpMethod(req.method));
 
           let ret = handler.call(this, req, res, ...reqArgs);
