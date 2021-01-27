@@ -59,8 +59,8 @@ if (async_hooks.AsyncLocalStorage) {
 class ContextManager {
   get asyncState(): AsyncState {
     let asyncState = store.getStore();
-
-    if (asyncState === undefined) {
+    // since `AsyncLocalStorage.getStore` may get previous state, see issue https://github.com/nodejs/node/issues/35286#issuecomment-697207158, so recreate when context is invalid
+    if (asyncState === undefined || asyncState.context.invalid) {
       asyncState = { context: new SpanContext(), spans: [] };
       store.enterWith(asyncState);
     }
@@ -79,7 +79,7 @@ class ContextManager {
   spansDup(): Span[] {
     let asyncState = store.getStore();
 
-    if (asyncState === undefined) {
+    if (asyncState === undefined || asyncState.context.invalid) {
       asyncState = { context: new SpanContext(), spans: [] };
     } else {
       asyncState = { context: asyncState.context, spans: [...asyncState.spans] };
@@ -91,6 +91,7 @@ class ContextManager {
   }
 
   clear(): void {
+    this.current.invalid = true;
     store.enterWith(undefined as unknown as AsyncState);
   }
 
