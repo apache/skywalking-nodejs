@@ -35,6 +35,8 @@ segmentItems:
             tags:
               - key: http.url
                 value: httpbin.org/json
+              - key: http.method
+                value: GET
               - key: http.status.code
                 value: '200'
               - key: http.status.msg
@@ -47,6 +49,8 @@ segmentItems:
             tags:
               - key: http.url
                 value: server:5000/express
+              - key: http.method
+                value: GET
               - key: http.status.code
                 value: '200'
               - key: http.status.msg
@@ -64,7 +68,7 @@ segmentItems:
             endTime: gt 0
             componentId: 4002
             spanType: Entry
-            peer: server:5000
+            peer: not null
             skipAnalysis: false
   - serviceName: client
     segmentSize: 1
@@ -79,6 +83,8 @@ segmentItems:
             tags:
               - key: http.url
                 value: server:5000/express
+              - key: http.method
+                value: GET
               - key: http.status.code
                 value: '200'
               - key: http.status.msg
@@ -97,6 +103,8 @@ segmentItems:
             tags:
               - key: http.url
                 value: localhost:5001/express
+              - key: http.method
+                value: GET
               - key: http.status.code
                 value: '200'
               - key: http.status.msg

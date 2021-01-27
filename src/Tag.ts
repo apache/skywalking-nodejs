@@ -24,23 +24,33 @@ export interface Tag {
 }
 
 export default {
-  httpStatusCode: (val: string | number | undefined): Tag => {
+  httpURLKey: 'http.url',
+  httpMethodKey: 'http.method',  // TODO: maybe find a better place to put these?
+
+  httpStatusCode(val: string | number | undefined): Tag {
     return {
       key: 'http.status.code',
       overridable: true,
       val: `${val}`,
     } as Tag;
   },
-  httpStatusMsg: (val: string | undefined): Tag => {
+  httpStatusMsg(val: string | undefined): Tag {
     return {
       key: 'http.status.msg',
       overridable: true,
       val: `${val}`,
     } as Tag;
   },
-  httpURL: (val: string | undefined): Tag => {
+  httpURL(val: string | undefined): Tag {
     return {
-      key: 'http.url',
+      key: this.httpURLKey,
+      overridable: true,
+      val: `${val}`,
+    } as Tag;
+  },
+  httpMethod(val: string | undefined): Tag {
+    return {
+      key: this.httpMethodKey,
       overridable: true,
       val: `${val}`,
     } as Tag;
