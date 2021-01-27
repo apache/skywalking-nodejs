@@ -48,7 +48,7 @@ segmentItems:
             spanLayer: Http
             tags:
               - key: http.url
-                value: server:5000/express
+                value: http://server:5000/express
               - key: http.method
                 value: GET
               - key: http.status.code
@@ -102,7 +102,7 @@ segmentItems:
             spanLayer: Http
             tags:
               - key: http.url
-                value: localhost:5001/express
+                value: http://localhost:5001/express
               - key: http.method
                 value: GET
               - key: http.status.code
