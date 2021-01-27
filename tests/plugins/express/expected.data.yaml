@@ -68,7 +68,7 @@ segmentItems:
             endTime: gt 0
             componentId: 4002
             spanType: Entry
-            peer: server:5000
+            peer: not null
             skipAnalysis: false
   - serviceName: client
     segmentSize: 1
