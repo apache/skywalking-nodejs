@@ -39,7 +39,6 @@ export default class SpanContext implements Context {
   spanId = 0;
   nSpans = 0;
   segment: Segment = new Segment();
-  invalid = false;
 
   get parent(): Span | null {
     if (ContextManager.spans.length > 0) {

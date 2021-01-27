@@ -32,7 +32,6 @@ export default class DummyContext implements Context {
   });
   segment: Segment = new Segment();
   depth = 0;
-  invalid = false;
 
   newEntrySpan(operation: string, carrier?: ContextCarrier): Span {
     return this.span;
