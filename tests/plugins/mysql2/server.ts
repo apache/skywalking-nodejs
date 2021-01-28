@@ -17,14 +17,31 @@
  *
  */
 
-export class Component {
-  static readonly UNKNOWN = new Component(0);
-  static readonly HTTP = new Component(2);
-  static readonly MYSQL = new Component(5);
-  static readonly MONGODB = new Component(9);
-  static readonly HTTP_SERVER = new Component(49);
-  static readonly EXPRESS = new Component(4002);
-  static readonly AXIOS = new Component(4005);
+import * as http from 'http';
+import mysql from 'mysql2';
+import agent from '../../../src';
 
-  constructor(public readonly id: number) { }
-}
+agent.start({
+  serviceName: 'server',
+  maxBufferSize: 1000,
+})
+
+const server = http.createServer((req, res) => {
+  const connection = mysql.createConnection({
+    host: process.env.MYSQL_HOST || 'mysql',
+    user: 'root',
+    password: 'root',
+    database: 'test'
+  });
+  connection.query(
+    'SELECT * FROM `user` WHERE `name` = "u1"',
+    function (err, results, fields) {
+      res.end(JSON.stringify({
+        results,
+        fields
+      }))
+    }
+  );
+})
+
+server.listen(5000, () => console.info('Listening on port 5000...'));

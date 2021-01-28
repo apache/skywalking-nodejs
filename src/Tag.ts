@@ -55,4 +55,25 @@ export default {
       val: `${val}`,
     } as Tag;
   },
+  dbType: (val: string | undefined): Tag => {
+    return {
+      key: 'db.type',
+      overridable: true,
+      val: `${val}`,
+    };
+  },
+  dbInstance: (val: string | undefined): Tag => {
+    return {
+      key: 'db.instance',
+      overridable: true,
+      val: `${val}`,
+    };
+  },
+  dbStatement: (val: string | undefined): Tag => {
+    return {
+      key: 'db.statement',
+      overridable: true,
+      val: `${val}`,
+    };
+  },
 };
