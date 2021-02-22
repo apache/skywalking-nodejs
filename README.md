@@ -57,6 +57,7 @@ Environment Variable | Description | Default
 | `SW_AGENT_LOGGING_LEVEL` | The logging level, could be one of `CRITICAL`, `FATAL`, `ERROR`, `WARN`(`WARNING`), `INFO`, `DEBUG` | `INFO` |
 | `SW_IGNORE_SUFFIX` | The suffices of endpoints that will be ignored (not traced), comma separated | `.jpg,.jpeg,.js,.css,.png,.bmp,.gif,.ico,.mp3,.mp4,.html,.svg` |
 | `SW_TRACE_IGNORE_PATH` | The paths of endpoints that will be ignored (not traced), comma separated | `` |
+| `SW_MYSQL_SQL_PARAMETERS_MAX_LENGTH` | The maximum string length of MySQL parameters to log | `512` |
 | `SW_AGENT_MAX_BUFFER_SIZE` | The maximum buffer size before sending the segment data to backend | `'1000'` |
 
 ## Supported Libraries
@@ -65,9 +66,20 @@ There are some built-in plugins that support automatic instrumentation of NodeJS
 
 Library | Plugin Name
 | :--- | :--- |
-| built-in `http` and `https` module | `http` |
+| built-in `http` and `https` module | `http` / `https` |
 | [`express`](https://expressjs.com) | `express` |
 | [`axios`](https://github.com/axios/axios) | `axios` |
+| [`mysql`](https://github.com/mysqljs/mysql) | `mysql` |
+
+### Compatible Libraries
+
+The following are packages that have been tested to some extent and are compatible because they work through the instrumentation of an underlying package:
+
+Library | Underlying Plugin Name
+| :--- | :--- |
+| [`request`](https://github.com/request/request) | `http` / `https` |
+| [`request-promise`](https://github.com/request/request-promise) | `http` / `https` |
+| [`koa`](https://github.com/koajs/koa) | `http` / `https` |
 
 ## Contact Us
 * Submit [an issue](https://github.com/apache/skywalking/issues/new) by using [Nodejs] as title prefix.
