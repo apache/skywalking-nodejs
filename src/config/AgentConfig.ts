@@ -27,7 +27,7 @@ export type AgentConfig = {
   maxBufferSize?: number;
   ignoreSuffix?: string;
   traceIgnorePath?: string;
-  mysql_sql_parameters_max_length?: number;
+  sql_parameters_max_length?: number;
   // the following is internal state computed from config values
   reIgnoreOperation?: RegExp;
 };
@@ -60,6 +60,6 @@ export default {
     Number.parseInt(process.env.SW_AGENT_MAX_BUFFER_SIZE as string, 10) : 1000,
   ignoreSuffix: process.env.SW_IGNORE_SUFFIX ?? '.jpg,.jpeg,.js,.css,.png,.bmp,.gif,.ico,.mp3,.mp4,.html,.svg',
   traceIgnorePath: process.env.SW_TRACE_IGNORE_PATH || '',
-  mysql_sql_parameters_max_length: Math.trunc(Math.max(0, Number(process.env.SW_MYSQL_SQL_PARAMETERS_MAX_LENGTH))) || 512,
+  sql_parameters_max_length: Math.trunc(Math.max(0, Number(process.env.SW_MYSQL_SQL_PARAMETERS_MAX_LENGTH))) || 512,
   reIgnoreOperation: RegExp(''),  // temporary placeholder so Typescript doesn't throw a fit
 };

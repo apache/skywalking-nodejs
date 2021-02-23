@@ -22,6 +22,7 @@ export class Component {
   static readonly HTTP = new Component(2);
   static readonly MYSQL = new Component(5);
   static readonly MONGODB = new Component(9);
+  static readonly POSTGRESQL = new Component(22);
   static readonly HTTP_SERVER = new Component(49);
   static readonly EXPRESS = new Component(4002);
   static readonly AXIOS = new Component(4005);

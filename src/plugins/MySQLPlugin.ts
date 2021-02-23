@@ -56,6 +56,13 @@ class MySQLPlugin implements SwPlugin {
       const span = ContextManager.current.newExitSpan('mysql/query', host).start();
 
       try {
+        span.component = Component.MYSQL;
+        span.layer = SpanLayer.DATABASE;
+        span.peer = host;
+
+        span.tag(Tag.dbType('Mysql'));
+        span.tag(Tag.dbInstance(`${this.config.database}`));
+
         let _sql: any;
         let _values: any;
         let streaming: any;
@@ -103,19 +110,13 @@ class MySQLPlugin implements SwPlugin {
           }
         }
 
-        span.component = Component.MYSQL;
-        span.layer = SpanLayer.DATABASE;
-        span.peer = host;
-
-        span.tag(Tag.dbType('mysql'));
-        span.tag(Tag.dbInstance(this.config.database || ''));
-        span.tag(Tag.dbStatement(_sql || ''));
+        span.tag(Tag.dbStatement(`${_sql}`));
 
         if (_values) {
-          let vals = _values.map((v: any) => `${v}`).join(', ');
+          let vals = _values.map((v: any) => v === undefined ? 'undefined' : JSON.stringify(v)).join(', ');
 
-          if (vals.length > config.mysql_sql_parameters_max_length)
-            vals = vals.splice(0, config.mysql_sql_parameters_max_length);
+          if (vals.length > config.sql_parameters_max_length)
+            vals = vals.splice(0, config.sql_parameters_max_length);
 
             span.tag(Tag.dbSqlParameters(`[${vals}]`));
         }
