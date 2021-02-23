@@ -24,19 +24,25 @@ export interface Tag {
 }
 
 export default {
+  httpStatusCodeKey: 'http.status.code',  // TODO: maybe find a better place to put these?
+  httpStatusMsgKey: 'http.status.msg',
   httpURLKey: 'http.url',
-  httpMethodKey: 'http.method',  // TODO: maybe find a better place to put these?
+  httpMethodKey: 'http.method',
+  dbTypeKey: 'db.type',
+  dbInstanceKey: 'db.instance',
+  dbStatementKey: 'db.statement',
+  dbSqlParametersKey: 'db.sql.parameters',
 
   httpStatusCode(val: string | number | undefined): Tag {
     return {
-      key: 'http.status.code',
+      key: this.httpStatusCodeKey,
       overridable: true,
       val: `${val}`,
     } as Tag;
   },
   httpStatusMsg(val: string | undefined): Tag {
     return {
-      key: 'http.status.msg',
+      key: this.httpStatusMsgKey,
       overridable: true,
       val: `${val}`,
     } as Tag;
@@ -52,6 +58,34 @@ export default {
     return {
       key: this.httpMethodKey,
       overridable: true,
+      val: `${val}`,
+    } as Tag;
+  },
+  dbType(val: string | undefined): Tag {
+    return {
+      key: this.dbTypeKey,
+      overridable: true,
+      val: `${val}`,
+    } as Tag;
+  },
+  dbInstance(val: string | undefined): Tag {
+    return {
+      key: this.dbInstanceKey,
+      overridable: true,
+      val: `${val}`,
+    } as Tag;
+  },
+  dbStatement(val: string | undefined): Tag {
+    return {
+      key: this.dbStatementKey,
+      overridable: true,
+      val: `${val}`,
+    } as Tag;
+  },
+  dbSqlParameters(val: string | undefined): Tag {
+    return {
+      key: this.dbSqlParametersKey,
+      overridable: false,
       val: `${val}`,
     } as Tag;
   },
