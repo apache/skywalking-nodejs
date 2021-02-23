@@ -43,6 +43,8 @@ class MySQLPlugin implements SwPlugin {
     Connection.prototype.query = function(sql: any, values: any, cb: any) {
       const wrapCallback = (_cb: any) => {
         return function(this: any, error: any, results: any, fields: any) {
+          span.resync();
+
           if (error)
             span.error(error);
 
@@ -51,6 +53,8 @@ class MySQLPlugin implements SwPlugin {
           return _cb.call(this, error, results, fields);
         }
       };
+
+      let query: any;
 
       const host = `${this.config.host}:${this.config.port}`;
       const span = ContextManager.current.newExitSpan('mysql/query', host).start();
@@ -121,14 +125,19 @@ class MySQLPlugin implements SwPlugin {
             span.tag(Tag.dbSqlParameters(`[${vals}]`));
         }
 
-        const query = _query.call(this, sql, values, cb);
+        query = _query.call(this, sql, values, cb);
 
         if (streaming) {
-          query.on('error', (e: any) => span.error(e));
-          query.on('end', () => span.stop());
-        }
+          query.on('error', (e: any) => {
+            span.resync();
+            span.error(e);
+          });
 
-        return query;
+          query.on('end', () => {
+            span.resync();  // may have already been done in 'error' but safe to do multiple times
+            span.stop()
+          });
+        }
 
       } catch (e) {
         span.error(e);
@@ -136,6 +145,10 @@ class MySQLPlugin implements SwPlugin {
 
         throw e;
       }
+
+      span.async();
+
+      return query;
     };
   }
 }
