@@ -38,7 +38,7 @@ services:
       interval: 5s
       timeout: 60s
       retries: 120
-    image: "docker.io/mysql:latest"
+    image: "docker.io/mysql:5.7.33"
     networks:
       - traveling-light
 
