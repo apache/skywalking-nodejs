@@ -122,7 +122,7 @@ class MySQLPlugin implements SwPlugin {
           if (vals.length > config.sql_parameters_max_length)
             vals = vals.splice(0, config.sql_parameters_max_length);
 
-            span.tag(Tag.dbSqlParameters(`[${vals}]`));
+          span.tag(Tag.dbSqlParameters(`[${vals}]`));
         }
 
         query = _query.call(this, sql, values, cb);

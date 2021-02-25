@@ -48,7 +48,7 @@ segmentItems:
                 parentServiceInstance: not null
                 parentService: client
                 traceId: not null
-          - operationName: Mysql/query
+          - operationName: mysql/query
             operationId: 0
             parentSpanId: 0
             spanId: 1
@@ -61,7 +61,7 @@ segmentItems:
             skipAnalysis: false
             tags:
               - key: db.type
-                value: mysql
+                value: Mysql
               - key: db.instance
                 value: test
               - key: db.statement
