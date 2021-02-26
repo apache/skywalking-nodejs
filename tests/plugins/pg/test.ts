@@ -31,7 +31,7 @@ describe('plugin tests', () => {
   beforeAll(async () => {
     compose = await new DockerComposeEnvironment(rootDir, 'docker-compose.yml')
       .withWaitStrategy('client', Wait.forHealthCheck())
-      .withWaitStrategy('postgre', Wait.forHealthCheck())
+      .withWaitStrategy('postgres', Wait.forHealthCheck())
       .up();
   });
 
@@ -40,7 +40,7 @@ describe('plugin tests', () => {
   });
 
   it(__filename, async () => {
-    await waitForExpect(async () => expect((await axios.get('http://localhost:5001/postgre')).status).toBe(200));
+    await waitForExpect(async () => expect((await axios.get('http://localhost:5001/postgres')).status).toBe(200));
 
     const expectedData = await fs.readFile(path.join(rootDir, 'expected.data.yaml'), 'utf8');
 
