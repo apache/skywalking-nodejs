@@ -26,6 +26,7 @@ services:
       - traveling-light
 
   mysql:
+    container_name: mysql
     environment:
       MYSQL_ROOT_PASSWORD: "root"
       MYSQL_DATABASE: "test"

@@ -31,6 +31,7 @@ describe('plugin tests', () => {
   beforeAll(async () => {
     compose = await new DockerComposeEnvironment(rootDir, 'docker-compose.yml')
       .withWaitStrategy('client', Wait.forHealthCheck())
+      .withWaitStrategy('mysql', Wait.forHealthCheck())
       .up();
   });
 
