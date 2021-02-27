@@ -43,6 +43,8 @@ class MySQLPlugin implements SwPlugin {
     Connection.prototype.query = function(sql: any, values: any, cb: any) {
       const wrapCallback = (_cb: any) => {
         return function(this: any, error: any, results: any, fields: any) {
+          span.resync();
+
           if (error)
             span.error(error);
 
@@ -52,10 +54,19 @@ class MySQLPlugin implements SwPlugin {
         }
       };
 
+      let query: any;
+
       const host = `${this.config.host}:${this.config.port}`;
       const span = ContextManager.current.newExitSpan('mysql/query', host).start();
 
       try {
+        span.component = Component.MYSQL;
+        span.layer = SpanLayer.DATABASE;
+        span.peer = host;
+
+        span.tag(Tag.dbType('Mysql'));
+        span.tag(Tag.dbInstance(`${this.config.database}`));
+
         let _sql: any;
         let _values: any;
         let streaming: any;
@@ -103,31 +114,30 @@ class MySQLPlugin implements SwPlugin {
           }
         }
 
-        span.component = Component.MYSQL;
-        span.layer = SpanLayer.DATABASE;
-        span.peer = host;
-
-        span.tag(Tag.dbType('mysql'));
-        span.tag(Tag.dbInstance(this.config.database || ''));
-        span.tag(Tag.dbStatement(_sql || ''));
+        span.tag(Tag.dbStatement(`${_sql}`));
 
         if (_values) {
-          let vals = _values.map((v: any) => `${v}`).join(', ');
+          let vals = _values.map((v: any) => v === undefined ? 'undefined' : JSON.stringify(v)).join(', ');
 
-          if (vals.length > config.mysql_sql_parameters_max_length)
-            vals = vals.splice(0, config.mysql_sql_parameters_max_length);
+          if (vals.length > config.sql_parameters_max_length)
+            vals = vals.splice(0, config.sql_parameters_max_length);
 
-            span.tag(Tag.dbSqlParameters(`[${vals}]`));
+          span.tag(Tag.dbSqlParameters(`[${vals}]`));
         }
 
-        const query = _query.call(this, sql, values, cb);
+        query = _query.call(this, sql, values, cb);
 
         if (streaming) {
-          query.on('error', (e: any) => span.error(e));
-          query.on('end', () => span.stop());
-        }
+          query.on('error', (e: any) => {
+            span.resync();
+            span.error(e);
+          });
 
-        return query;
+          query.on('end', () => {
+            span.resync();  // may have already been done in 'error' but safe to do multiple times
+            span.stop()
+          });
+        }
 
       } catch (e) {
         span.error(e);
@@ -135,6 +145,10 @@ class MySQLPlugin implements SwPlugin {
 
         throw e;
       }
+
+      span.async();
+
+      return query;
     };
   }
 }

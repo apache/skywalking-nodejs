@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-version: '2.1'
+version: "2.1"
 
 services:
   collector:
@@ -25,22 +25,46 @@ services:
     networks:
       - traveling-light
 
+  postgres:
+    container_name: postgres
+    environment:
+      POSTGRES_USER: "root"
+      POSTGRES_PASSWORD: "root"
+      POSTGRES_DB: "test"
+    ports:
+      - 5432:5432
+    volumes:
+      - ./init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/5432"]
+      interval: 5s
+      timeout: 60s
+      retries: 120
+    image: "docker.io/postgres:13.2"
+    networks:
+      - traveling-light
+
   server:
     extends:
       file: ../common/base-compose.yml
       service: agent
     ports:
       - 5000:5000
+    environment:
+      POSTGRES_HOST: postgres
     volumes:
-      - .:/app/tests/plugins/express
+      - .:/app/tests/plugins/pg
     healthcheck:
-      test: [ "CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/5000" ]
+      test: ["CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/5000"]
       interval: 5s
       timeout: 60s
       retries: 120
-    entrypoint: [ 'bash', '-c', 'npx ts-node /app/tests/plugins/axios/server.ts' ]
+    entrypoint:
+      ["bash", "-c", "npx ts-node /app/tests/plugins/pg/server.ts"]
     depends_on:
       collector:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
 
   client:
@@ -52,11 +76,12 @@ services:
     environment:
       SERVER: server:5000
     healthcheck:
-      test: [ "CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/5001" ]
+      test: ["CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/5001"]
       interval: 5s
       timeout: 60s
       retries: 120
-    entrypoint: [ 'bash', '-c', 'npx ts-node /app/tests/plugins/axios/client.ts' ]
+    entrypoint:
+      ["bash", "-c", "npx ts-node /app/tests/plugins/pg/client.ts"]
     depends_on:
       server:
         condition: service_healthy

@@ -17,15 +17,34 @@
  *
  */
 
-export class Component {
-  static readonly UNKNOWN = new Component(0);
-  static readonly HTTP = new Component(2);
-  static readonly MYSQL = new Component(5);
-  static readonly MONGODB = new Component(9);
-  static readonly POSTGRESQL = new Component(22);
-  static readonly HTTP_SERVER = new Component(49);
-  static readonly EXPRESS = new Component(4002);
-  static readonly AXIOS = new Component(4005);
+import * as http from 'http';
+import {Client} from 'pg';
+import agent from '../../../src';
 
-  constructor(public readonly id: number) {}
-}
+process.env.SW_AGENT_LOGGING_LEVEL = 'ERROR';
+
+agent.start({
+  serviceName: 'server',
+  maxBufferSize: 1000,
+})
+
+const server = http.createServer((req, res) => {
+  const client = new Client({
+    host: process.env.POSTGRES_HOST || 'postgres',
+    user: 'root',
+    password: 'root',
+    database: 'test'
+  });
+  client.connect();
+  client.query(`SELECT * FROM "user" where name = 'u1'`).then(
+    (resDB: any) => {
+      res.end(JSON.stringify(resDB.rows));
+      client.end();
+    },
+    (err: any) => {
+      client.end();
+    },
+  );
+})
+
+server.listen(5000, () => console.info('Listening on port 5000...'));

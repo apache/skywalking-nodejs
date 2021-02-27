@@ -57,7 +57,7 @@ Environment Variable | Description | Default
 | `SW_AGENT_LOGGING_LEVEL` | The logging level, could be one of `CRITICAL`, `FATAL`, `ERROR`, `WARN`(`WARNING`), `INFO`, `DEBUG` | `INFO` |
 | `SW_IGNORE_SUFFIX` | The suffices of endpoints that will be ignored (not traced), comma separated | `.jpg,.jpeg,.js,.css,.png,.bmp,.gif,.ico,.mp3,.mp4,.html,.svg` |
 | `SW_TRACE_IGNORE_PATH` | The paths of endpoints that will be ignored (not traced), comma separated | `` |
-| `SW_MYSQL_SQL_PARAMETERS_MAX_LENGTH` | The maximum string length of MySQL parameters to log | `512` |
+| `SW_SQL_PARAMETERS_MAX_LENGTH` | The maximum string length of SQL parameters to log | `512` |
 | `SW_AGENT_MAX_BUFFER_SIZE` | The maximum buffer size before sending the segment data to backend | `'1000'` |
 
 ## Supported Libraries
@@ -70,6 +70,7 @@ Library | Plugin Name
 | [`express`](https://expressjs.com) | `express` |
 | [`axios`](https://github.com/axios/axios) | `axios` |
 | [`mysql`](https://github.com/mysqljs/mysql) | `mysql` |
+| [`pg`](https://github.com/brianc/node-postgres) | `pg` |
 
 ### Compatible Libraries
 
