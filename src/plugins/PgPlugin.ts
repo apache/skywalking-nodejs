@@ -22,21 +22,14 @@ import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
 import Tag from '../Tag';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
-import { createLogger } from '../logging';
 import PluginInstaller from '../core/PluginInstaller';
 import agentConfig from '../config/AgentConfig';
-
-const logger = createLogger(__filename);
 
 class MySQLPlugin implements SwPlugin {
   readonly module = 'pg';
   readonly versions = '*';
 
   install(installer: PluginInstaller): void {
-    if (logger.isDebugEnabled()) {
-      logger.debug('installing pg plugin');
-    }
-
     const Client = installer.require('pg/lib/client');
     const _query = Client.prototype.query;
 
@@ -102,7 +95,7 @@ class MySQLPlugin implements SwPlugin {
 
         query = _query.call(this, config, values, callback);
 
-        if (query && typeof query.then === 'function' && typeof query.catch === 'function')  // generic Promise check
+        if (query && typeof query.then === 'function') {  // generic Promise check
           query = query.then(
             (res: any) => {
               span.resync();
@@ -119,6 +112,7 @@ class MySQLPlugin implements SwPlugin {
               return Promise.reject(err);
             }
           );
+        }
 
       } catch (e) {
         span.error(e);

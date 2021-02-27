@@ -22,21 +22,14 @@ import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
 import Tag from '../Tag';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
-import { createLogger } from '../logging';
 import PluginInstaller from '../core/PluginInstaller';
 import config from '../config/AgentConfig';
-
-const logger = createLogger(__filename);
 
 class MySQLPlugin implements SwPlugin {
   readonly module = 'mysql';
   readonly versions = '*';
 
   install(installer: PluginInstaller): void {
-    if (logger.isDebugEnabled()) {
-      logger.debug('installing mysql plugin');
-    }
-
     const Connection = installer.require('mysql/lib/Connection');
     const _query = Connection.prototype.query;
 
