@@ -23,20 +23,13 @@ import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
 import Tag from '../Tag';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
-import { createLogger } from '../logging';
 import PluginInstaller from '../core/PluginInstaller';
-
-const logger = createLogger(__filename);
 
 class AxiosPlugin implements SwPlugin {
   readonly module = 'axios';
   readonly versions = '*';
 
   install(installer: PluginInstaller): void {
-    if (logger.isDebugEnabled()) {
-      logger.debug('installing axios plugin');
-    }
-
     this.interceptClientRequest(installer);
   }
 

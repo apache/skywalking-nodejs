@@ -27,8 +27,6 @@ import ExitSpan from '../trace/span/ExitSpan';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from '../trace/context/ContextCarrier';
 
-const NativePromise = (async () => null)().constructor;  // may be different from globally overridden Promise
-
 class HttpPlugin implements SwPlugin {
   readonly module = 'http';
   readonly versions = '*';
@@ -163,9 +161,8 @@ class HttpPlugin implements SwPlugin {
           span.tag(Tag.httpMethod(req.method));
 
           let ret = handler.call(this, req, res, ...reqArgs);
-          const type = ret?.constructor;
 
-          if (type !== Promise && type !== NativePromise) {
+          if (!ret || typeof ret.then !== 'function') {  // generic Promise check
             copyStatusAndStop();
 
           } else {
