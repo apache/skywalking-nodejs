@@ -74,6 +74,7 @@ Library | Plugin Name
 | [`axios`](https://github.com/axios/axios) | `axios` |
 | [`mysql`](https://github.com/mysqljs/mysql) | `mysql` |
 | [`pg`](https://github.com/brianc/node-postgres) | `pg` |
+| [`pg-cursor`](https://github.com/brianc/node-postgres) | `pg-cursor` |
 | [`mongodb`](https://github.com/mongodb/node-mongodb-native) | `mongodb` |
 
 ### Compatible Libraries

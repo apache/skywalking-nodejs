@@ -31,6 +31,13 @@ class MySQLPlugin implements SwPlugin {
 
   install(installer: PluginInstaller): void {
     const Client = installer.require('pg/lib/client');
+
+    let Cursor: any;
+
+    try {
+      Cursor = installer.require('pg-cursor');
+    } catch { /* Linter food */ }
+
     const _query = Client.prototype.query;
 
     Client.prototype.query = function(config: any, values: any, callback: any) {
@@ -76,7 +83,7 @@ class MySQLPlugin implements SwPlugin {
 
         if (typeof values === 'function')
           values = wrapCallback(values);
-        else
+        else if (_values !== undefined)
           _values = values;
 
         if (typeof callback === 'function')
@@ -95,23 +102,37 @@ class MySQLPlugin implements SwPlugin {
 
         query = _query.call(this, config, values, callback);
 
-        if (query && typeof query.then === 'function') {  // generic Promise check
-          query = query.then(
-            (res: any) => {
-              span.resync();
-              span.stop();
-
-              return res;
-            },
-
-            (err: any) => {
-              span.resync();
+        if (query) {
+          if (Cursor && query instanceof Cursor) {
+            query.on('error', (err: any) => {
+              span.resync();  // this may precede 'end' .resync() but its fine
               span.error(err);
               span.stop();
+            });
 
-              return Promise.reject(err);
-            }
-          );
+            query.on('end', () => {
+              span.resync();  // cursor does not .resync() until it is closed because maybe other exit spans will be opened during processing
+              span.stop();
+            });
+
+          } else if (typeof query.then === 'function') {  // generic Promise check
+            query = query.then(
+              (res: any) => {
+                span.resync();
+                span.stop();
+
+                return res;
+              },
+
+              (err: any) => {
+                span.resync();
+                span.error(err);
+                span.stop();
+
+                return Promise.reject(err);
+              }
+            );
+          } // else we assume there was a callback
         }
 
       } catch (e) {
