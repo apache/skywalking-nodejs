@@ -23,7 +23,7 @@ import { Component } from '../trace/Component';
 import Tag from '../Tag';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import PluginInstaller from '../core/PluginInstaller';
-import config from '../config/AgentConfig';
+import agentConfig from '../config/AgentConfig';
 
 class MySQLPlugin implements SwPlugin {
   readonly module = 'mysql';
@@ -109,11 +109,11 @@ class MySQLPlugin implements SwPlugin {
 
         span.tag(Tag.dbStatement(`${_sql}`));
 
-        if (_values) {
+        if (agentConfig.sql_trace_parameters && _values) {
           let vals = _values.map((v: any) => v === undefined ? 'undefined' : JSON.stringify(v)).join(', ');
 
-          if (vals.length > config.sql_parameters_max_length)
-            vals = vals.splice(0, config.sql_parameters_max_length);
+          if (vals.length > agentConfig.sql_parameters_max_length)
+            vals = vals.slice(0, agentConfig.sql_parameters_max_length) + ' ...';
 
           span.tag(Tag.dbSqlParameters(`[${vals}]`));
         }
