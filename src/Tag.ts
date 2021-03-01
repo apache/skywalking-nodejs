@@ -32,6 +32,7 @@ export default {
   dbInstanceKey: 'db.instance',
   dbStatementKey: 'db.statement',
   dbSqlParametersKey: 'db.sql.parameters',
+  dbMongoParametersKey: 'db.mongo.parameters',
 
   httpStatusCode(val: string | number | undefined): Tag {
     return {
@@ -85,6 +86,13 @@ export default {
   dbSqlParameters(val: string | undefined): Tag {
     return {
       key: this.dbSqlParametersKey,
+      overridable: false,
+      val: `${val}`,
+    } as Tag;
+  },
+  dbMongoParameters(val: string | undefined): Tag {
+    return {
+      key: this.dbMongoParametersKey,
       overridable: false,
       val: `${val}`,
     } as Tag;

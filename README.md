@@ -57,7 +57,10 @@ Environment Variable | Description | Default
 | `SW_AGENT_LOGGING_LEVEL` | The logging level, could be one of `CRITICAL`, `FATAL`, `ERROR`, `WARN`(`WARNING`), `INFO`, `DEBUG` | `INFO` |
 | `SW_IGNORE_SUFFIX` | The suffices of endpoints that will be ignored (not traced), comma separated | `.jpg,.jpeg,.js,.css,.png,.bmp,.gif,.ico,.mp3,.mp4,.html,.svg` |
 | `SW_TRACE_IGNORE_PATH` | The paths of endpoints that will be ignored (not traced), comma separated | `` |
+| `SW_SQL_TRACE_PARAMETERS` | If set to 'true' then SQL query parameters will be included | `false` |
 | `SW_SQL_PARAMETERS_MAX_LENGTH` | The maximum string length of SQL parameters to log | `512` |
+| `SW_MONGO_TRACE_PARAMETERS` | If set to 'true' then mongodb query parameters will be included | `false` |
+| `SW_MONGO_PARAMETERS_MAX_LENGTH` | The maximum string length of mongodb parameters to log | `512` |
 | `SW_AGENT_MAX_BUFFER_SIZE` | The maximum buffer size before sending the segment data to backend | `'1000'` |
 
 ## Supported Libraries
@@ -71,6 +74,8 @@ Library | Plugin Name
 | [`axios`](https://github.com/axios/axios) | `axios` |
 | [`mysql`](https://github.com/mysqljs/mysql) | `mysql` |
 | [`pg`](https://github.com/brianc/node-postgres) | `pg` |
+| [`pg-cursor`](https://github.com/brianc/node-postgres) | `pg-cursor` |
+| [`mongodb`](https://github.com/mongodb/node-mongodb-native) | `mongodb` |
 
 ### Compatible Libraries
 
