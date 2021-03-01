@@ -20,6 +20,7 @@
 import SwPlugin from '../core/SwPlugin';
 import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
+import ExitSpan from '../trace/span/ExitSpan';
 import Tag from '../Tag';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import PluginInstaller from '../core/PluginInstaller';
@@ -227,6 +228,12 @@ class MongoDBPlugin implements SwPlugin {
         return;
 
     Collection.prototype[operation] = function(...args: any[]) {
+      const spans = ContextManager.spans;
+      let   span = spans[spans.length - 1];
+
+      if (span && span.component === Component.MONGODB && span instanceof ExitSpan)  // mongodb has called into itself internally
+        return _original.apply(this, args);
+
       let ret: any;
       let host: string;
 
@@ -236,7 +243,7 @@ class MongoDBPlugin implements SwPlugin {
         host = '???';
       }
 
-      const span = ContextManager.current.newExitSpan('/' + this.s.namespace.db, host).start();  // or this.s.db.databaseName
+      span = ContextManager.current.newExitSpan('/' + this.s.namespace.db, host).start();  // or this.s.db.databaseName
 
       try {
         span.component = Component.MONGODB;
