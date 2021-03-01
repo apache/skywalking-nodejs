@@ -132,17 +132,19 @@ export default abstract class Span {
     return this;
   }
 
-  error(error: Error): this {
-    this.errored = true;
+  log(key: string, val: any): this {
     this.logs.push({
       timestamp: new Date().getTime(),
-      items: [
-        {
-          key: 'Stack',
-          val: error.stack,
-        } as LogItem,
-      ],
+      items: [{key, val: `${val}`}]
     } as Log);
+
+    return this;
+  }
+
+  error(error: Error): this {
+    this.errored = true;
+    this.log('Stack', error.stack || '')
+
     return this;
   }
 

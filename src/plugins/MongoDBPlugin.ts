@@ -243,7 +243,7 @@ class MongoDBPlugin implements SwPlugin {
         host = '???';
       }
 
-      span = ContextManager.current.newExitSpan('/' + this.s.namespace.db, host).start();  // or this.s.db.databaseName
+      span = ContextManager.current.newExitSpan('MongoDB/' + operation, host).start();
 
       try {
         span.component = Component.MONGODB;
