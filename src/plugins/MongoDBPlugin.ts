@@ -187,23 +187,23 @@ class MongoDBPlugin implements SwPlugin {
     this.interceptOperation(Collection, 'estimatedDocumentCount', dropFunc);
     this.interceptOperation(Collection, 'countDocuments', findOneFunc);
 
+    this.interceptOperation(Collection, 'createIndex', deleteFunc);
+    this.interceptOperation(Collection, 'createIndexes', deleteFunc);
+    this.interceptOperation(Collection, 'ensureIndex', deleteFunc);
+    this.interceptOperation(Collection, 'dropIndex', deleteFunc);
+    this.interceptOperation(Collection, 'dropIndexes', dropFunc);
+    this.interceptOperation(Collection, 'dropAllIndexes', dropFunc);
+    this.interceptOperation(Collection, 'reIndex', dropFunc);
+
+    this.interceptOperation(Collection, 'indexes', dropFunc);
+    this.interceptOperation(Collection, 'indexExists', deleteFunc);
+    this.interceptOperation(Collection, 'indexInformation', dropFunc);
+    this.interceptOperation(Collection, 'listIndexes', dropFunc);  // cursor
+
     this.interceptOperation(Collection, 'rename', deleteFunc);
     this.interceptOperation(Collection, 'drop', dropFunc);
 
-
     // TODO?
-
-    //   createIndex
-    //   createIndexes
-    //   dropIndex
-    //   dropIndexes
-    //   dropAllIndexes
-    //   ensureIndex
-    //   indexExists
-    //   indexInformation
-    //   indexes
-    //   listIndexes
-    //   reIndex
 
     //   stats
     //   options
@@ -211,7 +211,6 @@ class MongoDBPlugin implements SwPlugin {
     //   initializeUnorderedBulkOp
     //   initializeOrderedBulkOp
     //   watch
-
 
     // NODO:
 
