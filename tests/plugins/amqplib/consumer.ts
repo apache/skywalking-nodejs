@@ -25,14 +25,23 @@ agent.start({
   maxBufferSize: 1000,
 })
 
-const server = http.createServer((req, res) => {
-  http
-    .request(`http://${process.env.SERVER || 'localhost:5000'}${req.url}`, (r) => {
-      let data = '';
-      r.on('data', (chunk) => (data += chunk));
-      r.on('end', () => res.end(data));
-    })
-    .end();
+const server = http.createServer(async (req, res) => {
+  const q = 'queue';
+
+  await new Promise((resolve, reject) => {
+    require('amqplib/callback_api').connect(`amqp://${process.env.RABBITMQ_HOST}`, (err: any, conn: any) => {
+      conn.createChannel((err: any, ch: any) => {
+        ch.assertQueue(q, {durable: false});
+        ch.consume(q, (msg: any) => {
+          ch.ack(msg);
+          ch.close(() => conn.close(() => {
+            res.end('done');
+            resolve(null);
+          }));
+        });
+      });
+    });
+  });
 });
 
 server.listen(5001, () => console.info('Listening on port 5001...'));
