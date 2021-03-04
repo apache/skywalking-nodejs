@@ -23,7 +23,7 @@ import SpanContext from '../../trace/context/SpanContext';
 
 import async_hooks from 'async_hooks';
 
-type AsyncState = { context: Context, spans: Span[], invalid: boolean };
+type AsyncState = { context: Context, spans: Span[] };
 
 let store: {
   getStore(): AsyncState | undefined;
@@ -59,13 +59,16 @@ if (async_hooks.AsyncLocalStorage) {
 class ContextManager {
   get asyncState(): AsyncState {
     let asyncState = store.getStore();
-    // since `AsyncLocalStorage.getStore` may get previous state, see issue https://github.com/nodejs/node/issues/35286#issuecomment-697207158, so recreate when asyncState is invalid
-    if (asyncState === undefined || asyncState.invalid) {
-      asyncState = { context: new SpanContext(), spans: [], invalid: false };
+    if (asyncState === undefined) {
+      asyncState = { context: new SpanContext(), spans: [] };
       store.enterWith(asyncState);
     }
 
     return asyncState;
+  }
+
+  get hasContext(): boolean {
+    return Boolean(store.getStore());
   }
 
   get current(): Context {
@@ -79,10 +82,10 @@ class ContextManager {
   spansDup(): Span[] {
     let asyncState = store.getStore();
 
-    if (asyncState === undefined || asyncState.invalid) {
-      asyncState = { context: new SpanContext(), spans: [], invalid: false };
+    if (asyncState === undefined) {
+      asyncState = { context: new SpanContext(), spans: [] };
     } else {
-      asyncState = { context: asyncState.context, spans: [...asyncState.spans], invalid: asyncState.invalid };
+      asyncState = { context: asyncState.context, spans: [...asyncState.spans] };
     }
 
     store.enterWith(asyncState);
@@ -91,12 +94,11 @@ class ContextManager {
   }
 
   clear(): void {
-    this.asyncState.invalid = true;
     store.enterWith(undefined as unknown as AsyncState);
   }
 
   restore(context: Context, spans: Span[]): void {
-    store.enterWith({ context, spans: spans || [], invalid: this.asyncState.invalid });
+    store.enterWith({ context, spans: spans || [] });
   }
 
   withSpan(span: Span, callback: (...args: any[]) => any, ...args: any[]): any {

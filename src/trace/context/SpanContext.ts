@@ -201,14 +201,15 @@ export default class SpanContext implements Context {
       nSpans: this.nSpans,
     });
 
-    const idx = ContextManager.spans.indexOf(span);
+    const spans = ContextManager.spansDup();  // this needed to make sure async tasks created before this call will still have this span at the top of their span list
+    const idx = spans.indexOf(span);
 
     if (idx !== -1) {
-      ContextManager.spans.splice(idx, 1);
-    }
+      spans.splice(idx, 1);
 
-    if (this.nSpans === 1) {  // this will pass the context to child async task so it doesn't mess with other tasks here
-      ContextManager.clear();
+      if (!spans.length) {  // this will pass the context to child async task so it doesn't mess with other tasks here
+        ContextManager.clear();
+      }
     }
   }
 
@@ -219,7 +220,7 @@ export default class SpanContext implements Context {
       nSpans: this.nSpans,
     });
 
-    if ((span.context as SpanContext).nSpans === 1) {
+    if (!ContextManager.hasContext) {
       ContextManager.restore(span.context, [span]);
     } else if (ContextManager.spans.every((s) => s.id !== span.id)) {
       ContextManager.spans.push(span);

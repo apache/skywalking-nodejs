@@ -59,7 +59,7 @@ class ExpressPlugin implements SwPlugin {
           if (res.statusCode && res.statusCode >= 400) {
             span.errored = true;
           }
-          if (err) {
+          if (err instanceof Error) {
             span.error(err);
           }
           if (res.statusMessage) {

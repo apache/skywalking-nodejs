@@ -61,7 +61,7 @@ class HttpPlugin implements SwPlugin {
         const operation = pathname.replace(/\?.*$/g, '');
 
       let stopped = 0;  // compensating if request aborted right after creation 'close' is not emitted
-      const stopIfNotStopped = () => !stopped++ ? span.stop() : null;  // make sure we stop only once
+      const stopIfNotStopped = () => !stopped++ ? span.stop() : null;  // make sure we stop only because other events may proc along with req.'close'
       const span: ExitSpan = ContextManager.current.newExitSpan(operation, host).start() as ExitSpan;
 
       try {
@@ -81,39 +81,94 @@ class HttpPlugin implements SwPlugin {
 
         const req: ClientRequest = _request.apply(this, arguments);
 
+
+        // TODO: req = http.request(...).on('response') if no callback provided.
+
+
         span.inject().items.forEach((item) => {
           req.setHeader(item.key, item.value);
         });
 
         req.on('close', stopIfNotStopped);
-        req.on('abort', () => (span.errored = true, stopIfNotStopped()));
+        req.on('abort', () => (span.errored = true, span.log('Abort', true), stopIfNotStopped()));
         req.on('error', (err) => (span.error(err), stopIfNotStopped()));
 
-        req.prependListener('response', (res) => {
+        const _emit = req.emit;
+
+        req.emit = function(name: any, ...args: any[]): any {
+          if (name !== 'response')
+            return _emit.call(this, name, ...args);
+
+          let ret: any;
+
           span.resync();
-          span.tag(Tag.httpStatusCode(res.statusCode));
 
-          if (res.statusCode && res.statusCode >= 400) {
-            span.errored = true;
-          }
-          if (res.statusMessage) {
-            span.tag(Tag.httpStatusMsg(res.statusMessage));
+          try {
+            const res = args[0];
+
+            span.tag(Tag.httpStatusCode(res.statusCode));
+
+            if (res.statusCode && res.statusCode >= 400) {
+              span.errored = true;
+            }
+            if (res.statusMessage) {
+              span.tag(Tag.httpStatusMsg(res.statusMessage));
+            }
+
+            res.on('end', stopIfNotStopped);
+
+            const _emitRes = res.emit;
+
+            res.emit = function(nameRes: any, ...argsRes: any[]): any {
+              if (nameRes !== 'data')
+                return _emitRes.call(this, nameRes, ...argsRes);
+
+              let retRes: any;
+
+              span.resync();
+
+              try {
+                retRes = _emitRes.call(this, nameRes, ...argsRes);  // 'data' events wrapped in resync
+
+              } catch (err) {
+                span.error(err);
+
+
+                // TODO: sometimes not exiting
+
+
+                throw err;
+
+              } finally {
+                span.async();
+              }
+
+              return retRes;
+            }
+
+            ret = _emit.call(this, name, ...args);  // 'response' events wrapped in resync
+
+          } catch (err) {
+            span.error(err);
+
+            throw err;
+
+          } finally {
+            span.async();
           }
 
-          res.on('end', stopIfNotStopped);
-        });
+          return ret;
+        };
 
         span.async();
 
         return req;
 
-      } catch (e) {
-        if (!stopped) {  // don't want to set error if exception occurs after clean close
-          span.error(e);
-          stopIfNotStopped();
-        }
+      } catch (err) {
+        span.error(err);
+        stopIfNotStopped();
 
-        throw e;
+        throw err;
       }
     };
   }
@@ -177,16 +232,18 @@ class HttpPlugin implements SwPlugin {
               span.stop();
 
               return Promise.reject(error);
-            })
+            });
+
+            span.async();
           }
 
           return ret;
 
-        } catch (e) {
-          span.error(e);
+        } catch (err) {
+          span.error(err);
           span.stop();
 
-          throw e;
+          throw err;
         }
       }
     };

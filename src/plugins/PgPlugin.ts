@@ -43,7 +43,7 @@ class MySQLPlugin implements SwPlugin {
     Client.prototype.query = function(config: any, values: any, callback: any) {
       const wrapCallback = (_cb: any) => {
         return function(this: any, err: any, res: any) {
-          span.resync();
+          // span.resync();
 
           if (err)
             span.error(err);
@@ -105,27 +105,27 @@ class MySQLPlugin implements SwPlugin {
         if (query) {
           if (Cursor && query instanceof Cursor) {
             query.on('error', (err: any) => {
-              span.resync();  // this may precede 'end' .resync() but its fine
+              // span.resync();  // this may precede 'end' .resync() but its fine
               span.error(err);
               span.stop();
             });
 
             query.on('end', () => {
-              span.resync();  // cursor does not .resync() until it is closed because maybe other exit spans will be opened during processing
+              // span.resync();  // cursor does not .resync() until it is closed because maybe other exit spans will be opened during processing
               span.stop();
             });
 
           } else if (typeof query.then === 'function') {  // generic Promise check
             query = query.then(
               (res: any) => {
-                span.resync();
+                // span.resync();
                 span.stop();
 
                 return res;
               },
 
               (err: any) => {
-                span.resync();
+                // span.resync();
                 span.error(err);
                 span.stop();
 
