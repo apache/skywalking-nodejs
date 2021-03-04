@@ -70,12 +70,13 @@ There are some built-in plugins that support automatic instrumentation of NodeJS
 Library | Plugin Name
 | :--- | :--- |
 | built-in `http` and `https` module | `http` / `https` |
-| [`express`](https://expressjs.com) | `express` |
-| [`axios`](https://github.com/axios/axios) | `axios` |
-| [`mysql`](https://github.com/mysqljs/mysql) | `mysql` |
-| [`pg`](https://github.com/brianc/node-postgres) | `pg` |
+| [`Express`](https://expressjs.com) | `express` |
+| [`Axios`](https://github.com/axios/axios) | `axios` |
+| [`MySQL`](https://github.com/mysqljs/mysql) | `mysql` |
+| [`PostgreSQL`](https://github.com/brianc/node-postgres) | `pg` |
 | [`pg-cursor`](https://github.com/brianc/node-postgres) | `pg-cursor` |
-| [`mongodb`](https://github.com/mongodb/node-mongodb-native) | `mongodb` |
+| [`MongoDB`](https://github.com/mongodb/node-mongodb-native) | `mongodb` |
+| [`RabbitMQ`](https://github.com/squaremo/amqp.node) | `amqplib` |
 
 ### Compatible Libraries
 

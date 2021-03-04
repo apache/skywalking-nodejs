@@ -20,8 +20,6 @@
 import * as http from 'http';
 import agent from '../../../src';
 
-process.env.SW_AGENT_LOGGING_LEVEL = 'ERROR';
-
 agent.start({
   serviceName: 'client',
   maxBufferSize: 1000,
