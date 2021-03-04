@@ -50,6 +50,7 @@ export default abstract class Span {
   operation: string;
   layer = SpanLayer.UNKNOWN;
   component = Component.UNKNOWN;
+  inherit?: Component;
 
   readonly tags: Tag[] = [];
   readonly logs: Log[] = [];

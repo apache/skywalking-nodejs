@@ -62,7 +62,7 @@ class HttpPlugin implements SwPlugin {
 
       let stopped = 0;  // compensating if request aborted right after creation 'close' is not emitted
       const stopIfNotStopped = () => !stopped++ ? span.stop() : null;  // make sure we stop only because other events may proc along with req.'close'
-      const span: ExitSpan = ContextManager.current.newExitSpan(operation, host).start() as ExitSpan;
+      const span: ExitSpan = ContextManager.current.newExitSpan(operation, host, Component.HTTP).start() as ExitSpan;
 
       try {
         if (span.depth === 1) {  // only set HTTP if this span is not overridden by a higher level one

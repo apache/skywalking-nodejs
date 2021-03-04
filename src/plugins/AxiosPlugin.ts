@@ -39,7 +39,7 @@ class AxiosPlugin implements SwPlugin {
 
     defaults.adapter = (config: any) => {
       const { host, pathname: operation } = new URL(config.url);  // TODO: this may throw invalid URL
-      const span = ContextManager.current.newExitSpan(operation, host).start();
+      const span = ContextManager.current.newExitSpan(operation, host, Component.AXIOS, Component.HTTP).start();
 
       let ret: any;
 

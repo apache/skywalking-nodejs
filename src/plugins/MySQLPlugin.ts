@@ -36,8 +36,6 @@ class MySQLPlugin implements SwPlugin {
     Connection.prototype.query = function(sql: any, values: any, cb: any) {
       const wrapCallback = (_cb: any) => {
         return function(this: any, error: any, results: any, fields: any) {
-          // span.resync();
-
           if (error)
             span.error(error);
 
@@ -50,7 +48,7 @@ class MySQLPlugin implements SwPlugin {
       let query: any;
 
       const host = `${this.config.host}:${this.config.port}`;
-      const span = ContextManager.current.newExitSpan('mysql/query', host).start();
+      const span = ContextManager.current.newExitSpan('mysql/query', host, Component.MYSQL).start();
 
       try {
         span.component = Component.MYSQL;
@@ -122,12 +120,10 @@ class MySQLPlugin implements SwPlugin {
 
         if (streaming) {
           query.on('error', (e: any) => {
-            // span.resync();
             span.error(e);
           });
 
           query.on('end', () => {
-            // span.resync();  // may have already been done in 'error' but safe to do multiple times
             span.stop()
           });
         }

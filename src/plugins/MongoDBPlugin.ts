@@ -41,13 +41,11 @@ class MongoDBPlugin implements SwPlugin {
       return false;
 
     cursor.on('error', (err: any) => {
-      // span.resync();  // this may precede 'close' .resync() but its fine
       span.error(err);
       span.stop();
     });
 
     cursor.on('close', () => {
-      // span.resync();  // cursor does not .resync() until it is closed because maybe other exit spans will be opened during processing
       span.stop();
     });
 
@@ -67,8 +65,6 @@ class MongoDBPlugin implements SwPlugin {
 
       args[idx] = function(this: any, error: any, result: any) {
         if (error || !plugin.maybeHookCursor(span, result)) {
-          // span.resync();
-
           if (error)
             span.error(error);
 
@@ -242,7 +238,7 @@ class MongoDBPlugin implements SwPlugin {
         host = '???';
       }
 
-      span = ContextManager.current.newExitSpan('MongoDB/' + operation, host).start();
+      span = ContextManager.current.newExitSpan('MongoDB/' + operation, host, Component.MONGODB).start();
 
       try {
         span.component = Component.MONGODB;
@@ -268,14 +264,12 @@ class MongoDBPlugin implements SwPlugin {
           } else {
             ret = ret.then(
               (res: any) => {
-                // span.resync();
                 span.stop();
 
                 return res;
               },
 
               (err: any) => {
-                // span.resync();
                 span.error(err);
                 span.stop();
 
