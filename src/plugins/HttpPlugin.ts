@@ -81,10 +81,6 @@ class HttpPlugin implements SwPlugin {
 
         const req: ClientRequest = _request.apply(this, arguments);
 
-
-        // TODO: req = http.request(...).on('response') if no callback provided.
-
-
         span.inject().items.forEach((item) => {
           req.setHeader(item.key, item.value);
         });
@@ -132,10 +128,6 @@ class HttpPlugin implements SwPlugin {
 
               } catch (err) {
                 span.error(err);
-
-
-                // TODO: sometimes not exiting
-
 
                 throw err;
 
