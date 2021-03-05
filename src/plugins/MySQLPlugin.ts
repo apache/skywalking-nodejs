@@ -107,11 +107,11 @@ class MySQLPlugin implements SwPlugin {
 
         span.tag(Tag.dbStatement(`${_sql}`));
 
-        if (agentConfig.sql_trace_parameters && _values) {
+        if (agentConfig.sqlTraceParameters && _values) {
           let vals = _values.map((v: any) => v === undefined ? 'undefined' : JSON.stringify(v)).join(', ');
 
-          if (vals.length > agentConfig.sql_parameters_max_length)
-            vals = vals.slice(0, agentConfig.sql_parameters_max_length) + ' ...';
+          if (vals.length > agentConfig.sqlParametersMaxLength)
+            vals = vals.slice(0, agentConfig.sqlParametersMaxLength) + ' ...';
 
           span.tag(Tag.dbSqlParameters(`[${vals}]`));
         }

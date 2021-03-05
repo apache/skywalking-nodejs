@@ -22,6 +22,7 @@ import * as path from 'path';
 import SwPlugin from '../core/SwPlugin';
 import { createLogger } from '../logging';
 import * as semver from 'semver';
+import config from '../config/AgentConfig';
 
 const logger = createLogger(__filename);
 
@@ -76,6 +77,11 @@ export default class PluginInstaller {
     fs.readdirSync(this.pluginDir)
     .filter((file) => !(file.endsWith('.d.ts') || file.endsWith('.js.map')))
     .forEach((file) => {
+      if (file.match(config.reDisablePlugins)) {
+        logger.info(`Plugin ${file} not installed because it is disabled`);
+        return;
+      }
+
       let plugin;
       const pluginFile = path.join(this.pluginDir, file);
 

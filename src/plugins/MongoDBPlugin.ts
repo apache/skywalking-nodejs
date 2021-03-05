@@ -83,8 +83,8 @@ class MongoDBPlugin implements SwPlugin {
 
       let str = JSON.stringify(params);
 
-      if (str.length > agentConfig.mongo_parameters_max_length)
-        str = str.slice(0, agentConfig.mongo_parameters_max_length) + ' ...';
+      if (str.length > agentConfig.mongoParametersMaxLength)
+        str = str.slice(0, agentConfig.mongoParametersMaxLength) + ' ...';
 
       return str;
     }
@@ -92,7 +92,7 @@ class MongoDBPlugin implements SwPlugin {
     const insertFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [doc(s), options, callback]
       span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}()`));
 
-      if (agentConfig.mongo_trace_parameters)
+      if (agentConfig.mongoTraceParameters)
         span.tag(Tag.dbMongoParameters(stringify(args[0])));
 
       return wrapCallback(span, args, 1);
@@ -107,7 +107,7 @@ class MongoDBPlugin implements SwPlugin {
     const updateFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [filter, update, options, callback]
       span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}(${stringify(args[0])})`));
 
-      if (agentConfig.mongo_trace_parameters)
+      if (agentConfig.mongoTraceParameters)
         span.tag(Tag.dbMongoParameters(stringify(args[1])));
 
       return wrapCallback(span, args, 2);
@@ -132,7 +132,7 @@ class MongoDBPlugin implements SwPlugin {
         params += ', ' + stringify(args[1]);
 
         if (typeof args[2] !== 'function' && args[2] !== undefined) {
-          if (agentConfig.mongo_trace_parameters)
+          if (agentConfig.mongoTraceParameters)
             span.tag(Tag.dbMongoParameters(stringify(args[2])));
         }
       }
