@@ -23,7 +23,7 @@ import SpanContext from '../../trace/context/SpanContext';
 
 import async_hooks from 'async_hooks';
 
-type AsyncState = { context: Context, spans: Span[] };
+type AsyncState = { context: Context, spans: Span[], valid: boolean };
 
 let store: {
   getStore(): AsyncState | undefined;
@@ -58,17 +58,19 @@ if (async_hooks.AsyncLocalStorage) {
 
 class ContextManager {
   get asyncState(): AsyncState {
+    // since `AsyncLocalStorage.getStore` may get previous state, see issue https://github.com/nodejs/node/issues/35286#issuecomment-697207158, so recreate when asyncState is not valid
+    // Necessary because span may "finish()" in a child async task of where the asyncState was actually created and so clearing in the child would not clear in parent and invalid asyncState would be reused in new children of that parent.
     let asyncState = store.getStore();
-    if (asyncState === undefined) {
-      asyncState = { context: new SpanContext(), spans: [] };
+    if (!asyncState?.valid) {
+      asyncState = { context: new SpanContext(), spans: [], valid: true };
       store.enterWith(asyncState);
     }
 
     return asyncState;
   }
 
-  get hasContext(): boolean {
-    return Boolean(store.getStore());
+  get hasContext(): boolean | undefined {
+    return store.getStore()?.valid;
   }
 
   get current(): Context {
@@ -82,10 +84,10 @@ class ContextManager {
   spansDup(): Span[] {
     let asyncState = store.getStore();
 
-    if (asyncState === undefined) {
-      asyncState = { context: new SpanContext(), spans: [] };
+    if (!asyncState?.valid) {
+      asyncState = { context: new SpanContext(), spans: [], valid: true };
     } else {
-      asyncState = { context: asyncState.context, spans: [...asyncState.spans] };
+      asyncState = { context: asyncState.context, spans: [...asyncState.spans], valid: asyncState.valid };
     }
 
     store.enterWith(asyncState);
@@ -94,11 +96,12 @@ class ContextManager {
   }
 
   clear(): void {
+    this.asyncState.valid = false;
     store.enterWith(undefined as unknown as AsyncState);
   }
 
   restore(context: Context, spans: Span[]): void {
-    store.enterWith({ context, spans: spans || [] });
+    store.enterWith({ context, spans: spans || [], valid: this.asyncState.valid });
   }
 
   withSpan(span: Span, callback: (...args: any[]) => any, ...args: any[]): any {
