@@ -21,30 +21,6 @@ segmentItems:
     segments:
       - segmentId: not null
         spans:
-          - operationName: /postgres
-            operationId: 0
-            parentSpanId: -1
-            spanId: 0
-            spanLayer: Http
-            startTime: gt 0
-            endTime: gt 0
-            componentId: 49
-            spanType: Entry
-            peer: not null
-            skipAnalysis: false
-            tags:
-              - { key: http.url, value: 'http://server:5000/postgres' }
-              - { key: http.method, value: GET }
-              - { key: http.status.code, value: '200' }
-            refs:
-              - parentEndpoint: ""
-                networkAddress: server:5000
-                refType: CrossProcess
-                parentSpanId: 1
-                parentTraceSegmentId: not null
-                parentServiceInstance: not null
-                parentService: client
-                traceId: not null
           - operationName: pg/query
             operationId: 0
             parentSpanId: 0
@@ -60,6 +36,31 @@ segmentItems:
               - { key: db.type, value: PostgreSQL }
               - { key: db.instance, value: test }
               - { key: db.statement, value: SELECT * FROM "user" where name = 'u1' }
+          - operationName: /postgres
+            operationId: 0
+            parentSpanId: -1
+            spanId: 0
+            spanLayer: Http
+            startTime: gt 0
+            endTime: gt 0
+            componentId: 49
+            spanType: Entry
+            peer: not null
+            skipAnalysis: false
+            tags:
+              - { key: http.url, value: 'http://server:5000/postgres' }
+              - { key: http.method, value: GET }
+              - { key: http.status.code, value: '200' }
+              - { key: http.status.msg, value: OK }
+            refs:
+              - parentEndpoint: ""
+                networkAddress: server:5000
+                refType: CrossProcess
+                parentSpanId: 1
+                parentTraceSegmentId: not null
+                parentServiceInstance: not null
+                parentService: client
+                traceId: not null
   - serviceName: client
     segmentSize: 1
     segments:
@@ -80,6 +81,7 @@ segmentItems:
               - { key: http.url, value: 'http://localhost:5001/postgres' }
               - { key: http.method, value: GET }
               - { key: http.status.code, value: '200' }
+              - { key: http.status.msg, value: OK }
           - operationName: /postgres
             operationId: 0
             parentSpanId: 0
@@ -92,7 +94,7 @@ segmentItems:
             peer: server:5000
             skipAnalysis: false
             tags:
-              - { key: http.url, value: 'server:5000/postgres' }
+              - { key: http.url, value: 'http://server:5000/postgres' }
               - { key: http.method, value: GET }
               - { key: http.status.code, value: '200' }
               - { key: http.status.msg, value: OK }

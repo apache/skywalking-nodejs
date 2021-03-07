@@ -39,6 +39,8 @@ segmentItems:
                 value: GET
               - key: http.status.code
                 value: '200'
+              - key: http.status.msg
+                value: OK
             refs:
               - parentEndpoint: ''
                 networkAddress: server:5000
@@ -91,6 +93,8 @@ segmentItems:
                 value: GET
               - key: http.status.code
                 value: '200'
+              - key: http.status.msg
+                value: OK
           - operationName: /test
             operationId: 0
             parentSpanId: 0

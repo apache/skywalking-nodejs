@@ -21,33 +21,6 @@ segmentItems:
     segments:
       - segmentId: not null
         spans:
-          - operationName: /mysql
-            operationId: 0
-            parentSpanId: -1
-            spanId: 0
-            spanLayer: Http
-            startTime: gt 0
-            endTime: gt 0
-            componentId: 49
-            spanType: Entry
-            peer: not null
-            skipAnalysis: false
-            tags:
-              - key: http.url
-                value: http://server:5000/mysql
-              - key: http.method
-                value: GET
-              - key: http.status.code
-                value: "200"
-            refs:
-              - parentEndpoint: ""
-                networkAddress: server:5000
-                refType: CrossProcess
-                parentSpanId: 1
-                parentTraceSegmentId: not null
-                parentServiceInstance: not null
-                parentService: client
-                traceId: not null
           - operationName: mysql/query
             operationId: 0
             parentSpanId: 0
@@ -66,6 +39,35 @@ segmentItems:
                 value: test
               - key: db.statement
                 value: SELECT * FROM `user` WHERE `name` = "u1"
+          - operationName: /mysql
+            operationId: 0
+            parentSpanId: -1
+            spanId: 0
+            spanLayer: Http
+            startTime: gt 0
+            endTime: gt 0
+            componentId: 49
+            spanType: Entry
+            peer: not null
+            skipAnalysis: false
+            tags:
+              - key: http.url
+                value: http://server:5000/mysql
+              - key: http.method
+                value: GET
+              - key: http.status.code
+                value: "200"
+              - key: http.status.msg
+                value: OK
+            refs:
+              - parentEndpoint: ""
+                networkAddress: server:5000
+                refType: CrossProcess
+                parentSpanId: 1
+                parentTraceSegmentId: not null
+                parentServiceInstance: not null
+                parentService: client
+                traceId: not null
   - serviceName: client
     segmentSize: 1
     segments:
@@ -89,6 +91,8 @@ segmentItems:
                 value: GET
               - key: http.status.code
                 value: "200"
+              - key: http.status.msg
+                value: OK
           - operationName: /mysql
             operationId: 0
             parentSpanId: 0
@@ -102,7 +106,7 @@ segmentItems:
             skipAnalysis: false
             tags:
               - key: http.url
-                value: server:5000/mysql
+                value: http://server:5000/mysql
               - key: http.method
                 value: GET
               - key: http.status.code
