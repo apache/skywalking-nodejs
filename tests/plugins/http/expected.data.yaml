@@ -61,7 +61,7 @@ segmentItems:
             skipAnalysis: false
             tags:
               - key: http.url
-                value: httpbin.org/json
+                value: http://httpbin.org/json
               - key: http.method
                 value: GET
               - key: http.status.code
@@ -104,7 +104,7 @@ segmentItems:
             skipAnalysis: false
             tags:
               - key: http.url
-                value: server:5000/test
+                value: http://server:5000/test
               - key: http.method
                 value: GET
               - key: http.status.code

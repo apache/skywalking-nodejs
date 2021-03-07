@@ -35,13 +35,13 @@ class HttpPlugin implements SwPlugin {
     const http = require('http');
     const https = require('https');
 
-    this.interceptClientRequest(http);
+    this.interceptClientRequest(http, 'http');
     this.interceptServerRequest(http, 'http');
-    this.interceptClientRequest(https);
+    this.interceptClientRequest(https, 'https');
     this.interceptServerRequest(https, 'https');
   }
 
-  private interceptClientRequest(module: any) {
+  private interceptClientRequest(module: any, protocol: string) {
     const _request = module.request;
 
     module.request = function () {
@@ -57,7 +57,7 @@ class HttpPlugin implements SwPlugin {
             pathname: url.path || '/',
           };
         const httpMethod = arguments[url instanceof URL || typeof url === 'string' ? 1 : 0]?.method || 'GET';
-        const httpURL = host + pathname;
+        const httpURL = protocol + '://' + host + pathname;
         const operation = pathname.replace(/\?.*$/g, '');
 
       let stopped = 0;  // compensating if request aborted right after creation 'close' is not emitted
@@ -92,53 +92,43 @@ class HttpPlugin implements SwPlugin {
         const _emit = req.emit;
 
         req.emit = function(name: any, ...args: any[]): any {
-          if (name !== 'response')
-            return _emit.call(this, name, ...args);
-
-          let ret: any;
-
           span.resync();
 
           try {
-            const res = args[0];
+            if (name === 'response') {
+              const res = args[0];
 
-            span.tag(Tag.httpStatusCode(res.statusCode));
+              span.tag(Tag.httpStatusCode(res.statusCode));
 
-            if (res.statusCode && res.statusCode >= 400) {
-              span.errored = true;
-            }
-            if (res.statusMessage) {
-              span.tag(Tag.httpStatusMsg(res.statusMessage));
-            }
-
-            res.on('end', stopIfNotStopped);
-
-            const _emitRes = res.emit;
-
-            res.emit = function(nameRes: any, ...argsRes: any[]): any {
-              if (nameRes !== 'data')
-                return _emitRes.call(this, nameRes, ...argsRes);
-
-              let retRes: any;
-
-              span.resync();
-
-              try {
-                retRes = _emitRes.call(this, nameRes, ...argsRes);  // 'data' events wrapped in resync
-
-              } catch (err) {
-                span.error(err);
-
-                throw err;
-
-              } finally {
-                span.async();
+              if (res.statusCode && res.statusCode >= 400) {
+                span.errored = true;
+              }
+              if (res.statusMessage) {
+                span.tag(Tag.httpStatusMsg(res.statusMessage));
               }
 
-              return retRes;
+              res.on('end', stopIfNotStopped);
+
+              const _emitRes = res.emit;
+
+              res.emit = function(nameRes: any, ...argsRes: any[]): any {
+                span.resync();
+
+                try {
+                  return _emitRes.call(this, nameRes, ...argsRes);
+
+                } catch (err) {
+                  span.error(err);
+
+                  throw err;
+
+                } finally {
+                  span.async();
+                }
+              }
             }
 
-            ret = _emit.call(this, name, ...args);  // 'response' events wrapped in resync
+            return _emit.call(this, name, ...args);
 
           } catch (err) {
             span.error(err);
@@ -148,8 +138,6 @@ class HttpPlugin implements SwPlugin {
           } finally {
             span.async();
           }
-
-          return ret;
         };
 
         span.async();
