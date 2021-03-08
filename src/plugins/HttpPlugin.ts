@@ -35,14 +35,14 @@ class HttpPlugin implements SwPlugin {
     const http = require('http');
     const https = require('https');
 
-    this.interceptClientRequest(http);
+    this.interceptClientRequest(http, 'http');
     this.interceptServerRequest(http, 'http');
-    this.interceptClientRequest(https);
+    this.interceptClientRequest(https, 'https');
     this.interceptServerRequest(https, 'https');
   }
 
-  private interceptClientRequest(module: any) {
-    const _request = module.request;
+  private interceptClientRequest(module: any, protocol: string) {
+    const _request = module.request;  // BUG! this doesn't work with "import {request} from http", but haven't found an alternative yet
 
     module.request = function () {
       const url: URL | string | RequestOptions = arguments[0];
@@ -56,64 +56,98 @@ class HttpPlugin implements SwPlugin {
             host: (url.host || url.hostname || 'unknown') + ':' + (url.port || 80),
             pathname: url.path || '/',
           };
-        const httpMethod = arguments[url instanceof URL || typeof url === 'string' ? 1 : 0]?.method || 'GET';
-        const httpURL = host + pathname;
-        const operation = pathname.replace(/\?.*$/g, '');
 
-      let stopped = 0;  // compensating if request aborted right after creation 'close' is not emitted
-      const stopIfNotStopped = () => !stopped++ ? span.stop() : null;  // make sure we stop only once
-      const span: ExitSpan = ContextManager.current.newExitSpan(operation, host).start() as ExitSpan;
+      const httpMethod = arguments[url instanceof URL || typeof url === 'string' ? 1 : 0]?.method || 'GET';
+      const httpURL = protocol + '://' + host + pathname;
+      const operation = pathname.replace(/\?.*$/g, '');
+
+      const span: ExitSpan = ContextManager.current.newExitSpan(operation, host, Component.HTTP).start() as ExitSpan;
 
       try {
         if (span.depth === 1) {  // only set HTTP if this span is not overridden by a higher level one
           span.component = Component.HTTP;
           span.layer = SpanLayer.HTTP;
         }
-        if (!span.peer) {
+
+        if (!span.peer)
           span.peer = host;
-        }
-        if (!span.hasTag(Tag.httpURLKey)) {  // only set if a higher level plugin with more info did not already set
+
+        if (!span.hasTag(Tag.httpURLKey))  // only set if a higher level plugin with more info did not already set
           span.tag(Tag.httpURL(httpURL));
-        }
-        if (!span.hasTag(Tag.httpMethodKey)) {
+
+        if (!span.hasTag(Tag.httpMethodKey))
           span.tag(Tag.httpMethod(httpMethod));
-        }
 
         const req: ClientRequest = _request.apply(this, arguments);
 
-        span.inject().items.forEach((item) => {
-          req.setHeader(item.key, item.value);
-        });
+        span.inject().items.forEach((item) => req.setHeader(item.key, item.value));
 
-        req.on('close', stopIfNotStopped);
-        req.on('abort', () => (span.errored = true, stopIfNotStopped()));
-        req.on('error', (err) => (span.error(err), stopIfNotStopped()));
+        req.on('timeout', () => span.log('Timeout', true));
+        req.on('abort', () => span.log('Abort', span.errored = true));
+        req.on('error', (err) => span.error(err));
 
-        req.prependListener('response', (res) => {
+        const _emit = req.emit;
+
+        req.emit = function(): any {
+          const event = arguments[0];
+
           span.resync();
-          span.tag(Tag.httpStatusCode(res.statusCode));
 
-          if (res.statusCode && res.statusCode >= 400) {
-            span.errored = true;
-          }
-          if (res.statusMessage) {
-            span.tag(Tag.httpStatusMsg(res.statusMessage));
-          }
+          try {
+            if (event === 'response') {
+              const res = arguments[1];
 
-          res.on('end', stopIfNotStopped);
-        });
+              span.tag(Tag.httpStatusCode(res.statusCode));
+
+              if (res.statusCode && res.statusCode >= 400)
+                span.errored = true;
+
+              if (res.statusMessage)
+                span.tag(Tag.httpStatusMsg(res.statusMessage));
+
+              const _emitRes = res.emit;
+
+              res.emit = function(): any {
+                span.resync();
+
+                try {
+                  return _emitRes.apply(this, arguments);
+
+                } catch (err) {
+                  span.error(err);
+
+                  throw err;
+
+                } finally {
+                  span.async();
+                }
+              }
+            }
+
+            return _emit.apply(this, arguments as any);
+
+          } catch (err) {
+            span.error(err);
+
+            throw err;
+
+          } finally {
+            if (event === 'close')
+              span.stop();
+            else
+              span.async();
+          }
+        };
 
         span.async();
 
         return req;
 
-      } catch (e) {
-        if (!stopped) {  // don't want to set error if exception occurs after clean close
-          span.error(e);
-          stopIfNotStopped();
-        }
+      } catch (err) {
+        span.error(err);
+        span.stop();
 
-        throw e;
+        throw err;
       }
     };
   }
@@ -129,25 +163,12 @@ class HttpPlugin implements SwPlugin {
         const headers = req.rawHeaders || [];
         const headersMap: { [key: string]: string } = {};
 
-        for (let i = 0; i < headers.length / 2; i += 2) {
+        for (let i = 0; i < headers.length / 2; i += 2)
           headersMap[headers[i]] = headers[i + 1];
-        }
 
         const carrier = ContextCarrier.from(headersMap);
         const operation = (req.url || '/').replace(/\?.*/g, '');
         const span = ContextManager.current.newEntrySpan(operation, carrier).start();
-
-        const copyStatusAndStop = () => {
-          span.tag(Tag.httpStatusCode(res.statusCode));
-          if (res.statusCode && res.statusCode >= 400) {
-            span.errored = true;
-          }
-          if (res.statusMessage) {
-            span.tag(Tag.httpStatusMsg(res.statusMessage));
-          }
-
-          span.stop();
-        };
 
         try {
           span.component = Component.HTTP_SERVER;
@@ -157,36 +178,39 @@ class HttpPlugin implements SwPlugin {
             || (req.connection.remoteFamily === 'IPv6'
               ? `[${req.connection.remoteAddress}]:${req.connection.remotePort}`
               : `${req.connection.remoteAddress}:${req.connection.remotePort}`);
+
           span.tag(Tag.httpURL(protocol + '://' + (req.headers.host || '') + req.url));
           span.tag(Tag.httpMethod(req.method));
 
-          let ret = handler.call(this, req, res, ...reqArgs);
+          const ret = handler.call(this, req, res, ...reqArgs);
 
-          if (!ret || typeof ret.then !== 'function') {  // generic Promise check
-            copyStatusAndStop();
+          let copyStatusAndStopIfNotStopped = () => {
+            copyStatusAndStopIfNotStopped = () => undefined;
 
-          } else {
-            ret = ret.then((r: any) => {
-              copyStatusAndStop();
+            span.tag(Tag.httpStatusCode(res.statusCode));
 
-              return r;
-            },
+            if (res.statusCode && res.statusCode >= 400)
+              span.errored = true;
 
-            (error: any) => {
-              span.error(error);
-              span.stop();
+            if (res.statusMessage)
+              span.tag(Tag.httpStatusMsg(res.statusMessage));
 
-              return Promise.reject(error);
-            })
-          }
+            span.stop();
+          };
+
+          req.on('end', copyStatusAndStopIfNotStopped);  // this insead of 'close' because Node 10 doesn't emit those
+          res.on('abort', () => (span.errored = true, span.log('Abort', true), copyStatusAndStopIfNotStopped()));
+          res.on('error', (err) => (span.error(err), copyStatusAndStopIfNotStopped()));
+
+          span.async();
 
           return ret;
 
-        } catch (e) {
-          span.error(e);
+        } catch (err) {
+          span.error(err);
           span.stop();
 
-          throw e;
+          throw err;
         }
       }
     };

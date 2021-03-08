@@ -21,26 +21,6 @@ segmentItems:
     segments:
       - segmentId: not null
         spans:
-          - operationName: /json
-            operationId: 0
-            parentSpanId: 0
-            spanId: 1
-            spanLayer: Http
-            startTime: gt 0
-            endTime: gt 0
-            componentId: 4005
-            spanType: Exit
-            peer: httpbin.org
-            skipAnalysis: false
-            tags:
-              - key: http.url
-                value: httpbin.org/json
-              - key: http.method
-                value: GET
-              - key: http.status.code
-                value: '200'
-              - key: http.status.msg
-                value: OK
           - operationName: /axios
             operationId: 0
             parentSpanId: -1
@@ -70,31 +50,31 @@ segmentItems:
                 parentServiceInstance: not null
                 parentService: client
                 traceId: not null
-  - serviceName: client
-    segmentSize: 1
-    segments:
-      - segmentId: not null
-        spans:
-          - operationName: /axios
+          - operationName: /json
             operationId: 0
             parentSpanId: 0
             spanId: 1
             spanLayer: Http
+            startTime: gt 0
+            endTime: gt 0
+            componentId: 4005
+            spanType: Exit
+            peer: httpbin.org
+            skipAnalysis: false
             tags:
               - key: http.url
-                value: server:5000/axios
+                value: httpbin.org/json
               - key: http.method
                 value: GET
               - key: http.status.code
                 value: '200'
               - key: http.status.msg
                 value: OK
-            startTime: gt 0
-            endTime: gt 0
-            componentId: 4005
-            spanType: Exit
-            peer: server:5000
-            skipAnalysis: false
+  - serviceName: client
+    segmentSize: 1
+    segments:
+      - segmentId: not null
+        spans:
           - operationName: /axios
             operationId: 0
             parentSpanId: -1
@@ -114,4 +94,24 @@ segmentItems:
             componentId: 49
             spanType: Entry
             peer: not null
+            skipAnalysis: false
+          - operationName: /axios
+            operationId: 0
+            parentSpanId: 0
+            spanId: 1
+            spanLayer: Http
+            tags:
+              - key: http.url
+                value: server:5000/axios
+              - key: http.method
+                value: GET
+              - key: http.status.code
+                value: '200'
+              - key: http.status.msg
+                value: OK
+            startTime: gt 0
+            endTime: gt 0
+            componentId: 4005
+            spanType: Exit
+            peer: server:5000
             skipAnalysis: false

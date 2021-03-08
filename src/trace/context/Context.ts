@@ -19,6 +19,7 @@
 
 import Span from '../../trace/span/Span';
 import Segment from '../../trace/context/Segment';
+import { Component } from '../../trace/Component';
 import { ContextCarrier } from './ContextCarrier';
 
 export default interface Context {
@@ -26,9 +27,15 @@ export default interface Context {
 
   newLocalSpan(operation: string): Span;
 
-  newEntrySpan(operation: string, carrier?: ContextCarrier): Span;
+  /* If 'inherit' is specified then if the span at the top of the stack is an Entry span of this component type then the
+     span is reused instead of a new child span being created. This is intended for situations like an express handler
+     inheriting an opened incoming http connection to present a single span. */
+  newEntrySpan(operation: string, carrier?: ContextCarrier, inherit?: Component): Span;
 
-  newExitSpan(operation: string, peer: string): Span;
+  /* if 'inherit' is specified then the span returned is marked for inheritance by an Exit span component which is
+     created later and calls this function with a matching 'component' value. For example Axios using an Http exit
+     connection will be merged into a single exit span, see those plugins for how this is done. */
+  newExitSpan(operation: string, peer: string, component: Component, inherit?: Component): Span;
 
   start(span: Span): Context;
 

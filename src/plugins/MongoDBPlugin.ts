@@ -41,13 +41,11 @@ class MongoDBPlugin implements SwPlugin {
       return false;
 
     cursor.on('error', (err: any) => {
-      span.resync();  // this may precede 'close' .resync() but its fine
       span.error(err);
       span.stop();
     });
 
     cursor.on('close', () => {
-      span.resync();  // cursor does not .resync() until it is closed because maybe other exit spans will be opened during processing
       span.stop();
     });
 
@@ -67,8 +65,6 @@ class MongoDBPlugin implements SwPlugin {
 
       args[idx] = function(this: any, error: any, result: any) {
         if (error || !plugin.maybeHookCursor(span, result)) {
-          span.resync();
-
           if (error)
             span.error(error);
 
@@ -87,8 +83,8 @@ class MongoDBPlugin implements SwPlugin {
 
       let str = JSON.stringify(params);
 
-      if (str.length > agentConfig.mongo_parameters_max_length)
-        str = str.slice(0, agentConfig.mongo_parameters_max_length) + ' ...';
+      if (str.length > agentConfig.mongoParametersMaxLength)
+        str = str.slice(0, agentConfig.mongoParametersMaxLength) + ' ...';
 
       return str;
     }
@@ -96,7 +92,7 @@ class MongoDBPlugin implements SwPlugin {
     const insertFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [doc(s), options, callback]
       span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}()`));
 
-      if (agentConfig.mongo_trace_parameters)
+      if (agentConfig.mongoTraceParameters)
         span.tag(Tag.dbMongoParameters(stringify(args[0])));
 
       return wrapCallback(span, args, 1);
@@ -111,7 +107,7 @@ class MongoDBPlugin implements SwPlugin {
     const updateFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [filter, update, options, callback]
       span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}(${stringify(args[0])})`));
 
-      if (agentConfig.mongo_trace_parameters)
+      if (agentConfig.mongoTraceParameters)
         span.tag(Tag.dbMongoParameters(stringify(args[1])));
 
       return wrapCallback(span, args, 2);
@@ -136,7 +132,7 @@ class MongoDBPlugin implements SwPlugin {
         params += ', ' + stringify(args[1]);
 
         if (typeof args[2] !== 'function' && args[2] !== undefined) {
-          if (agentConfig.mongo_trace_parameters)
+          if (agentConfig.mongoTraceParameters)
             span.tag(Tag.dbMongoParameters(stringify(args[2])));
         }
       }
@@ -242,7 +238,7 @@ class MongoDBPlugin implements SwPlugin {
         host = '???';
       }
 
-      span = ContextManager.current.newExitSpan('MongoDB/' + operation, host).start();
+      span = ContextManager.current.newExitSpan('MongoDB/' + operation, host, Component.MONGODB).start();
 
       try {
         span.component = Component.MONGODB;
@@ -268,14 +264,12 @@ class MongoDBPlugin implements SwPlugin {
           } else {
             ret = ret.then(
               (res: any) => {
-                span.resync();
                 span.stop();
 
                 return res;
               },
 
               (err: any) => {
-                span.resync();
                 span.error(err);
                 span.stop();
 

@@ -25,18 +25,22 @@ export type AgentConfig = {
   collectorAddress?: string;
   authorization?: string;
   maxBufferSize?: number;
+  disablePlugins?: string;
   ignoreSuffix?: string;
   traceIgnorePath?: string;
-  sql_trace_parameters?: boolean;
-  sql_parameters_max_length?: number;
-  mongo_trace_parameters?: boolean;
-  mongo_parameters_max_length?: number;
+  sqlTraceParameters?: boolean;
+  sqlParametersMaxLength?: number;
+  mongoTraceParameters?: boolean;
+  mongoParametersMaxLength?: number;
   // the following is internal state computed from config values
+  reDisablePlugins?: RegExp;
   reIgnoreOperation?: RegExp;
 };
 
 export function finalizeConfig(config: AgentConfig): void {
   const escapeRegExp = (s: string) => s.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1");
+
+  config.reDisablePlugins = RegExp(`^(?:${config.disablePlugins!.split(',').map((s) => escapeRegExp(s.trim()) + 'Plugin\\.js').join('|')})$`, 'i');
 
   const ignoreSuffix =`^.+(?:${config.ignoreSuffix!.split(',').map((s) => escapeRegExp(s.trim())).join('|')})$`;
   const ignorePath = '^(?:' + config.traceIgnorePath!.split(',').map(
@@ -61,11 +65,13 @@ export default {
   authorization: process.env.SW_AGENT_AUTHENTICATION,
   maxBufferSize: Number.isSafeInteger(process.env.SW_AGENT_MAX_BUFFER_SIZE) ?
     Number.parseInt(process.env.SW_AGENT_MAX_BUFFER_SIZE as string, 10) : 1000,
+  disablePlugins: process.env.SW_AGENT_DISABLE_PLUGINS || '',
   ignoreSuffix: process.env.SW_IGNORE_SUFFIX ?? '.jpg,.jpeg,.js,.css,.png,.bmp,.gif,.ico,.mp3,.mp4,.html,.svg',
   traceIgnorePath: process.env.SW_TRACE_IGNORE_PATH || '',
-  sql_trace_parameters: (process.env.SW_SQL_TRACE_PARAMETERS || '').toLowerCase() === 'true',
-  sql_parameters_max_length: Math.trunc(Math.max(0, Number(process.env.SW_SQL_PARAMETERS_MAX_LENGTH))) || 512,
-  mongo_trace_parameters: (process.env.SW_MONGO_TRACE_PARAMETERS || '').toLowerCase() === 'true',
-  mongo_parameters_max_length: Math.trunc(Math.max(0, Number(process.env.SW_MONGO_PARAMETERS_MAX_LENGTH))) || 512,
-  reIgnoreOperation: RegExp(''),  // temporary placeholder so Typescript doesn't throw a fit
+  sqlTraceParameters: (process.env.SW_SQL_TRACE_PARAMETERS || '').toLowerCase() === 'true',
+  sqlParametersMaxLength: Math.trunc(Math.max(0, Number(process.env.SW_SQL_PARAMETERS_MAX_LENGTH))) || 512,
+  mongoTraceParameters: (process.env.SW_MONGO_TRACE_PARAMETERS || '').toLowerCase() === 'true',
+  mongoParametersMaxLength: Math.trunc(Math.max(0, Number(process.env.SW_MONGO_PARAMETERS_MAX_LENGTH))) || 512,
+  reDisablePlugins: RegExp(''),  // temporary placeholder so Typescript doesn't throw a fit
+  reIgnoreOperation: RegExp(''),
 };

@@ -21,6 +21,7 @@ import Context from '../../trace/context/Context';
 import Span from '../../trace/span/Span';
 import DummySpan from '../../trace/span/DummySpan';
 import Segment from '../../trace/context/Segment';
+import { Component } from '../../trace/Component';
 import { SpanType } from '../../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from './ContextCarrier';
 
@@ -33,11 +34,11 @@ export default class DummyContext implements Context {
   segment: Segment = new Segment();
   depth = 0;
 
-  newEntrySpan(operation: string, carrier?: ContextCarrier): Span {
+  newEntrySpan(operation: string, carrier?: ContextCarrier, inherit?: Component): Span {
     return this.span;
   }
 
-  newExitSpan(operation: string, peer: string): Span {
+  newExitSpan(operation: string, peer: string, component: Component, inherit?: Component): Span {
     return this.span;
   }
 

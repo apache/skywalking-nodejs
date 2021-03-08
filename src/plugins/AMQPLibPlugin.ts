@@ -44,7 +44,7 @@ class AMQPLibPlugin implements SwPlugin {
       const queue = fields.routingKey || '';
       const peer = `${this.connection.stream.remoteAddress}:${this.connection.stream.remotePort}`;
 
-      const span = ContextManager.current.newExitSpan('RabbitMQ/' + topic + '/' + queue + '/Producer', peer).start();
+      const span = ContextManager.current.newExitSpan('RabbitMQ/' + topic + '/' + queue + '/Producer', peer, Component.RABBITMQ_PRODUCER).start();
 
       try {
         span.inject().items.forEach((item) => {

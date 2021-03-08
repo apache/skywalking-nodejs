@@ -49,7 +49,7 @@ class ExpressPlugin implements SwPlugin {
 
       const carrier = ContextCarrier.from(headersMap);
       const operation = (req.url || '/').replace(/\?.*/g, '');
-      const span = ContextManager.current.newEntrySpan(operation, carrier).start();
+      const span = ContextManager.current.newEntrySpan(operation, carrier, Component.HTTP_SERVER).start();
 
       let stopped = 0;
       const stopIfNotStopped = (err: Error | null) => {
@@ -59,7 +59,7 @@ class ExpressPlugin implements SwPlugin {
           if (res.statusCode && res.statusCode >= 400) {
             span.errored = true;
           }
-          if (err) {
+          if (err instanceof Error) {
             span.error(err);
           }
           if (res.statusMessage) {
