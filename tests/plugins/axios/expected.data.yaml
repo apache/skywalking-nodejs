@@ -63,7 +63,7 @@ segmentItems:
             skipAnalysis: false
             tags:
               - key: http.url
-                value: httpbin.org/json
+                value: http://httpbin.org/json
               - key: http.method
                 value: GET
               - key: http.status.code
@@ -102,7 +102,7 @@ segmentItems:
             spanLayer: Http
             tags:
               - key: http.url
-                value: server:5000/axios
+                value: http://server:5000/axios
               - key: http.method
                 value: GET
               - key: http.status.code

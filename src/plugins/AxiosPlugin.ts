@@ -38,7 +38,7 @@ class AxiosPlugin implements SwPlugin {
     const defaultAdapter = defaults.adapter;  // this will be http adapter
 
     defaults.adapter = (config: any) => {
-      const { host, pathname: operation } = new URL(config.url);  // TODO: this may throw invalid URL
+      const {origin, host, pathname: operation} = new URL(config.url);  // TODO: this may throw invalid URL
       const span = ContextManager.current.newExitSpan(operation, host, Component.AXIOS, Component.HTTP).start();
 
       let ret: any;
@@ -47,7 +47,7 @@ class AxiosPlugin implements SwPlugin {
         span.component = Component.AXIOS;
         span.layer = SpanLayer.HTTP;
         span.peer = host;
-        span.tag(Tag.httpURL(host + operation));
+        span.tag(Tag.httpURL(origin + operation));
 
         span.inject().items.forEach((item) => {
           config.headers[item.key] = item.value;
