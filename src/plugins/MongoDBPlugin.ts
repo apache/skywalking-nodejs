@@ -17,7 +17,7 @@
  *
  */
 
-import SwPlugin from '../core/SwPlugin';
+import SwPlugin, {wrapPromise} from '../core/SwPlugin';
 import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
 import ExitSpan from '../trace/span/ExitSpan';
@@ -42,7 +42,6 @@ class MongoDBPlugin implements SwPlugin {
 
     cursor.on('error', (err: any) => {
       span.error(err);
-      span.stop();
     });
 
     cursor.on('close', () => {
@@ -63,15 +62,14 @@ class MongoDBPlugin implements SwPlugin {
       if (!callback)
         return false;
 
-      args[idx] = function(this: any, error: any, result: any) {
-        if (error || !plugin.maybeHookCursor(span, result)) {
-          if (error)
-            span.error(error);
+      args[idx] = function(this: any) {  // arguments = [error: any, result: any]
+        if (arguments[0])
+          span.error(arguments[0]);
 
+        if (arguments[0] || !plugin.maybeHookCursor(span, arguments[1]))
           span.stop();
-        }
 
-        return callback.call(this, error, result);
+        return callback.apply(this, arguments);
       }
 
       return true;
@@ -208,6 +206,8 @@ class MongoDBPlugin implements SwPlugin {
     //   initializeOrderedBulkOp
     //   watch
 
+    //   DB functions
+
     // NODO:
 
     //   group
@@ -262,20 +262,7 @@ class MongoDBPlugin implements SwPlugin {
             return ret;
 
           } else {
-            ret = ret.then(
-              (res: any) => {
-                span.stop();
-
-                return res;
-              },
-
-              (err: any) => {
-                span.error(err);
-                span.stop();
-
-                return Promise.reject(err);
-              }
-            );
+            ret = wrapPromise(span, ret);
           }
         }
 

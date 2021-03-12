@@ -17,7 +17,7 @@
  *
  */
 
-import SwPlugin from '../core/SwPlugin';
+import SwPlugin, {wrapEmit, wrapCallback} from '../core/SwPlugin';
 import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
 import Tag from '../Tag';
@@ -34,17 +34,6 @@ class MySQLPlugin implements SwPlugin {
     const _query = Connection.prototype.query;
 
     Connection.prototype.query = function(sql: any, values: any, cb: any) {
-      const wrapCallback = (_cb: any) => {
-        return function(this: any, error: any, results: any, fields: any) {
-          if (error)
-            span.error(error);
-
-          span.stop();
-
-          return _cb.call(this, error, results, fields);
-        }
-      };
-
       let query: any;
 
       const host = `${this.config.host}:${this.config.port}`;
@@ -63,20 +52,20 @@ class MySQLPlugin implements SwPlugin {
         let streaming: any;
 
         if (typeof sql === 'function') {
-          sql = wrapCallback(sql);
+          sql = wrapCallback(span, sql, 0);
 
         } else if (typeof sql === 'object') {
           _sql = sql.sql;
 
           if (typeof values === 'function') {
-            values = wrapCallback(values);
+            values = wrapCallback(span, values, 0);
             _values = sql.values;
 
           } else if (values !== undefined) {
             _values = values;
 
             if (typeof cb === 'function') {
-              cb = wrapCallback(cb);
+              cb = wrapCallback(span, cb, 0);
             } else {
               streaming = true;
             }
@@ -89,13 +78,13 @@ class MySQLPlugin implements SwPlugin {
           _sql = sql;
 
           if (typeof values === 'function') {
-            values = wrapCallback(values);
+            values = wrapCallback(span, values, 0);
 
           } else if (values !== undefined) {
             _values = values;
 
             if (typeof cb === 'function') {
-              cb = wrapCallback(cb);
+              cb = wrapCallback(span, cb, 0);
             } else {
               streaming = true;
             }
@@ -118,15 +107,8 @@ class MySQLPlugin implements SwPlugin {
 
         query = _query.call(this, sql, values, cb);
 
-        if (streaming) {
-          query.on('error', (e: any) => {
-            span.error(e);
-          });
-
-          query.on('end', () => {
-            span.stop()
-          });
-        }
+        if (streaming)
+          wrapEmit(span, query, 'end');
 
       } catch (e) {
         span.error(e);

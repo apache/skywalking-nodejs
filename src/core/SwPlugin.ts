@@ -18,6 +18,7 @@
  */
 
 import PluginInstaller from './PluginInstaller';
+import Span from '../trace/span/Span';
 
 export default interface SwPlugin {
   readonly module: string;
@@ -25,3 +26,57 @@ export default interface SwPlugin {
 
   install(installer: PluginInstaller): void;
 }
+
+export const wrapEmit = (span: Span, ee: any, endEvent: any = NaN) => {  // because NaN !== NaN
+  const _emit = ee.emit;
+
+  ee.emit = function(): any {
+    const event = arguments[0];
+
+    try {
+      if (event === 'error')
+        span.error(arguments[1]);
+
+      return _emit.apply(this, arguments);
+
+    } catch (err) {
+      span.error(err);
+
+      throw err;
+
+    } finally {
+      if (event === endEvent)
+        span.stop();
+      else
+        span.async();
+    }
+  }
+};
+
+export const wrapCallback = (span: Span, callback: any, idxError: any = false) => {
+  return function(this: any) {
+    if (idxError !== false && arguments[idxError])
+      span.error(arguments[idxError]);
+
+    span.stop();
+
+    return callback.apply(this, arguments);
+  }
+};
+
+export const wrapPromise = (span: Span, promise: any) => {
+  return promise.then(
+    (res: any) => {
+      span.stop();
+
+      return res;
+    },
+
+    (err: any) => {
+      span.error(err);
+      span.stop();
+
+      return Promise.reject(err);
+    }
+  );
+};

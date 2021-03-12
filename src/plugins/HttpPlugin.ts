@@ -160,13 +160,7 @@ class HttpPlugin implements SwPlugin {
       return _addListener.call(this, event, event === 'request' ? _sw_request : handler, ...addArgs);
 
       function _sw_request(this: any, req: IncomingMessage, res: ServerResponse, ...reqArgs: any[]) {
-        const headers = req.rawHeaders || [];
-        const headersMap: { [key: string]: string } = {};
-
-        for (let i = 0; i < headers.length / 2; i += 2)
-          headersMap[headers[i]] = headers[i + 1];
-
-        const carrier = ContextCarrier.from(headersMap);
+        const carrier = ContextCarrier.from((req as any).headers || {});
         const operation = (req.url || '/').replace(/\?.*/g, '');
         const span = ContextManager.current.newEntrySpan(operation, carrier).start();
 

@@ -144,7 +144,7 @@ export default abstract class Span {
 
   error(error: Error): this {
     this.errored = true;
-    this.log('Stack', error.stack || '')
+    this.log('Stack', error.stack || '');
 
     return this;
   }
