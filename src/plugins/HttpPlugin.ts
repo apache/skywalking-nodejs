@@ -57,26 +57,21 @@ class HttpPlugin implements SwPlugin {
             pathname: url.path || '/',
           };
 
-      const httpMethod = arguments[url instanceof URL || typeof url === 'string' ? 1 : 0]?.method || 'GET';
-      const httpURL = protocol + '://' + host + pathname;
       const operation = pathname.replace(/\?.*$/g, '');
+      const span: ExitSpan = ContextManager.current.newExitSpan(operation, host, Component.HTTP) as ExitSpan;
 
-      const span: ExitSpan = ContextManager.current.newExitSpan(operation, host, Component.HTTP).start() as ExitSpan;
+      if (span.depth)  // if we inherited from a higher level plugin then do nothing, higher level should do all the work and we don't duplicate here
+        return _request.apply(this, arguments);
+
+      span.start();
 
       try {
-        if (span.depth === 1) {  // only set HTTP if this span is not overridden by a higher level one
-          span.component = Component.HTTP;
-          span.layer = SpanLayer.HTTP;
-        }
+        span.component = Component.HTTP;
+        span.layer = SpanLayer.HTTP;
+        span.peer = host;
 
-        if (!span.peer)
-          span.peer = host;
-
-        if (!span.hasTag(Tag.httpURLKey))  // only set if a higher level plugin with more info did not already set
-          span.tag(Tag.httpURL(httpURL));
-
-        if (!span.hasTag(Tag.httpMethodKey))
-          span.tag(Tag.httpMethod(httpMethod));
+        span.tag(Tag.httpURL(protocol + '://' + host + pathname));
+        span.tag(Tag.httpMethod(arguments[url instanceof URL || typeof url === 'string' ? 1 : 0]?.method || 'GET'));
 
         const req: ClientRequest = _request.apply(this, arguments);
 

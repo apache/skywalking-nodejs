@@ -17,7 +17,7 @@
  *
  */
 
-import SwPlugin from '../core/SwPlugin';
+import SwPlugin, {wrapPromise} from '../core/SwPlugin';
 import { URL } from 'url';
 import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
@@ -34,68 +34,74 @@ class AxiosPlugin implements SwPlugin {
   }
 
   private interceptClientRequest(installer: PluginInstaller): void {
-    const defaults = installer.require('axios/lib/defaults');
-    const defaultAdapter = defaults.adapter;  // this will be http adapter
+    const Axios = installer.require('axios/lib/core/Axios');
+    const _request = Axios.prototype.request;
 
-    defaults.adapter = (config: any) => {
+    Axios.prototype.request = function(url?: any, config?: any) {
+      if (typeof url === 'string')
+        config = config ? {...config, url} : {url};
+      else
+        config = url ? {...url} : {};
+
       const {origin, host, pathname: operation} = new URL(config.url);  // TODO: this may throw invalid URL
       const span = ContextManager.current.newExitSpan(operation, host, Component.AXIOS, Component.HTTP).start();
 
       let ret: any;
 
       try {
+        config.headers = config.headers ? {...config.headers} : {};
+
         span.component = Component.AXIOS;
         span.layer = SpanLayer.HTTP;
         span.peer = host;
-        span.tag(Tag.httpURL(origin + operation));
 
-        span.inject().items.forEach((item) => {
-          config.headers[item.key] = item.value;
-        });
+        span.tag(Tag.httpURL(origin + operation));
+        span.tag(Tag.httpMethod((config.method || 'GET').toUpperCase()));
+
+        span.inject().items.forEach((item) => config.headers[item.key] = item.value);
 
         const copyStatus = (response: any) => {
           if (response) {
             if (response.status) {
               span.tag(Tag.httpStatusCode(response.status));
-              if (response.status >= 400) {
+
+              if (response.status >= 400)
                 span.errored = true;
-              }
             }
 
-            if (response.statusText) {
+            if (response.statusText)
               span.tag(Tag.httpStatusMsg(response.statusText));
-            }
           }
         };
 
-        ret = defaultAdapter(config).then(
-          (response: any) => {
-            copyStatus(response);
+        ret = _request.call(this, config).then(
+          (res: any) => {
+            copyStatus(res);
             span.stop();
 
-            return response;
+            return res;
           },
 
-          (error: any) => {
-            copyStatus(error.response);
-            span.error(error);
+          (err: any) => {
+            copyStatus(err.response);
+            span.error(err);
             span.stop();
 
-            return Promise.reject(error);
+            return Promise.reject(err);
           }
         );
 
-      } catch (e) {
-        span.error(e);
+      } catch (err) {
+        span.error(err);
         span.stop();
 
-        throw e;
+        throw err;
       }
 
       span.async();
 
       return ret;
-    }
+    };
   }
 }
 

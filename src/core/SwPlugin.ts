@@ -30,7 +30,7 @@ export default interface SwPlugin {
 export const wrapEmit = (span: Span, ee: any, endEvent: any = NaN) => {  // because NaN !== NaN
   const _emit = ee.emit;
 
-  ee.emit = function(): any {
+  Object.defineProperty(ee, 'emit', {configurable: true, writable: true, value: (function(this: any): any {
     const event = arguments[0];
 
     try {
@@ -50,7 +50,7 @@ export const wrapEmit = (span: Span, ee: any, endEvent: any = NaN) => {  // beca
       else
         span.async();
     }
-  }
+  })});
 };
 
 export const wrapCallback = (span: Span, callback: any, idxError: any = false) => {
