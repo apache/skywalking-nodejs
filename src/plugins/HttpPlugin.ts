@@ -147,7 +147,10 @@ class HttpPlugin implements SwPlugin {
             span.stop();
           };
 
-          req.on('end', copyStatusAndStopIfNotStopped);  // this insead of 'close' because Node 10 doesn't emit those
+          if (process.version < 'v12')
+            req.on('end', copyStatusAndStopIfNotStopped);  // this insead of req or res.close because Node 10 doesn't emit those
+          else
+            res.on('close', copyStatusAndStopIfNotStopped);  // this works better
 
           res.on('abort', () => {
             span.errored = true;

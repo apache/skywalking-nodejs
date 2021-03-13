@@ -22,6 +22,7 @@ import { IncomingMessage, ServerResponse } from 'http';
 import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
 import Tag from '../Tag';
+import EntrySpan from '../trace/span/EntrySpan';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from '../trace/context/ContextCarrier';
 import PluginInstaller from '../core/PluginInstaller';
@@ -36,64 +37,68 @@ class ExpressPlugin implements SwPlugin {
 
   private interceptServerRequest(installer: PluginInstaller) {
     const router = installer.require('express/lib/router');
-    const onFinished = installer.require('on-finished');
     const _handle = router.handle;
 
-    router.handle = function(req: IncomingMessage, res: ServerResponse, out: any) {
-      const headers = req.rawHeaders || [];
-      const headersMap: { [key: string]: string } = {};
-
-      for (let i = 0; i < headers.length / 2; i += 2) {
-        headersMap[headers[i]] = headers[i + 1];
-      }
-
-      const carrier = ContextCarrier.from(headersMap);
+    router.handle = function(req: IncomingMessage, res: ServerResponse, next: any) {
+      const carrier = ContextCarrier.from((req as any).headers || {});
       const operation = (req.url || '/').replace(/\?.*/g, '');
-      const span = ContextManager.current.newEntrySpan(operation, carrier, Component.HTTP_SERVER).start();
+      const span: EntrySpan = ContextManager.current.newEntrySpan(operation, carrier, Component.HTTP_SERVER) as EntrySpan;
 
-      let stopped = 0;
-      const stopIfNotStopped = (err: Error | null) => {
-        if (!stopped++) {
-          span.stop();
-          span.tag(Tag.httpStatusCode(res.statusCode));
-          if (res.statusCode && res.statusCode >= 400) {
-            span.errored = true;
-          }
-          if (err instanceof Error) {
-            span.error(err);
-          }
-          if (res.statusMessage) {
-            span.tag(Tag.httpStatusMsg(res.statusMessage));
-          }
-        }
+      span.component = Component.EXPRESS;
+
+      if (span.depth)  // if we inherited from http then just change component ID and let http do the work
+        return _handle.apply(this, arguments);
+
+      // all the rest of this code is only needed to make express tracing work if the http plugin is disabled
+
+      let copyStatusErrorAndStopIfNotStopped = (err: Error | undefined) => {
+        copyStatusErrorAndStopIfNotStopped = () => undefined;
+
+        span.tag(Tag.httpStatusCode(res.statusCode));
+
+        if (res.statusCode && res.statusCode >= 400)
+          span.errored = true;
+
+        if (res.statusMessage)
+          span.tag(Tag.httpStatusMsg(res.statusMessage));
+
+        if (err instanceof Error)
+          span.error(err);
+
+        span.stop();
       };
+
+      span.start();
 
       try {
         span.layer = SpanLayer.HTTP;
-        span.component = Component.EXPRESS;
         span.peer =
           (typeof req.headers['x-forwarded-for'] === 'string' && req.headers['x-forwarded-for'].split(',').shift())
           || (req.connection.remoteFamily === 'IPv6'
             ? `[${req.connection.remoteAddress}]:${req.connection.remotePort}`
             : `${req.connection.remoteAddress}:${req.connection.remotePort}`);
+
         span.tag(Tag.httpMethod(req.method));
 
         const ret = _handle.call(this, req, res, (err: Error) => {
-          if (err) {
-            span.error(err);
-          } else {
-            span.errored = true;
-          }
-          out.call(this, err);
-          stopped -= 1;  // skip first stop attempt, make sure stop executes once status code and message is set
-          onFinished(res, stopIfNotStopped);  // this must run after any handlers deferred in 'out'
+          span.error(err);
+          next.call(this, err);
         });
-        onFinished(res, stopIfNotStopped); // this must run after any handlers deferred in 'out'
+
+        if (process.version < 'v12')
+          req.on('end', copyStatusErrorAndStopIfNotStopped);  // this insead of req or res.close because Node 10 doesn't emit those
+        else
+          res.on('close', copyStatusErrorAndStopIfNotStopped);  // this works better
+
+        span.async();
 
         return ret;
-      } catch (e) {
-        stopIfNotStopped(e);
-        throw e;
+
+      } catch (err) {
+        copyStatusErrorAndStopIfNotStopped(err);
+
+        throw err;
+
       } finally {  // req.protocol is only possibly available after call to _handle()
         span.tag(Tag.httpURL(((req as any).protocol ? (req as any).protocol + '://' : '') + (req.headers.host || '') + req.url));
       }

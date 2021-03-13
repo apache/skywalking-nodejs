@@ -256,13 +256,13 @@ class MongoDBPlugin implements SwPlugin {
           if (plugin.maybeHookCursor(span, ret)) {
             // NOOP
 
-          } else if (!ret || typeof ret.then !== 'function') {  // generic Promise check
-            span.stop();  // no callback passed in and no Promise or Cursor returned, play it safe
+          } else if (ret && typeof ret.then === 'function') {  // generic Promise check
+            ret = wrapPromise(span, ret);
+
+          } else {  // no callback passed in and no Promise or Cursor returned, play it safe
+            span.stop();
 
             return ret;
-
-          } else {
-            ret = wrapPromise(span, ret);
           }
         }
 
