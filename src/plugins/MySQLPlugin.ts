@@ -108,7 +108,7 @@ class MySQLPlugin implements SwPlugin {
         query = _query.call(this, sql, values, cb);
 
         if (streaming)
-          wrapEmit(span, query, 'end');
+          wrapEmit(span, query, true, 'end');
 
       } catch (e) {
         span.error(e);

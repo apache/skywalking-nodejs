@@ -17,7 +17,7 @@
  *
  */
 
-import SwPlugin from '../core/SwPlugin';
+import SwPlugin, {wrapEmit} from '../core/SwPlugin';
 import { URL } from 'url';
 import { ClientRequest, IncomingMessage, RequestOptions, ServerResponse } from 'http';
 import ContextManager from '../trace/context/ContextManager';
@@ -77,62 +77,22 @@ class HttpPlugin implements SwPlugin {
 
         span.inject().items.forEach((item) => req.setHeader(item.key, item.value));
 
+        wrapEmit(span, req, true, 'close');
+
         req.on('timeout', () => span.log('Timeout', true));
         req.on('abort', () => span.log('Abort', span.errored = true));
-        req.on('error', (err) => span.error(err));
 
-        const _emit = req.emit;
+        req.on('response', (res: any) => {
+          span.tag(Tag.httpStatusCode(res.statusCode));
 
-        req.emit = function(): any {
-          const event = arguments[0];
+          if (res.statusCode && res.statusCode >= 400)
+            span.errored = true;
 
-          span.resync();
+          if (res.statusMessage)
+            span.tag(Tag.httpStatusMsg(res.statusMessage));
 
-          try {
-            if (event === 'response') {
-              const res = arguments[1];
-
-              span.tag(Tag.httpStatusCode(res.statusCode));
-
-              if (res.statusCode && res.statusCode >= 400)
-                span.errored = true;
-
-              if (res.statusMessage)
-                span.tag(Tag.httpStatusMsg(res.statusMessage));
-
-              const _emitRes = res.emit;
-
-              res.emit = function(): any {
-                span.resync();
-
-                try {
-                  return _emitRes.apply(this, arguments);
-
-                } catch (err) {
-                  span.error(err);
-
-                  throw err;
-
-                } finally {
-                  span.async();
-                }
-              }
-            }
-
-            return _emit.apply(this, arguments as any);
-
-          } catch (err) {
-            span.error(err);
-
-            throw err;
-
-          } finally {
-            if (event === 'close')
-              span.stop();
-            else
-              span.async();
-          }
-        };
+          wrapEmit(span, res, false);
+        });
 
         span.async();
 
@@ -188,8 +148,18 @@ class HttpPlugin implements SwPlugin {
           };
 
           req.on('end', copyStatusAndStopIfNotStopped);  // this insead of 'close' because Node 10 doesn't emit those
-          res.on('abort', () => (span.errored = true, span.log('Abort', true), copyStatusAndStopIfNotStopped()));
-          res.on('error', (err) => (span.error(err), copyStatusAndStopIfNotStopped()));
+
+          res.on('abort', () => {
+            span.errored = true;
+
+            span.log('Abort', true);
+            copyStatusAndStopIfNotStopped();
+          });
+
+          res.on('error', (err) => {
+            span.error(err);
+            copyStatusAndStopIfNotStopped();
+          });
 
           span.async();
 

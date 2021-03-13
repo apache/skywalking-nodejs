@@ -27,14 +27,14 @@ export default interface SwPlugin {
   install(installer: PluginInstaller): void;
 }
 
-export const wrapEmit = (span: Span, ee: any, endEvent: any = NaN) => {  // because NaN !== NaN
+export const wrapEmit = (span: Span, ee: any, doError: boolean = true, endEvent: any = NaN) => {  // because NaN !== NaN
   const _emit = ee.emit;
 
   Object.defineProperty(ee, 'emit', {configurable: true, writable: true, value: (function(this: any): any {
     const event = arguments[0];
 
     try {
-      if (event === 'error')
+      if (doError && event === 'error')
         span.error(arguments[1]);
 
       return _emit.apply(this, arguments);

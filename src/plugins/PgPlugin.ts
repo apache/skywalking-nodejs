@@ -91,7 +91,7 @@ class MySQLPlugin implements SwPlugin {
 
         if (query) {
           if (Cursor && query instanceof Cursor)
-            wrapEmit(span, query, 'end');
+            wrapEmit(span, query, true, 'end');
           else if (typeof query.then === 'function')  // generic Promise check
             query = wrapPromise(span, query);
           // else we assume there was a callback
