@@ -27,17 +27,15 @@ export default class StackedSpan extends Span {
     super(options);
   }
 
-  start(): this {
+  start(): void {
     if (++this.depth === 1) {
       super.start();
     }
-    return this;
   }
 
-  stop(): this {
+  stop(): void {
     if (--this.depth === 0) {
       super.stop();
     }
-    return this;
   }
 }

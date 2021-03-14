@@ -117,7 +117,9 @@ class HttpPlugin implements SwPlugin {
       function _sw_request(this: any, req: IncomingMessage, res: ServerResponse, ...reqArgs: any[]) {
         const carrier = ContextCarrier.from((req as any).headers || {});
         const operation = (req.url || '/').replace(/\?.*/g, '');
-        const span = ContextManager.current.newEntrySpan(operation, carrier).start();
+        const span = ContextManager.current.newEntrySpan(operation, carrier);
+
+        span.start();
 
         try {
           span.component = Component.HTTP_SERVER;

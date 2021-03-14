@@ -44,7 +44,9 @@ class MySQLPlugin implements SwPlugin {
       let query: any;
 
       const host = `${this.host}:${this.port}`;
-      const span = ContextManager.current.newExitSpan('pg/query', host, Component.POSTGRESQL).start();
+      const span = ContextManager.current.newExitSpan('pg/query', host, Component.POSTGRESQL);
+
+      span.start();
 
       try {
         span.component = Component.POSTGRESQL;

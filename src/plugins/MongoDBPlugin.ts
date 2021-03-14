@@ -229,7 +229,6 @@ class MongoDBPlugin implements SwPlugin {
       if (span && span.component === Component.MONGODB && span instanceof ExitSpan)  // mongodb has called into itself internally
         return _original.apply(this, args);
 
-      let ret: any;
       let host: string;
 
       try {
@@ -238,7 +237,9 @@ class MongoDBPlugin implements SwPlugin {
         host = '???';
       }
 
-      span = ContextManager.current.newExitSpan('MongoDB/' + operation, host, Component.MONGODB).start();
+      span = ContextManager.current.newExitSpan('MongoDB/' + operation, host, Component.MONGODB);
+
+      span.start();
 
       try {
         span.component = Component.MONGODB;
@@ -250,7 +251,7 @@ class MongoDBPlugin implements SwPlugin {
 
         const hasCB = operationFunc.call(this, operation, span, args);
 
-        ret = _original.apply(this, args);
+        let ret = _original.apply(this, args);
 
         if (!hasCB) {
           if (plugin.maybeHookCursor(span, ret)) {
@@ -266,16 +267,16 @@ class MongoDBPlugin implements SwPlugin {
           }
         }
 
+        span.async();
+
+        return ret;
+
       } catch (e) {
         span.error(e);
         span.stop();
 
         throw e;
       }
-
-      span.async();
-
-      return ret;
     };
   }
 }

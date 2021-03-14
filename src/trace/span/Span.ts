@@ -72,25 +72,21 @@ export default abstract class Span {
     if (options.component) this.component = options.component;
   }
 
-  start(): this {
+  start(): void {
     this.startTime = new Date().getTime();
     this.context.start(this);
-    return this;
   }
 
-  stop(): this {
+  stop(): void {
     this.context.stop(this);
-    return this;
   }
 
-  async(): this {
+  async(): void {
     this.context.async(this);
-    return this;
   }
 
-  resync(): this {
+  resync(): void {
     this.context.resync(this);
-    return this;
   }
 
   finish(segment: Segment): boolean {
@@ -144,7 +140,7 @@ export default abstract class Span {
 
   error(error: Error): this {
     this.errored = true;
-    this.log('Stack', error.stack || '');
+    this.log('Stack', error?.stack || '');
 
     return this;
   }

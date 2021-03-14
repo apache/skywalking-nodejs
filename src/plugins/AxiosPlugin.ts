@@ -44,9 +44,9 @@ class AxiosPlugin implements SwPlugin {
         config = url ? {...url} : {};
 
       const {origin, host, pathname: operation} = new URL(config.url);  // TODO: this may throw invalid URL
-      const span = ContextManager.current.newExitSpan(operation, host, Component.AXIOS, Component.HTTP).start();
+      const span = ContextManager.current.newExitSpan(operation, host, Component.AXIOS, Component.HTTP);
 
-      let ret: any;
+      span.start();
 
       try {
         config.headers = config.headers ? {...config.headers} : {};
@@ -74,7 +74,7 @@ class AxiosPlugin implements SwPlugin {
           }
         };
 
-        ret = _request.call(this, config).then(
+        const ret = _request.call(this, config).then(
           (res: any) => {
             copyStatus(res);
             span.stop();
@@ -91,16 +91,16 @@ class AxiosPlugin implements SwPlugin {
           }
         );
 
+        span.async();
+
+        return ret;
+
       } catch (err) {
         span.error(err);
         span.stop();
 
         throw err;
       }
-
-      span.async();
-
-      return ret;
     };
   }
 }
