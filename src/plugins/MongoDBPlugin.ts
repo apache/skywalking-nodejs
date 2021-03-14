@@ -193,26 +193,28 @@ class MongoDBPlugin implements SwPlugin {
     this.interceptOperation(Collection, 'indexExists', deleteFunc);
     this.interceptOperation(Collection, 'indexInformation', dropFunc);
     this.interceptOperation(Collection, 'listIndexes', dropFunc);  // cursor
+    this.interceptOperation(Collection, 'stats', dropFunc);
 
     this.interceptOperation(Collection, 'rename', deleteFunc);
     this.interceptOperation(Collection, 'drop', dropFunc);
+    this.interceptOperation(Collection, 'options', dropFunc);
+    this.interceptOperation(Collection, 'isCapped', dropFunc);
 
-    // TODO?
-
-    //   stats
-    //   options
-    //   isCapped
-    //   initializeUnorderedBulkOp
-    //   initializeOrderedBulkOp
-    //   watch
+    // TODO
 
     //   DB functions
 
-    // NODO:
+    // TODO?
 
     //   group
+
+    // NODO:
+
+    //   initializeUnorderedBulkOp
+    //   initializeOrderedBulkOp
     //   parallelCollectionScan
     //   geoHaystackSearch
+    //   watch
   }
 
   interceptOperation(Collection: any, operation: string, operationFunc: any): void {
