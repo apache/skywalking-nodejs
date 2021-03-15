@@ -33,6 +33,8 @@ export const wrapEmit = (span: Span, ee: any, doError: boolean = true, endEvent:
   Object.defineProperty(ee, 'emit', {configurable: true, writable: true, value: (function(this: any): any {
     const event = arguments[0];
 
+    span.resync();
+
     try {
       if (doError && event === 'error')
         span.error(arguments[1]);
