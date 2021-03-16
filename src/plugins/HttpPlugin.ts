@@ -17,7 +17,7 @@
  *
  */
 
-import SwPlugin from '../core/SwPlugin';
+import SwPlugin, {wrapEmit} from '../core/SwPlugin';
 import { URL } from 'url';
 import { ClientRequest, IncomingMessage, RequestOptions, ServerResponse } from 'http';
 import ContextManager from '../trace/context/ContextManager';
@@ -57,87 +57,42 @@ class HttpPlugin implements SwPlugin {
             pathname: url.path || '/',
           };
 
-      const httpMethod = arguments[url instanceof URL || typeof url === 'string' ? 1 : 0]?.method || 'GET';
-      const httpURL = protocol + '://' + host + pathname;
       const operation = pathname.replace(/\?.*$/g, '');
+      const span: ExitSpan = ContextManager.current.newExitSpan(operation, host, Component.HTTP) as ExitSpan;
 
-      const span: ExitSpan = ContextManager.current.newExitSpan(operation, host, Component.HTTP).start() as ExitSpan;
+      if (span.depth)  // if we inherited from a higher level plugin then do nothing, higher level should do all the work and we don't duplicate here
+        return _request.apply(this, arguments);
+
+      span.start();
 
       try {
-        if (span.depth === 1) {  // only set HTTP if this span is not overridden by a higher level one
-          span.component = Component.HTTP;
-          span.layer = SpanLayer.HTTP;
-        }
+        span.component = Component.HTTP;
+        span.layer = SpanLayer.HTTP;
+        span.peer = host;
 
-        if (!span.peer)
-          span.peer = host;
-
-        if (!span.hasTag(Tag.httpURLKey))  // only set if a higher level plugin with more info did not already set
-          span.tag(Tag.httpURL(httpURL));
-
-        if (!span.hasTag(Tag.httpMethodKey))
-          span.tag(Tag.httpMethod(httpMethod));
+        span.tag(Tag.httpURL(protocol + '://' + host + pathname));
+        span.tag(Tag.httpMethod(arguments[url instanceof URL || typeof url === 'string' ? 1 : 0]?.method || 'GET'));
 
         const req: ClientRequest = _request.apply(this, arguments);
 
         span.inject().items.forEach((item) => req.setHeader(item.key, item.value));
 
+        wrapEmit(span, req, true, 'close');
+
         req.on('timeout', () => span.log('Timeout', true));
         req.on('abort', () => span.log('Abort', span.errored = true));
-        req.on('error', (err) => span.error(err));
 
-        const _emit = req.emit;
+        req.on('response', (res: any) => {
+          span.tag(Tag.httpStatusCode(res.statusCode));
 
-        req.emit = function(): any {
-          const event = arguments[0];
+          if (res.statusCode && res.statusCode >= 400)
+            span.errored = true;
 
-          span.resync();
+          if (res.statusMessage)
+            span.tag(Tag.httpStatusMsg(res.statusMessage));
 
-          try {
-            if (event === 'response') {
-              const res = arguments[1];
-
-              span.tag(Tag.httpStatusCode(res.statusCode));
-
-              if (res.statusCode && res.statusCode >= 400)
-                span.errored = true;
-
-              if (res.statusMessage)
-                span.tag(Tag.httpStatusMsg(res.statusMessage));
-
-              const _emitRes = res.emit;
-
-              res.emit = function(): any {
-                span.resync();
-
-                try {
-                  return _emitRes.apply(this, arguments);
-
-                } catch (err) {
-                  span.error(err);
-
-                  throw err;
-
-                } finally {
-                  span.async();
-                }
-              }
-            }
-
-            return _emit.apply(this, arguments as any);
-
-          } catch (err) {
-            span.error(err);
-
-            throw err;
-
-          } finally {
-            if (event === 'close')
-              span.stop();
-            else
-              span.async();
-          }
-        };
+          wrapEmit(span, res, false);
+        });
 
         span.async();
 
@@ -160,15 +115,11 @@ class HttpPlugin implements SwPlugin {
       return _addListener.call(this, event, event === 'request' ? _sw_request : handler, ...addArgs);
 
       function _sw_request(this: any, req: IncomingMessage, res: ServerResponse, ...reqArgs: any[]) {
-        const headers = req.rawHeaders || [];
-        const headersMap: { [key: string]: string } = {};
-
-        for (let i = 0; i < headers.length / 2; i += 2)
-          headersMap[headers[i]] = headers[i + 1];
-
-        const carrier = ContextCarrier.from(headersMap);
+        const carrier = ContextCarrier.from((req as any).headers || {});
         const operation = (req.url || '/').replace(/\?.*/g, '');
-        const span = ContextManager.current.newEntrySpan(operation, carrier).start();
+        const span = ContextManager.current.newEntrySpan(operation, carrier);
+
+        span.start();
 
         try {
           span.component = Component.HTTP_SERVER;
@@ -198,9 +149,22 @@ class HttpPlugin implements SwPlugin {
             span.stop();
           };
 
-          req.on('end', copyStatusAndStopIfNotStopped);  // this insead of 'close' because Node 10 doesn't emit those
-          res.on('abort', () => (span.errored = true, span.log('Abort', true), copyStatusAndStopIfNotStopped()));
-          res.on('error', (err) => (span.error(err), copyStatusAndStopIfNotStopped()));
+          if (process.version < 'v12')
+            req.on('end', copyStatusAndStopIfNotStopped);  // this insead of req or res.close because Node 10 doesn't emit those
+          else
+            res.on('close', copyStatusAndStopIfNotStopped);  // this works better
+
+          res.on('abort', () => {
+            span.errored = true;
+
+            span.log('Abort', true);
+            copyStatusAndStopIfNotStopped();
+          });
+
+          res.on('error', (err) => {
+            span.error(err);
+            copyStatusAndStopIfNotStopped();
+          });
 
           span.async();
 

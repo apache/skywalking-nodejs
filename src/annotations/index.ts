@@ -28,7 +28,9 @@ export function trace(op?: string) {
     const original = descriptor.value;
 
     descriptor.value = function (...args: any[]) {
-      const span = ContextManager.current.newLocalSpan(op || key).start();
+      const span = ContextManager.current.newLocalSpan(op || key);
+
+      span.start();
 
       const result = original.apply(this, args);
 

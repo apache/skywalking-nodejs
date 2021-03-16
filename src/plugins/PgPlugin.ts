@@ -17,7 +17,7 @@
  *
  */
 
-import SwPlugin from '../core/SwPlugin';
+import SwPlugin, {wrapEmit, wrapCallback, wrapPromise} from '../core/SwPlugin';
 import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
 import Tag from '../Tag';
@@ -41,21 +41,12 @@ class MySQLPlugin implements SwPlugin {
     const _query = Client.prototype.query;
 
     Client.prototype.query = function(config: any, values: any, callback: any) {
-      const wrapCallback = (_cb: any) => {
-        return function(this: any, err: any, res: any) {
-          if (err)
-            span.error(err);
-
-          span.stop();
-
-          return _cb.call(this, err, res);
-        }
-      };
-
       let query: any;
 
       const host = `${this.host}:${this.port}`;
-      const span = ContextManager.current.newExitSpan('pg/query', host, Component.POSTGRESQL).start();
+      const span = ContextManager.current.newExitSpan('pg/query', host, Component.POSTGRESQL);
+
+      span.start();
 
       try {
         span.component = Component.POSTGRESQL;
@@ -76,16 +67,16 @@ class MySQLPlugin implements SwPlugin {
           _values = config.values;
 
           if (typeof config.callback === 'function')
-            config.callback = wrapCallback(config.callback);
+            config.callback = wrapCallback(span, config.callback, 0);
         }
 
         if (typeof values === 'function')
-          values = wrapCallback(values);
+          values = wrapCallback(span, values, 0);
         else if (_values !== undefined)
           _values = values;
 
         if (typeof callback === 'function')
-          callback = wrapCallback(callback);
+          callback = wrapCallback(span, callback, 0);
 
         span.tag(Tag.dbStatement(`${_sql}`));
 
@@ -101,32 +92,11 @@ class MySQLPlugin implements SwPlugin {
         query = _query.call(this, config, values, callback);
 
         if (query) {
-          if (Cursor && query instanceof Cursor) {
-            query.on('error', (err: any) => {
-              span.error(err);
-              span.stop();
-            });
-
-            query.on('end', () => {
-              span.stop();
-            });
-
-          } else if (typeof query.then === 'function') {  // generic Promise check
-            query = query.then(
-              (res: any) => {
-                span.stop();
-
-                return res;
-              },
-
-              (err: any) => {
-                span.error(err);
-                span.stop();
-
-                return Promise.reject(err);
-              }
-            );
-          } // else we assume there was a callback
+          if (Cursor && query instanceof Cursor)
+            wrapEmit(span, query, true, 'end');
+          else if (typeof query.then === 'function')  // generic Promise check
+            query = wrapPromise(span, query);
+          // else we assume there was a callback
         }
 
       } catch (e) {

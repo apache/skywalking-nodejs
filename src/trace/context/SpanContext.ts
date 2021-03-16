@@ -224,7 +224,7 @@ export default class SpanContext implements Context {
       nSpans: this.nSpans,
     });
 
-    if (!ContextManager.hasContext) {
+    if (!ContextManager.hasContext || !ContextManager.spans.length) {
       ContextManager.restore(span.context, [span]);
     } else if (ContextManager.spans.every((s) => s.id !== span.id)) {
       ContextManager.spans.push(span);

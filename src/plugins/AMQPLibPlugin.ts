@@ -43,8 +43,9 @@ class AMQPLibPlugin implements SwPlugin {
       const topic = fields.exchange || '';
       const queue = fields.routingKey || '';
       const peer = `${this.connection.stream.remoteAddress}:${this.connection.stream.remotePort}`;
+      const span = ContextManager.current.newExitSpan('RabbitMQ/' + topic + '/' + queue + '/Producer', peer, Component.RABBITMQ_PRODUCER);
 
-      const span = ContextManager.current.newExitSpan('RabbitMQ/' + topic + '/' + queue + '/Producer', peer, Component.RABBITMQ_PRODUCER).start();
+      span.start();
 
       try {
         span.inject().items.forEach((item) => {
@@ -85,7 +86,9 @@ class AMQPLibPlugin implements SwPlugin {
       const topic = message?.fields?.exchange || '';
       const queue = message?.fields?.routingKey || '';
       const carrier = ContextCarrier.from(message?.properties?.headers || {});
-      const span = ContextManager.current.newEntrySpan('RabbitMQ/' + topic + '/' + queue + '/Consumer', carrier).start();
+      const span = ContextManager.current.newEntrySpan('RabbitMQ/' + topic + '/' + queue + '/Consumer', carrier);
+
+      span.start();
 
       try {
         span.component = Component.RABBITMQ_CONSUMER;

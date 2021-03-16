@@ -17,7 +17,7 @@
  *
  */
 
-import SwPlugin from '../core/SwPlugin';
+import SwPlugin, {wrapPromise} from '../core/SwPlugin';
 import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
 import ExitSpan from '../trace/span/ExitSpan';
@@ -36,13 +36,12 @@ class MongoDBPlugin implements SwPlugin {
   // Problematic because other exit spans may be created during processing, for this reason we do not .resync() this
   // span to the span list until it is closed. If the cursor is never closed then the span will not be sent.
 
-  maybeHookCursor(span: any, cursor: any): boolean {
+  hookCursorMaybe(span: any, cursor: any): boolean {
     if (!(cursor instanceof this.Cursor))
       return false;
 
     cursor.on('error', (err: any) => {
       span.error(err);
-      span.stop();
     });
 
     cursor.on('close', () => {
@@ -57,21 +56,20 @@ class MongoDBPlugin implements SwPlugin {
     const Collection = installer.require('mongodb/lib/collection');
     this.Cursor      = installer.require('mongodb/lib/cursor');
 
-    const wrapCallback = (span: any, args: any[], idx: number): boolean => {
+    const wrapCallbackWithCursorMaybe = (span: any, args: any[], idx: number): boolean => {
       const callback = args.length > idx && typeof args[idx = args.length - 1] === 'function' ? args[idx] : null;
 
       if (!callback)
         return false;
 
-      args[idx] = function(this: any, error: any, result: any) {
-        if (error || !plugin.maybeHookCursor(span, result)) {
-          if (error)
-            span.error(error);
+      args[idx] = function(this: any) {  // arguments = [error: any, result: any]
+        if (arguments[0])
+          span.error(arguments[0]);
 
+        if (arguments[0] || !plugin.hookCursorMaybe(span, arguments[1]))
           span.stop();
-        }
 
-        return callback.call(this, error, result);
+        return callback.apply(this, arguments);
       }
 
       return true;
@@ -95,13 +93,13 @@ class MongoDBPlugin implements SwPlugin {
       if (agentConfig.mongoTraceParameters)
         span.tag(Tag.dbMongoParameters(stringify(args[0])));
 
-      return wrapCallback(span, args, 1);
+      return wrapCallbackWithCursorMaybe(span, args, 1);
     };
 
     const deleteFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [filter, options, callback]
       span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}(${stringify(args[0])})`));
 
-      return wrapCallback(span, args, 1);
+      return wrapCallbackWithCursorMaybe(span, args, 1);
     };
 
     const updateFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [filter, update, options, callback]
@@ -110,19 +108,19 @@ class MongoDBPlugin implements SwPlugin {
       if (agentConfig.mongoTraceParameters)
         span.tag(Tag.dbMongoParameters(stringify(args[1])));
 
-      return wrapCallback(span, args, 2);
+      return wrapCallbackWithCursorMaybe(span, args, 2);
     };
 
     const findOneFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [query, options, callback]
       span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}(${typeof args[0] !== 'function' ? stringify(args[0]) : ''})`));
 
-      return wrapCallback(span, args, 0);
+      return wrapCallbackWithCursorMaybe(span, args, 0);
     };
 
     const findAndRemoveFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [query, sort, options, callback]
       span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}(${stringify(args[0])}${typeof args[1] !== 'function' && args[1] !== undefined ? ', ' + stringify(args[1]) : ''})`));
 
-      return wrapCallback(span, args, 1);
+      return wrapCallbackWithCursorMaybe(span, args, 1);
     };
 
     const findAndModifyFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [query, sort, doc, options, callback]
@@ -139,19 +137,19 @@ class MongoDBPlugin implements SwPlugin {
 
       span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}(${params})`));
 
-      return wrapCallback(span, args, 1);
+      return wrapCallbackWithCursorMaybe(span, args, 1);
     };
 
     const mapReduceFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [map, reduce, options, callback]
       span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}(${args[0]}, ${args[1]})`));
 
-      return wrapCallback(span, args, 2);
+      return wrapCallbackWithCursorMaybe(span, args, 2);
     };
 
     const dropFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [options, callback]
       span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}()`));
 
-      return wrapCallback(span, args, 0);
+      return wrapCallbackWithCursorMaybe(span, args, 0);
     };
 
     this.interceptOperation(Collection, 'insert', insertFunc);
@@ -195,24 +193,28 @@ class MongoDBPlugin implements SwPlugin {
     this.interceptOperation(Collection, 'indexExists', deleteFunc);
     this.interceptOperation(Collection, 'indexInformation', dropFunc);
     this.interceptOperation(Collection, 'listIndexes', dropFunc);  // cursor
+    this.interceptOperation(Collection, 'stats', dropFunc);
 
     this.interceptOperation(Collection, 'rename', deleteFunc);
     this.interceptOperation(Collection, 'drop', dropFunc);
+    this.interceptOperation(Collection, 'options', dropFunc);
+    this.interceptOperation(Collection, 'isCapped', dropFunc);
+
+    // TODO
+
+    //   DB functions
 
     // TODO?
 
-    //   stats
-    //   options
-    //   isCapped
-    //   initializeUnorderedBulkOp
-    //   initializeOrderedBulkOp
-    //   watch
+    //   group
 
     // NODO:
 
-    //   group
+    //   initializeUnorderedBulkOp
+    //   initializeOrderedBulkOp
     //   parallelCollectionScan
     //   geoHaystackSearch
+    //   watch
   }
 
   interceptOperation(Collection: any, operation: string, operationFunc: any): void {
@@ -226,10 +228,13 @@ class MongoDBPlugin implements SwPlugin {
       const spans = ContextManager.spans;
       let   span = spans[spans.length - 1];
 
-      if (span && span.component === Component.MONGODB && span instanceof ExitSpan)  // mongodb has called into itself internally
+      // XXX: mongodb calls back into itself at this level in several places, for this reason we just do a normal call
+      // if this is detected instead of opening a new span. This should not affect secondary db calls being recorded
+      // from a cursor since this span is kept async until the cursor is closed, at which point it is stoppped.
+
+      if (span?.component === Component.MONGODB)  // mongodb has called into itself internally, span instanceof ExitSpan assumed
         return _original.apply(this, args);
 
-      let ret: any;
       let host: string;
 
       try {
@@ -238,7 +243,9 @@ class MongoDBPlugin implements SwPlugin {
         host = '???';
       }
 
-      span = ContextManager.current.newExitSpan('MongoDB/' + operation, host, Component.MONGODB).start();
+      span = ContextManager.current.newExitSpan('MongoDB/' + operation, host, Component.MONGODB);
+
+      span.start();
 
       try {
         span.component = Component.MONGODB;
@@ -250,34 +257,25 @@ class MongoDBPlugin implements SwPlugin {
 
         const hasCB = operationFunc.call(this, operation, span, args);
 
-        ret = _original.apply(this, args);
+        let ret = _original.apply(this, args);
 
         if (!hasCB) {
-          if (plugin.maybeHookCursor(span, ret)) {
+          if (plugin.hookCursorMaybe(span, ret)) {
             // NOOP
 
-          } else if (!ret || typeof ret.then !== 'function') {  // generic Promise check
-            span.stop();  // no callback passed in and no Promise or Cursor returned, play it safe
+          } else if (ret && typeof ret.then === 'function') {  // generic Promise check
+            ret = wrapPromise(span, ret);
+
+          } else {  // no callback passed in and no Promise or Cursor returned, play it safe
+            span.stop();
 
             return ret;
-
-          } else {
-            ret = ret.then(
-              (res: any) => {
-                span.stop();
-
-                return res;
-              },
-
-              (err: any) => {
-                span.error(err);
-                span.stop();
-
-                return Promise.reject(err);
-              }
-            );
           }
         }
+
+        span.async();
+
+        return ret;
 
       } catch (e) {
         span.error(e);
@@ -285,10 +283,6 @@ class MongoDBPlugin implements SwPlugin {
 
         throw e;
       }
-
-      span.async();
-
-      return ret;
     };
   }
 }
