@@ -73,6 +73,43 @@ class HttpPlugin implements SwPlugin {
         span.tag(Tag.httpURL(protocol + '://' + host + pathname));
         span.tag(Tag.httpMethod(arguments[url instanceof URL || typeof url === 'string' ? 1 : 0]?.method || 'GET'));
 
+        const copyStatusAndWrapEmit = (res: any) => {
+          span.tag(Tag.httpStatusCode(res.statusCode));
+
+          if (res.statusCode && res.statusCode >= 400)
+            span.errored = true;
+
+          if (res.statusMessage)
+            span.tag(Tag.httpStatusMsg(res.statusMessage));
+
+            wrapEmit(span, res, false);
+        };
+
+        const responseCB = function(this: any, res: any) {  // may wrap callback instead of event because it procs first
+          span.resync();
+
+          copyStatusAndWrapEmit(res);
+
+          try {
+            if (callback)
+              return callback.apply(this, arguments);
+
+          } catch (err) {
+            span.error(err);
+
+            throw err;
+
+          } finally {
+            span.async();
+          }
+        };
+
+        const idxCallback = typeof arguments[2] === 'function' ? 2 : typeof arguments[1] === 'function' ? 1 : 0;
+        const callback    = arguments[idxCallback];
+
+        if (idxCallback)
+          arguments[idxCallback] = responseCB;
+
         const req: ClientRequest = _request.apply(this, arguments);
 
         span.inject().items.forEach((item) => req.setHeader(item.key, item.value));
@@ -82,17 +119,8 @@ class HttpPlugin implements SwPlugin {
         req.on('timeout', () => span.log('Timeout', true));
         req.on('abort', () => span.log('Abort', span.errored = true));
 
-        req.on('response', (res: any) => {
-          span.tag(Tag.httpStatusCode(res.statusCode));
-
-          if (res.statusCode && res.statusCode >= 400)
-            span.errored = true;
-
-          if (res.statusMessage)
-            span.tag(Tag.httpStatusMsg(res.statusMessage));
-
-          wrapEmit(span, res, false);
-        });
+        if (!idxCallback)
+          req.on('response', copyStatusAndWrapEmit);
 
         span.async();
 
