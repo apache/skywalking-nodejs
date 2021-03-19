@@ -135,36 +135,28 @@ class HttpPlugin implements SwPlugin {
 
           const ret = handler.call(this, req, res, ...reqArgs);
 
-          let copyStatusAndStopIfNotStopped = () => {
-            copyStatusAndStopIfNotStopped = () => undefined;
+          const stopper = (stopEvent: any) => {
+            const stop = (emittedEvent: any) => {
+              if (emittedEvent === stopEvent) {
+                span.tag(Tag.httpStatusCode(res.statusCode));
 
-            span.tag(Tag.httpStatusCode(res.statusCode));
+                if (res.statusCode && res.statusCode >= 400)
+                  span.errored = true;
 
-            if (res.statusCode && res.statusCode >= 400)
-              span.errored = true;
+                if (res.statusMessage)
+                  span.tag(Tag.httpStatusMsg(res.statusMessage));
 
-            if (res.statusMessage)
-              span.tag(Tag.httpStatusMsg(res.statusMessage));
+                return true;
+              }
+            };
 
-            span.stop();
+            return stop;
           };
 
-          if (process.version < 'v12')
-            req.on('end', copyStatusAndStopIfNotStopped);  // this insead of req or res.close because Node 10 doesn't emit those
-          else
-            res.on('close', copyStatusAndStopIfNotStopped);  // this works better
+          const isSub12 = process.version < 'v12';
 
-          res.on('abort', () => {
-            span.errored = true;
-
-            span.log('Abort', true);
-            copyStatusAndStopIfNotStopped();
-          });
-
-          res.on('error', (err) => {
-            span.error(err);
-            copyStatusAndStopIfNotStopped();
-          });
+          wrapEmit(span, req, true, isSub12 ? stopper('end') : NaN);
+          wrapEmit(span, res, true, isSub12 ? NaN : stopper('close'));
 
           span.async();
 
