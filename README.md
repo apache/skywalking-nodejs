@@ -88,6 +88,7 @@ Library | Underlying Plugin Name
 | [`request`](https://github.com/request/request) | `http` / `https` |
 | [`request-promise`](https://github.com/request/request-promise) | `http` / `https` |
 | [`koa`](https://github.com/koajs/koa) | `http` / `https` |
+| [`mongoose`](https://github.com/Automattic/mongoose) | `mongodb` |
 
 ## Contact Us
 * Submit [an issue](https://github.com/apache/skywalking/issues/new) by using [Nodejs] as title prefix.
