@@ -20,7 +20,6 @@
 import SwPlugin, {wrapPromise} from '../core/SwPlugin';
 import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
-import ExitSpan from '../trace/span/ExitSpan';
 import Tag from '../Tag';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import PluginInstaller from '../core/PluginInstaller';
@@ -30,7 +29,9 @@ class MongoDBPlugin implements SwPlugin {
   readonly module = 'mongodb';
   readonly versions = '*';
 
+  Collection: any;
   Cursor: any;
+  Db: any;
 
   // Experimental method to determine proper end time of cursor DB operation, we stop the span when the cursor is closed.
   // Problematic because other exit spans may be created during processing, for this reason we do not .resync() this
@@ -52,9 +53,10 @@ class MongoDBPlugin implements SwPlugin {
   }
 
   install(installer: PluginInstaller): void {
-    const plugin     = this;
-    const Collection = installer.require('mongodb/lib/collection');
-    this.Cursor      = installer.require('mongodb/lib/cursor');
+    const plugin    = this;
+    this.Collection = installer.require('mongodb/lib/collection');
+    this.Cursor     = installer.require('mongodb/lib/cursor');
+    this.Db         = installer.require('mongodb/lib/db');
 
     const wrapCallbackWithCursorMaybe = (span: any, args: any[], idx: number): boolean => {
       const callback = args.length > idx && typeof args[idx = args.length - 1] === 'function' ? args[idx] : null;
@@ -87,7 +89,7 @@ class MongoDBPlugin implements SwPlugin {
       return str;
     }
 
-    const insertFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [doc(s), options, callback]
+    const collInsertFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [doc(s), options, callback]
       span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}()`));
 
       if (agentConfig.mongoTraceParameters)
@@ -96,13 +98,13 @@ class MongoDBPlugin implements SwPlugin {
       return wrapCallbackWithCursorMaybe(span, args, 1);
     };
 
-    const deleteFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [filter, options, callback]
+    const collDeleteFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [filter, options, callback]
       span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}(${stringify(args[0])})`));
 
       return wrapCallbackWithCursorMaybe(span, args, 1);
     };
 
-    const updateFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [filter, update, options, callback]
+    const collUpdateFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [filter, update, options, callback]
       span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}(${stringify(args[0])})`));
 
       if (agentConfig.mongoTraceParameters)
@@ -111,19 +113,19 @@ class MongoDBPlugin implements SwPlugin {
       return wrapCallbackWithCursorMaybe(span, args, 2);
     };
 
-    const findOneFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [query, options, callback]
+    const collFindOneFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [query, options, callback]
       span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}(${typeof args[0] !== 'function' ? stringify(args[0]) : ''})`));
 
       return wrapCallbackWithCursorMaybe(span, args, 0);
     };
 
-    const findAndRemoveFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [query, sort, options, callback]
+    const collFindAndRemoveFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [query, sort, options, callback]
       span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}(${stringify(args[0])}${typeof args[1] !== 'function' && args[1] !== undefined ? ', ' + stringify(args[1]) : ''})`));
 
       return wrapCallbackWithCursorMaybe(span, args, 1);
     };
 
-    const findAndModifyFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [query, sort, doc, options, callback]
+    const collFindAndModifyFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [query, sort, doc, options, callback]
       let params = stringify(args[0]);
 
       if (typeof args[1] !== 'function' && args[1] !== undefined) {
@@ -140,91 +142,145 @@ class MongoDBPlugin implements SwPlugin {
       return wrapCallbackWithCursorMaybe(span, args, 1);
     };
 
-    const mapReduceFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [map, reduce, options, callback]
+    const collMapReduceFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [map, reduce, options, callback]
       span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}(${args[0]}, ${args[1]})`));
 
       return wrapCallbackWithCursorMaybe(span, args, 2);
     };
 
-    const dropFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [options, callback]
+    const collDropFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [options, callback]
       span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}()`));
 
       return wrapCallbackWithCursorMaybe(span, args, 0);
     };
 
-    this.interceptOperation(Collection, 'insert', insertFunc);
-    this.interceptOperation(Collection, 'insertOne', insertFunc);
-    this.interceptOperation(Collection, 'insertMany', insertFunc);
-    this.interceptOperation(Collection, 'save', insertFunc);
-    this.interceptOperation(Collection, 'deleteOne', deleteFunc);
-    this.interceptOperation(Collection, 'deleteMany', deleteFunc);
-    this.interceptOperation(Collection, 'remove', deleteFunc);
-    this.interceptOperation(Collection, 'removeOne', deleteFunc);
-    this.interceptOperation(Collection, 'removeMany', deleteFunc);
-    this.interceptOperation(Collection, 'update', updateFunc);
-    this.interceptOperation(Collection, 'updateOne', updateFunc);
-    this.interceptOperation(Collection, 'updateMany', updateFunc);
-    this.interceptOperation(Collection, 'replaceOne', updateFunc);
-    this.interceptOperation(Collection, 'find', findOneFunc);  // cursor
-    this.interceptOperation(Collection, 'findOne', findOneFunc);
-    this.interceptOperation(Collection, 'findOneAndDelete', deleteFunc);
-    this.interceptOperation(Collection, 'findOneAndReplace', updateFunc);
-    this.interceptOperation(Collection, 'findOneAndUpdate', updateFunc);
-    this.interceptOperation(Collection, 'findAndRemove', findAndRemoveFunc);
-    this.interceptOperation(Collection, 'findAndModify', findAndModifyFunc);
+    const dbAddUserFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [username, password, options, callback]
+      span.tag(Tag.dbStatement(`${operation}(${stringify(args[0])})`));
 
-    this.interceptOperation(Collection, 'bulkWrite', insertFunc);
-    this.interceptOperation(Collection, 'mapReduce', mapReduceFunc);
-    this.interceptOperation(Collection, 'aggregate', deleteFunc);  // cursor
-    this.interceptOperation(Collection, 'distinct', findAndRemoveFunc);
-    this.interceptOperation(Collection, 'count', findOneFunc);
-    this.interceptOperation(Collection, 'estimatedDocumentCount', dropFunc);
-    this.interceptOperation(Collection, 'countDocuments', findOneFunc);
+      return wrapCallbackWithCursorMaybe(span, args, 2);
+    };
 
-    this.interceptOperation(Collection, 'createIndex', deleteFunc);
-    this.interceptOperation(Collection, 'createIndexes', deleteFunc);
-    this.interceptOperation(Collection, 'ensureIndex', deleteFunc);
-    this.interceptOperation(Collection, 'dropIndex', deleteFunc);
-    this.interceptOperation(Collection, 'dropIndexes', dropFunc);
-    this.interceptOperation(Collection, 'dropAllIndexes', dropFunc);
-    this.interceptOperation(Collection, 'reIndex', dropFunc);
+    const dbRemoveUserFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [username, options, callback]
+      span.tag(Tag.dbStatement(`${operation}(${stringify(args[0])})`));
 
-    this.interceptOperation(Collection, 'indexes', dropFunc);
-    this.interceptOperation(Collection, 'indexExists', deleteFunc);
-    this.interceptOperation(Collection, 'indexInformation', dropFunc);
-    this.interceptOperation(Collection, 'listIndexes', dropFunc);  // cursor
-    this.interceptOperation(Collection, 'stats', dropFunc);
+      return wrapCallbackWithCursorMaybe(span, args, 1);
+    };
 
-    this.interceptOperation(Collection, 'rename', deleteFunc);
-    this.interceptOperation(Collection, 'drop', dropFunc);
-    this.interceptOperation(Collection, 'options', dropFunc);
-    this.interceptOperation(Collection, 'isCapped', dropFunc);
+    const dbRenameCollectionFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [fromCollection, toCollection, options, callback]
+      span.tag(Tag.dbStatement(`${operation}(${stringify(args[0])}, ${stringify(args[1])})`));
 
-    // TODO
+      return wrapCallbackWithCursorMaybe(span, args, 2);
+    };
 
-    //   DB functions
+    const dbCollectionsFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [options, callback]
+      span.tag(Tag.dbStatement(`${operation}()`));
 
-    // TODO?
+      return wrapCallbackWithCursorMaybe(span, args, 0);
+    };
 
+    const dbEvalFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [code, parameters, options, callback]
+      span.tag(Tag.dbStatement(`${operation}(${stringify(args[0])}${typeof args[1] !== 'function' && args[1] !== undefined ? ', ' + stringify(args[1]) : ''})`));
+
+      return wrapCallbackWithCursorMaybe(span, args, 1);
+    };
+
+    this.interceptOperation(this.Collection, 'insert', collInsertFunc);
+    this.interceptOperation(this.Collection, 'insertOne', collInsertFunc);
+    this.interceptOperation(this.Collection, 'insertMany', collInsertFunc);
+    this.interceptOperation(this.Collection, 'save', collInsertFunc);
+    this.interceptOperation(this.Collection, 'deleteOne', collDeleteFunc);
+    this.interceptOperation(this.Collection, 'deleteMany', collDeleteFunc);
+    this.interceptOperation(this.Collection, 'remove', collDeleteFunc);
+    this.interceptOperation(this.Collection, 'removeOne', collDeleteFunc);
+    this.interceptOperation(this.Collection, 'removeMany', collDeleteFunc);
+    this.interceptOperation(this.Collection, 'update', collUpdateFunc);
+    this.interceptOperation(this.Collection, 'updateOne', collUpdateFunc);
+    this.interceptOperation(this.Collection, 'updateMany', collUpdateFunc);
+    this.interceptOperation(this.Collection, 'replaceOne', collUpdateFunc);
+    this.interceptOperation(this.Collection, 'find', collFindOneFunc);  // cursor
+    this.interceptOperation(this.Collection, 'findOne', collFindOneFunc);
+    this.interceptOperation(this.Collection, 'findOneAndDelete', collDeleteFunc);
+    this.interceptOperation(this.Collection, 'findOneAndReplace', collUpdateFunc);
+    this.interceptOperation(this.Collection, 'findOneAndUpdate', collUpdateFunc);
+    this.interceptOperation(this.Collection, 'findAndRemove', collFindAndRemoveFunc);
+    this.interceptOperation(this.Collection, 'findAndModify', collFindAndModifyFunc);
+
+    this.interceptOperation(this.Collection, 'bulkWrite', collInsertFunc);
+    this.interceptOperation(this.Collection, 'mapReduce', collMapReduceFunc);
+    this.interceptOperation(this.Collection, 'aggregate', collDeleteFunc);  // cursor
+    this.interceptOperation(this.Collection, 'distinct', collFindAndRemoveFunc);
+    this.interceptOperation(this.Collection, 'count', collFindOneFunc);
+    this.interceptOperation(this.Collection, 'estimatedDocumentCount', collDropFunc);
+    this.interceptOperation(this.Collection, 'countDocuments', collFindOneFunc);
+
+    this.interceptOperation(this.Collection, 'createIndex', collDeleteFunc);
+    this.interceptOperation(this.Collection, 'createIndexes', collDeleteFunc);
+    this.interceptOperation(this.Collection, 'ensureIndex', collDeleteFunc);
+    this.interceptOperation(this.Collection, 'dropIndex', collDeleteFunc);
+    this.interceptOperation(this.Collection, 'dropIndexes', collDropFunc);
+    this.interceptOperation(this.Collection, 'dropAllIndexes', collDropFunc);
+    this.interceptOperation(this.Collection, 'reIndex', collDropFunc);
+
+    this.interceptOperation(this.Collection, 'indexes', collDropFunc);
+    this.interceptOperation(this.Collection, 'indexExists', collDeleteFunc);
+    this.interceptOperation(this.Collection, 'indexInformation', collDropFunc);
+    this.interceptOperation(this.Collection, 'listIndexes', collDropFunc);  // cursor
+    this.interceptOperation(this.Collection, 'stats', collDropFunc);
+
+    this.interceptOperation(this.Collection, 'rename', collDeleteFunc);
+    this.interceptOperation(this.Collection, 'drop', collDropFunc);
+    this.interceptOperation(this.Collection, 'options', collDropFunc);
+    this.interceptOperation(this.Collection, 'isCapped', collDropFunc);
+
+    this.interceptOperation(this.Db, 'aggregate', dbAddUserFunc);  // cursor
+
+    this.interceptOperation(this.Db, 'addUser', dbAddUserFunc);
+    this.interceptOperation(this.Db, 'removeUser', dbRemoveUserFunc);
+
+    this.interceptOperation(this.Db, 'collection', dbRemoveUserFunc);
+    this.interceptOperation(this.Db, 'createCollection', dbRemoveUserFunc);
+    this.interceptOperation(this.Db, 'renameCollection', dbRenameCollectionFunc);
+    this.interceptOperation(this.Db, 'dropCollection', dbRemoveUserFunc);
+    this.interceptOperation(this.Db, 'collections', dbCollectionsFunc);
+    this.interceptOperation(this.Db, 'listCollections', dbAddUserFunc);  // cursor
+
+    this.interceptOperation(this.Db, 'createIndex', dbRenameCollectionFunc);
+    this.interceptOperation(this.Db, 'ensureIndex', dbRenameCollectionFunc);
+    this.interceptOperation(this.Db, 'indexInformation', dbRemoveUserFunc);
+    this.interceptOperation(this.Db, 'stats', dbCollectionsFunc);
+
+    this.interceptOperation(this.Db, 'command', dbRemoveUserFunc);
+    this.interceptOperation(this.Db, 'eval', dbEvalFunc);
+    this.interceptOperation(this.Db, 'executeDbAdminCommand', dbRemoveUserFunc);
+
+    this.interceptOperation(this.Db, 'dropDatabase', dbCollectionsFunc);
+
+    // TODO collection?
     //   group
+    //   parallelCollectionScan
 
-    // NODO:
-
+    // NODO collection:
     //   initializeUnorderedBulkOp
     //   initializeOrderedBulkOp
-    //   parallelCollectionScan
     //   geoHaystackSearch
+    //   watch
+
+    // NODO db:
+    //   admin
+    //   profilingLevel
+    //   setProfilingLevel
+    //   unref
     //   watch
   }
 
-  interceptOperation(Collection: any, operation: string, operationFunc: any): void {
+  interceptOperation(Cls: any, operation: string, operationFunc: any): void {
     const plugin    = this;
-    const _original = Collection.prototype[operation];
+    const _original = Cls.prototype[operation];
 
     if (!_original)
         return;
 
-    Collection.prototype[operation] = function(...args: any[]) {
+    Cls.prototype[operation] = function(...args: any[]) {
       const spans = ContextManager.spans;
       let   span = spans[spans.length - 1];
 
@@ -235,13 +291,12 @@ class MongoDBPlugin implements SwPlugin {
       if (span?.component === Component.MONGODB)  // mongodb has called into itself internally, span instanceof ExitSpan assumed
         return _original.apply(this, args);
 
-      let host: string;
+      let host = '???';
 
       try {
-        host = this.s.db.serverConfig.s.options.servers.map((s: any) => `${s.host}:${s.port}`).join(',');  // will this work for non-NativeTopology?
-      } catch {
-        host = '???';
-      }
+        const db = this instanceof plugin.Collection ? this.s.db : this;
+        host = db.serverConfig.s.options.servers.map((s: any) => `${s.host}:${s.port}`).join(',');  // will this work for non-NativeTopology?
+      } catch { /* nop */ }
 
       span = ContextManager.current.newExitSpan('MongoDB/' + operation, host, Component.MONGODB);
 

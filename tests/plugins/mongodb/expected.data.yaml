@@ -21,10 +21,25 @@ segmentItems:
     segments:
       - segmentId: not null
         spans:
-          - operationName: MongoDB/findOne
+          - operationName: MongoDB/collection
             operationId: 0
             parentSpanId: 0
             spanId: 1
+            spanLayer: Database
+            startTime: gt 0
+            endTime: gt 0
+            componentId: 9
+            spanType: Exit
+            peer: mongo:27017
+            skipAnalysis: false
+            tags:
+              - { key: db.type, value: MongoDB }
+              - { key: db.instance, value: admin }
+              - { key: db.statement, value: "collection(\"docs\")" }
+          - operationName: MongoDB/findOne
+            operationId: 0
+            parentSpanId: 0
+            spanId: 2
             spanLayer: Database
             startTime: gt 0
             endTime: gt 0
