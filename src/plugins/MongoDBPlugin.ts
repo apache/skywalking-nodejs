@@ -17,7 +17,7 @@
  *
  */
 
-import SwPlugin, {wrapPromise} from '../core/SwPlugin';
+import SwPlugin, {wrapEmit, wrapPromise} from '../core/SwPlugin';
 import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
 import Tag from '../Tag';
@@ -33,21 +33,11 @@ class MongoDBPlugin implements SwPlugin {
   Cursor: any;
   Db: any;
 
-  // Experimental method to determine proper end time of cursor DB operation, we stop the span when the cursor is closed.
-  // Problematic because other exit spans may be created during processing, for this reason we do not .resync() this
-  // span to the span list until it is closed. If the cursor is never closed then the span will not be sent.
-
   hookCursorMaybe(span: any, cursor: any): boolean {
     if (!(cursor instanceof this.Cursor))
       return false;
 
-    cursor.on('error', (err: any) => {
-      span.error(err);
-    });
-
-    cursor.on('close', () => {
-      span.stop();
-    });
+    wrapEmit(span, cursor, true, 'close');
 
     return true;
   }
@@ -65,6 +55,8 @@ class MongoDBPlugin implements SwPlugin {
         return false;
 
       args[idx] = function(this: any) {  // arguments = [error: any, result: any]
+        span.mongodbInCall = false;  // we do this because some operations may call callback immediately which would not create a new span for any operations in that callback (db.collection())
+
         if (arguments[0])
           span.error(arguments[0]);
 
@@ -80,6 +72,8 @@ class MongoDBPlugin implements SwPlugin {
     const stringify = (params: any) => {
       if (params === undefined)
         return '';
+      else if (typeof params === 'function')
+        return `${params}`;
 
       let str = JSON.stringify(params);
 
@@ -143,7 +137,7 @@ class MongoDBPlugin implements SwPlugin {
     };
 
     const collMapReduceFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [map, reduce, options, callback]
-      span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}(${args[0]}, ${args[1]})`));
+      span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}(${stringify(args[0])}, ${stringify(args[1])})`));
 
       return wrapCallbackWithCursorMaybe(span, args, 2);
     };
@@ -258,11 +252,11 @@ class MongoDBPlugin implements SwPlugin {
     // TODO collection?
     //   group
     //   parallelCollectionScan
+    //   geoHaystackSearch
 
     // NODO collection:
     //   initializeUnorderedBulkOp
     //   initializeOrderedBulkOp
-    //   geoHaystackSearch
     //   watch
 
     // NODO db:
@@ -288,7 +282,7 @@ class MongoDBPlugin implements SwPlugin {
       // if this is detected instead of opening a new span. This should not affect secondary db calls being recorded
       // from a cursor since this span is kept async until the cursor is closed, at which point it is stoppped.
 
-      if (span?.component === Component.MONGODB)  // mongodb has called into itself internally, span instanceof ExitSpan assumed
+      if (span?.component === Component.MONGODB && (span as any).mongodbInCall)  // mongodb has called into itself internally, span instanceof ExitSpan assumed
         return _original.apply(this, args);
 
       let host = '???';
@@ -312,7 +306,9 @@ class MongoDBPlugin implements SwPlugin {
 
         const hasCB = operationFunc.call(this, operation, span, args);
 
+        (span as any).mongodbInCall = true;
         let ret = _original.apply(this, args);
+        (span as any).mongodbInCall = false;
 
         if (!hasCB) {
           if (plugin.hookCursorMaybe(span, ret)) {
