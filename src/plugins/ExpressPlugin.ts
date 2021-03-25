@@ -23,9 +23,9 @@ import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
 import Tag from '../Tag';
 import EntrySpan from '../trace/span/EntrySpan';
-import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from '../trace/context/ContextCarrier';
 import PluginInstaller from '../core/PluginInstaller';
+import HttpPlugin from './HttpPlugin';
 
 class ExpressPlugin implements SwPlugin {
   readonly module = 'express';
@@ -49,59 +49,17 @@ class ExpressPlugin implements SwPlugin {
       if (span.depth)  // if we inherited from http then just change component ID and let http do the work
         return _handle.apply(this, arguments);
 
-      // all the rest of this code is only needed to make express tracing work if the http plugin is disabled
+      return HttpPlugin.wrapHttpResponse(span, req, res, () => {  // http plugin disabled, we use its mechanism anyway
+        try {
+          return _handle.call(this, req, res, (err: Error) => {
+            span.error(err);
+            next.call(this, err);
+          });
 
-      let copyStatusErrorAndStopIfNotStopped = (err: Error | undefined) => {
-        copyStatusErrorAndStopIfNotStopped = () => undefined;
-
-        span.tag(Tag.httpStatusCode(res.statusCode));
-
-        if (res.statusCode && res.statusCode >= 400)
-          span.errored = true;
-
-        if (res.statusMessage)
-          span.tag(Tag.httpStatusMsg(res.statusMessage));
-
-        if (err instanceof Error)
-          span.error(err);
-
-        span.stop();
-      };
-
-      span.start();
-
-      try {
-        span.layer = SpanLayer.HTTP;
-        span.peer =
-          (typeof req.headers['x-forwarded-for'] === 'string' && req.headers['x-forwarded-for'].split(',').shift())
-          || (req.connection.remoteFamily === 'IPv6'
-            ? `[${req.connection.remoteAddress}]:${req.connection.remotePort}`
-            : `${req.connection.remoteAddress}:${req.connection.remotePort}`);
-
-        span.tag(Tag.httpMethod(req.method));
-
-        const ret = _handle.call(this, req, res, (err: Error) => {
-          span.error(err);
-          next.call(this, err);
-        });
-
-        if (process.version < 'v12')
-          req.on('end', copyStatusErrorAndStopIfNotStopped);  // this insead of req or res.close because Node 10 doesn't emit those
-        else
-          res.on('close', copyStatusErrorAndStopIfNotStopped);  // this works better
-
-        span.async();
-
-        return ret;
-
-      } catch (err) {
-        copyStatusErrorAndStopIfNotStopped(err);
-
-        throw err;
-
-      } finally {  // req.protocol is only possibly available after call to _handle()
-        span.tag(Tag.httpURL(((req as any).protocol ? (req as any).protocol + '://' : '') + (req.headers.host || '') + req.url));
-      }
+        } finally {  // req.protocol is only possibly available after call to _handle()
+          span.tag(Tag.httpURL(((req as any).protocol ? (req as any).protocol + '://' : '') + (req.headers.host || '') + req.url));
+        }
+      });
     };
   }
 }

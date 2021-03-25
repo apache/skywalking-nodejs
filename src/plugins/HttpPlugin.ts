@@ -23,6 +23,7 @@ import { ClientRequest, IncomingMessage, RequestOptions, ServerResponse } from '
 import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
 import Tag from '../Tag';
+import Span from '../trace/span/Span';
 import ExitSpan from '../trace/span/ExitSpan';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from '../trace/context/ContextCarrier';
@@ -136,8 +137,8 @@ class HttpPlugin implements SwPlugin {
   }
 
   private interceptServerRequest(module: any, protocol: string) {
-    /// TODO? full event protocol support not currently implemented (prependListener(), removeListener(), etc...)
-    const _addListener = module.Server.prototype.addListener;
+    const plugin = this;
+    const _addListener = module.Server.prototype.addListener;  // TODO? full event protocol support not currently implemented (prependListener(), removeListener(), etc...)
 
     module.Server.prototype.addListener = module.Server.prototype.on = function (event: any, handler: any, ...addArgs: any[]) {
       return _addListener.call(this, event, event === 'request' ? _sw_request : handler, ...addArgs);
@@ -147,57 +148,63 @@ class HttpPlugin implements SwPlugin {
         const operation = (req.url || '/').replace(/\?.*/g, '');
         const span = ContextManager.current.newEntrySpan(operation, carrier);
 
-        span.start();
+        span.component = Component.HTTP_SERVER;
 
-        try {
-          span.component = Component.HTTP_SERVER;
-          span.layer = SpanLayer.HTTP;
-          span.peer =
-            (typeof req.headers['x-forwarded-for'] === 'string' && req.headers['x-forwarded-for'].split(',').shift())
-            || (req.connection.remoteFamily === 'IPv6'
-              ? `[${req.connection.remoteAddress}]:${req.connection.remotePort}`
-              : `${req.connection.remoteAddress}:${req.connection.remotePort}`);
+        span.tag(Tag.httpURL(protocol + '://' + (req.headers.host || '') + req.url));
 
-          span.tag(Tag.httpURL(protocol + '://' + (req.headers.host || '') + req.url));
-          span.tag(Tag.httpMethod(req.method));
-
-          const ret = handler.call(this, req, res, ...reqArgs);
-
-          const stopper = (stopEvent: any) => {
-            const stop = (emittedEvent: any) => {
-              if (emittedEvent === stopEvent) {
-                span.tag(Tag.httpStatusCode(res.statusCode));
-
-                if (res.statusCode && res.statusCode >= 400)
-                  span.errored = true;
-
-                if (res.statusMessage)
-                  span.tag(Tag.httpStatusMsg(res.statusMessage));
-
-                return true;
-              }
-            };
-
-            return stop;
-          };
-
-          const isSub12 = process.version < 'v12';
-
-          wrapEmit(span, req, true, isSub12 ? stopper('end') : NaN);
-          wrapEmit(span, res, true, isSub12 ? NaN : stopper('close'));
-
-          span.async();
-
-          return ret;
-
-        } catch (err) {
-          span.error(err);
-          span.stop();
-
-          throw err;
-        }
+        return plugin.wrapHttpResponse(span, req, res, () => handler.call(this, req, res, ...reqArgs));
       }
     };
+  }
+
+  wrapHttpResponse(span: Span, req: IncomingMessage, res: ServerResponse, handler: any): any {
+    span.start();
+
+    try {
+      span.layer = SpanLayer.HTTP;
+      span.peer =
+        (typeof req.headers['x-forwarded-for'] === 'string' && req.headers['x-forwarded-for'].split(',').shift())
+        || (req.connection.remoteFamily === 'IPv6'
+          ? `[${req.connection.remoteAddress}]:${req.connection.remotePort}`
+          : `${req.connection.remoteAddress}:${req.connection.remotePort}`);
+
+      span.tag(Tag.httpMethod(req.method));
+
+      const ret = handler();
+
+      const stopper = (stopEvent: any) => {
+        const stop = (emittedEvent: any) => {
+          if (emittedEvent === stopEvent) {
+            span.tag(Tag.httpStatusCode(res.statusCode));
+
+            if (res.statusCode && res.statusCode >= 400)
+              span.errored = true;
+
+            if (res.statusMessage)
+              span.tag(Tag.httpStatusMsg(res.statusMessage));
+
+            return true;
+          }
+        };
+
+        return stop;
+      };
+
+      const isSub12 = process.version < 'v12';
+
+      wrapEmit(span, req, true, isSub12 ? stopper('end') : NaN);
+      wrapEmit(span, res, true, isSub12 ? NaN : stopper('close'));
+
+      span.async();
+
+      return ret;
+
+    } catch (err) {
+      span.error(err);
+      span.stop();
+
+      throw err;
+    }
   }
 }
 
