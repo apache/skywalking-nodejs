@@ -28,6 +28,7 @@ export class Component {
   static readonly RABBITMQ_CONSUMER = new Component(53);
   static readonly EXPRESS = new Component(4002);
   static readonly AXIOS = new Component(4005);
+  static readonly MONGOOSE = new Component(4006);
 
   constructor(public readonly id: number) {}
 }

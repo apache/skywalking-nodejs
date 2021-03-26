@@ -275,14 +275,13 @@ class MongoDBPlugin implements SwPlugin {
         return;
 
     Cls.prototype[operation] = function(...args: any[]) {
-      const spans = ContextManager.spans;
-      let   span = spans[spans.length - 1];
+      let span = ContextManager.currentSpan;
 
       // XXX: mongodb calls back into itself at this level in several places, for this reason we just do a normal call
       // if this is detected instead of opening a new span. This should not affect secondary db calls being recorded
       // from a cursor since this span is kept async until the cursor is closed, at which point it is stoppped.
 
-      if (span?.component === Component.MONGODB && (span as any).mongodbInCall)  // mongodb has called into itself internally, span instanceof ExitSpan assumed
+      if ((span as any)?.mongodbInCall)  // mongodb has called into itself internally
         return _original.apply(this, args);
 
       let host = '???';
@@ -297,7 +296,9 @@ class MongoDBPlugin implements SwPlugin {
       span.start();
 
       try {
-        span.component = Component.MONGODB;
+        if (span.component === Component.UNKNOWN)  // in case mongoose sitting on top
+          span.component = Component.MONGODB;
+
         span.layer = SpanLayer.DATABASE;
         span.peer = host;
 
