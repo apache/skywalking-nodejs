@@ -18,10 +18,9 @@
  */
 
 import StackedSpan from '../../trace/span/StackedSpan';
-import { Component } from '../Component';
 import { SpanCtorOptions } from './Span';
 import SegmentRef from '../../trace/context/SegmentRef';
-import { SpanLayer, SpanType } from '../../proto/language-agent/Tracing_pb';
+import { SpanType } from '../../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from '../context/ContextCarrier';
 
 export default class EntrySpan extends StackedSpan {
@@ -31,15 +30,6 @@ export default class EntrySpan extends StackedSpan {
         type: SpanType.ENTRY,
       }),
     );
-  }
-
-  start(): this {
-    super.start();
-    this.layer = SpanLayer.UNKNOWN;
-    this.component = Component.UNKNOWN;
-    this.logs.splice(0, this.logs.length);
-    this.tags.splice(0, this.tags.length);
-    return this;
   }
 
   extract(carrier: ContextCarrier): this {
