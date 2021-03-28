@@ -49,6 +49,4 @@ export default interface Context {
   /* This should be called upon entering the new async context for a span that has previously executed .async(), it
      should be the first thing the callback function belonging to the span does. */
   resync(span: Span): void;
-
-  currentSpan(): Span | undefined;
 }

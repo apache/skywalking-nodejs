@@ -62,8 +62,4 @@ export default class DummyContext implements Context {
   resync(span: Span) {
     return;
   }
-
-  currentSpan(): Span {
-    throw new Error('DummyContext.currentSpan() should never be called!');
-  }
 }

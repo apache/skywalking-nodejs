@@ -59,6 +59,7 @@ export default abstract class Span {
   startTime = 0;
   endTime = 0;
   errored = false;
+  lastError: Error | null = null;
 
   constructor(options: SpanCtorOptions & { type: SpanType }) {
     this.context = options.context;
@@ -139,7 +140,11 @@ export default abstract class Span {
   }
 
   error(error: Error): this {
+    if (error === this.lastError)  // don't store duplicate identical error twice
+      return this;
+
     this.errored = true;
+    this.lastError = error;
     this.log('Stack', error?.stack || '');
 
     return this;

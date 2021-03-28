@@ -73,11 +73,13 @@ export default class PluginInstaller {
     };
   };
 
+  isPluginEnabled = (name: string): boolean => !name.match(config.reDisablePlugins);
+
   install(): void {
     fs.readdirSync(this.pluginDir)
     .filter((file) => !(file.endsWith('.d.ts') || file.endsWith('.js.map')))
     .forEach((file) => {
-      if (file.match(config.reDisablePlugins)) {
+      if (file.replace(/(?:Plugin)?\.js$/i, '').match(config.reDisablePlugins)) {
         logger.info(`Plugin ${file} not installed because it is disabled`);
         return;
       }

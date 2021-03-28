@@ -40,7 +40,7 @@ export type AgentConfig = {
 export function finalizeConfig(config: AgentConfig): void {
   const escapeRegExp = (s: string) => s.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1");
 
-  config.reDisablePlugins = RegExp(`^(?:${config.disablePlugins!.split(',').map((s) => escapeRegExp(s.trim()) + 'Plugin\\.js').join('|')})$`, 'i');
+  config.reDisablePlugins = RegExp(`^(?:${config.disablePlugins!.split(',').map((s) => escapeRegExp(s.trim())).join('|')})$`, 'i');
 
   const ignoreSuffix =`^.+(?:${config.ignoreSuffix!.split(',').map((s) => escapeRegExp(s.trim())).join('|')})$`;
   const ignorePath = '^(?:' + config.traceIgnorePath!.split(',').map(

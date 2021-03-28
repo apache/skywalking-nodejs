@@ -69,6 +69,12 @@ class ContextManager {
     return asyncState;
   }
 
+  get currentSpan(): Span {
+    const spans = store.getStore()?.spans;
+
+    return spans?.[spans.length - 1] as Span;
+  };
+
   get hasContext(): boolean | undefined {
     return store.getStore()?.valid;
   }

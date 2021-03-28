@@ -230,8 +230,4 @@ export default class SpanContext implements Context {
       ContextManager.spans.push(span);
     }
   }
-
-  currentSpan(): Span | undefined {
-    return ContextManager.spans[ContextManager.spans.length - 1];
-  }
 }
