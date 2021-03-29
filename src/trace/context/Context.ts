@@ -24,6 +24,7 @@ import { ContextCarrier } from './ContextCarrier';
 
 export default interface Context {
   segment: Segment;
+  nSpans: number;
 
   newLocalSpan(operation: string): Span;
 
