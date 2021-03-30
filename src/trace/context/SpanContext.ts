@@ -168,7 +168,7 @@ export default class SpanContext implements Context {
     });
 
     this.nSpans += 1;
-    if (ContextManager.spans.every((s) => s.id !== span.id)) {
+    if (ContextManager.spans.every((s) => s.id !== span.id || s.context !== span.context)) {
       ContextManager.spans.push(span);
     }
 
@@ -226,7 +226,7 @@ export default class SpanContext implements Context {
 
     if (!ContextManager.hasContext || !ContextManager.spans.length) {
       ContextManager.restore(span.context, [span]);
-    } else if (ContextManager.spans.every((s) => s.id !== span.id)) {
+    } else if (ContextManager.spans.every((s) => s.id !== span.id || s.context !== span.context)) {
       ContextManager.spans.push(span);
     }
   }

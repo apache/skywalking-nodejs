@@ -32,7 +32,7 @@ export default class DummyContext implements Context {
     type: SpanType.LOCAL,
   });
   segment: Segment = new Segment();
-  depth = 0;
+  nSpans = 0;
 
   newEntrySpan(operation: string, carrier?: ContextCarrier, inherit?: Component): Span {
     return this.span;
@@ -47,12 +47,12 @@ export default class DummyContext implements Context {
   }
 
   start(): Context {
-    this.depth++;
+    this.nSpans++;
     return this;
   }
 
   stop(): boolean {
-    return --this.depth === 0;
+    return --this.nSpans === 0;
   }
 
   async(span: Span) {

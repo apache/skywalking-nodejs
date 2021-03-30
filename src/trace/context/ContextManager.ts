@@ -23,7 +23,7 @@ import SpanContext from '../../trace/context/SpanContext';
 
 import async_hooks from 'async_hooks';
 
-type AsyncState = { context: Context, spans: Span[], valid: boolean };
+type AsyncState = { spans: Span[], valid: boolean };
 
 let store: {
   getStore(): AsyncState | undefined;
@@ -62,7 +62,7 @@ class ContextManager {
     // Necessary because span may "finish()" in a child async task of where the asyncState was actually created and so clearing in the child would not clear in parent and invalid asyncState would be reused in new children of that parent.
     let asyncState = store.getStore();
     if (!asyncState?.valid) {
-      asyncState = { context: new SpanContext(), spans: [], valid: true };
+      asyncState = { spans: [], valid: true };
       store.enterWith(asyncState);
     }
 
@@ -80,7 +80,9 @@ class ContextManager {
   }
 
   get current(): Context {
-    return this.asyncState.context;
+    const asyncState = this.asyncState;
+
+    return !asyncState.spans.length ? new SpanContext() : asyncState.spans[asyncState.spans.length - 1].context;
   }
 
   get spans(): Span[] {
@@ -91,9 +93,9 @@ class ContextManager {
     let asyncState = store.getStore();
 
     if (!asyncState?.valid) {
-      asyncState = { context: new SpanContext(), spans: [], valid: true };
+      asyncState = { spans: [], valid: true };
     } else {
-      asyncState = { context: asyncState.context, spans: [...asyncState.spans], valid: asyncState.valid };
+      asyncState = { spans: [...asyncState.spans], valid: asyncState.valid };
     }
 
     store.enterWith(asyncState);
@@ -107,7 +109,7 @@ class ContextManager {
   }
 
   restore(context: Context, spans: Span[]): void {
-    store.enterWith({ context, spans: spans || [], valid: this.asyncState.valid });
+    store.enterWith({ spans: spans || [], valid: this.asyncState.valid });
   }
 
   withSpan(span: Span, callback: (...args: any[]) => any, ...args: any[]): any {
