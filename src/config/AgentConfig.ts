@@ -23,6 +23,7 @@ export type AgentConfig = {
   serviceName?: string;
   serviceInstance?: string;
   collectorAddress?: string;
+  secure?: boolean;
   authorization?: string;
   maxBufferSize?: number;
   disablePlugins?: string;
@@ -62,6 +63,7 @@ export default {
       return os.hostname();
     })(),
   collectorAddress: process.env.SW_AGENT_COLLECTOR_BACKEND_SERVICES || '127.0.0.1:11800',
+  secure: process.env.SW_AGENT_SECURE?.toLocaleLowerCase() === 'true',
   authorization: process.env.SW_AGENT_AUTHENTICATION,
   maxBufferSize: Number.isSafeInteger(process.env.SW_AGENT_MAX_BUFFER_SIZE) ?
     Number.parseInt(process.env.SW_AGENT_MAX_BUFFER_SIZE as string, 10) : 1000,
