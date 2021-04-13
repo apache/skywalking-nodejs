@@ -37,9 +37,11 @@ export default class HeartbeatClient implements Client {
   private heartbeatTimer?: NodeJS.Timeout;
 
   constructor() {
-    this.managementServiceClient = new ManagementServiceClient(config.collectorAddress, grpc.credentials.createInsecure(), {
-      interceptors: [AuthInterceptor],
-    });
+    this.managementServiceClient = new ManagementServiceClient(
+      config.collectorAddress,
+      config.secure ? grpc.credentials.createSsl() : grpc.credentials.createInsecure(),
+      { interceptors: [AuthInterceptor] },
+    );
   }
 
   get isConnected(): boolean {

@@ -40,7 +40,7 @@ export default class TraceReportClient implements Client {
     this.buffer = new Buffer();
     this.reporterClient = new TraceSegmentReportServiceClient(
       config.collectorAddress,
-      grpc.credentials.createInsecure(),
+      config.secure ? grpc.credentials.createSsl() : grpc.credentials.createInsecure(),
       { interceptors: [AuthInterceptor] },
     );
     emitter.on('segment-finished', (segment) => {
