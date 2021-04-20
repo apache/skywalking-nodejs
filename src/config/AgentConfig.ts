@@ -29,6 +29,7 @@ export type AgentConfig = {
   disablePlugins?: string;
   ignoreSuffix?: string;
   traceIgnorePath?: string;
+  httpIgnoreMethod?: string;
   sqlTraceParameters?: boolean;
   sqlParametersMaxLength?: number;
   mongoTraceParameters?: boolean;
@@ -36,6 +37,7 @@ export type AgentConfig = {
   // the following is internal state computed from config values
   reDisablePlugins?: RegExp;
   reIgnoreOperation?: RegExp;
+  reHttpIgnoreMethod?: RegExp;
 };
 
 export function finalizeConfig(config: AgentConfig): void {
@@ -53,9 +55,10 @@ export function finalizeConfig(config: AgentConfig): void {
   ).join('|') + ')$';                                         // replaces ","
 
   config.reIgnoreOperation = RegExp(`${ignoreSuffix}|${ignorePath}`);
+  config.reHttpIgnoreMethod = RegExp(`^(?:${config.httpIgnoreMethod!.split(',').map((s) => s.trim()).join('|')})$`, 'i');
 }
 
-export default {
+const _config = {
   serviceName: process.env.SW_AGENT_NAME || 'your-nodejs-service',
   serviceInstance:
     process.env.SW_AGENT_INSTANCE ||
@@ -70,10 +73,18 @@ export default {
   disablePlugins: process.env.SW_AGENT_DISABLE_PLUGINS || '',
   ignoreSuffix: process.env.SW_IGNORE_SUFFIX ?? '.jpg,.jpeg,.js,.css,.png,.bmp,.gif,.ico,.mp3,.mp4,.html,.svg',
   traceIgnorePath: process.env.SW_TRACE_IGNORE_PATH || '',
+  httpIgnoreMethod: process.env.SW_HTTP_IGNORE_METHOD || '',
   sqlTraceParameters: (process.env.SW_SQL_TRACE_PARAMETERS || '').toLowerCase() === 'true',
   sqlParametersMaxLength: Math.trunc(Math.max(0, Number(process.env.SW_SQL_PARAMETERS_MAX_LENGTH))) || 512,
   mongoTraceParameters: (process.env.SW_MONGO_TRACE_PARAMETERS || '').toLowerCase() === 'true',
   mongoParametersMaxLength: Math.trunc(Math.max(0, Number(process.env.SW_MONGO_PARAMETERS_MAX_LENGTH))) || 512,
   reDisablePlugins: RegExp(''),  // temporary placeholder so Typescript doesn't throw a fit
   reIgnoreOperation: RegExp(''),
+  reHttpIgnoreMethod: RegExp(''),
 };
+
+export default _config;
+
+export function ignoreHttpMethodCheck(method: string): boolean {
+  return Boolean(method.match(_config.reHttpIgnoreMethod));
+}

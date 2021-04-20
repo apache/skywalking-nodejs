@@ -22,15 +22,10 @@ import Span from '../../trace/span/Span';
 import DummySpan from '../../trace/span/DummySpan';
 import Segment from '../../trace/context/Segment';
 import { Component } from '../../trace/Component';
-import { SpanType } from '../../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from './ContextCarrier';
 
 export default class DummyContext implements Context {
-  span: Span = new DummySpan({
-    context: this,
-    operation: '',
-    type: SpanType.LOCAL,
-  });
+  span: Span = DummySpan.create(this);
   segment: Segment = new Segment();
   nSpans = 0;
 

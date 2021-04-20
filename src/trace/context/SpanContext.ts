@@ -19,7 +19,6 @@
 
 import config from '../../config/AgentConfig';
 import Context from '../../trace/context/Context';
-import DummyContext from '../../trace/context/DummyContext';
 import Span from '../../trace/span/Span';
 import DummySpan from '../../trace/span/DummySpan';
 import Segment from '../../trace/context/Segment';
@@ -53,13 +52,8 @@ export default class SpanContext implements Context {
   }
 
   ignoreCheck(operation: string, type: SpanType): Span | undefined {
-    if (operation.match(config.reIgnoreOperation)) {
-      return new DummySpan({
-        context: new DummyContext(),
-        operation: '',
-        type,
-      });
-    }
+    if (operation.match(config.reIgnoreOperation))
+      return DummySpan.create();
 
     return undefined;
   }

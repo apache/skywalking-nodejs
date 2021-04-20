@@ -19,8 +19,19 @@
 
 import Span from '../../trace/span/Span';
 import { ContextCarrier } from '../context/ContextCarrier';
+import Context from '../context/Context';
+import { SpanType } from '../../proto/language-agent/Tracing_pb';
+import DummyContext from '../context/DummyContext';
 
 export default class DummySpan extends Span {
+  static create(context?: Context): DummySpan {
+    return new DummySpan({
+      context: context ?? new DummyContext(),
+      operation: '',
+      type: SpanType.LOCAL,
+    });
+  }
+
   inject(): ContextCarrier {
     return new ContextCarrier();
   }
