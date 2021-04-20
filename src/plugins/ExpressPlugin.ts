@@ -49,7 +49,7 @@ class ExpressPlugin implements SwPlugin {
 
       span.component = Component.EXPRESS;
 
-      if ((span as any).depth)  // if we inherited from http then just change component ID and let http do the work
+      if (span.depth)  // if we inherited from http then just change component ID and let http do the work
         return _handle.apply(this, arguments);
 
       return HttpPlugin.wrapHttpResponse(span, req, res, () => {  // http plugin disabled, we use its mechanism anyway

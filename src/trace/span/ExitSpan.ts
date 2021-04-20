@@ -17,14 +17,14 @@
  *
  */
 
-import StackedSpan from '../../trace/span/StackedSpan';
+import Span from '../../trace/span/Span';
 import { SpanCtorOptions } from './Span';
 import config from '../../config/AgentConfig';
 import { SpanType } from '../../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from '../context/ContextCarrier';
 import ContextManager from '../context/ContextManager';
 
-export default class ExitSpan extends StackedSpan {
+export default class ExitSpan extends Span {
   constructor(options: SpanCtorOptions) {
     super(
       Object.assign(options, {

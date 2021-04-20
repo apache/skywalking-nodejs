@@ -65,7 +65,7 @@ class HttpPlugin implements SwPlugin {
         ? DummySpan.create()
         : ContextManager.current.newExitSpan(operation, host, Component.HTTP);
 
-      if ((span as any).depth)  // if we inherited from a higher level plugin then do nothing, higher level should do all the work and we don't duplicate here
+      if (span.depth)  // if we inherited from a higher level plugin then do nothing, higher level should do all the work and we don't duplicate here
         return _request.apply(this, arguments);
 
       span.start();
