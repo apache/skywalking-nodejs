@@ -24,9 +24,10 @@ import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
 import Tag from '../Tag';
 import Span from '../trace/span/Span';
-import ExitSpan from '../trace/span/ExitSpan';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import { ContextCarrier } from '../trace/context/ContextCarrier';
+import DummySpan from '../trace/span/DummySpan';
+import { ignoreHttpMethodCheck } from '../config/AgentConfig';
 
 class HttpPlugin implements SwPlugin {
   readonly module = 'http';
@@ -59,7 +60,10 @@ class HttpPlugin implements SwPlugin {
           };
 
       const operation = pathname.replace(/\?.*$/g, '');
-      const span: ExitSpan = ContextManager.current.newExitSpan(operation, host, Component.HTTP) as ExitSpan;
+      const method = arguments[url instanceof URL || typeof url === 'string' ? 1 : 0]?.method || 'GET';
+      const span = ignoreHttpMethodCheck(method)
+        ? DummySpan.create()
+        : ContextManager.current.newExitSpan(operation, host, Component.HTTP);
 
       if (span.depth)  // if we inherited from a higher level plugin then do nothing, higher level should do all the work and we don't duplicate here
         return _request.apply(this, arguments);
@@ -72,7 +76,7 @@ class HttpPlugin implements SwPlugin {
         span.peer = host;
 
         span.tag(Tag.httpURL(protocol + '://' + host + pathname));
-        span.tag(Tag.httpMethod(arguments[url instanceof URL || typeof url === 'string' ? 1 : 0]?.method || 'GET'));
+        span.tag(Tag.httpMethod(method));
 
         const copyStatusAndWrapEmit = (res: any) => {
           span.tag(Tag.httpStatusCode(res.statusCode));
@@ -146,7 +150,9 @@ class HttpPlugin implements SwPlugin {
       function _sw_request(this: any, req: IncomingMessage, res: ServerResponse, ...reqArgs: any[]) {
         const carrier = ContextCarrier.from((req as any).headers || {});
         const operation = (req.url || '/').replace(/\?.*/g, '');
-        const span = ContextManager.current.newEntrySpan(operation, carrier);
+        const span = ignoreHttpMethodCheck(req.method ?? 'GET')
+          ? DummySpan.create()
+          : ContextManager.current.newEntrySpan(operation, carrier);
 
         span.component = Component.HTTP_SERVER;
 
@@ -168,7 +174,7 @@ class HttpPlugin implements SwPlugin {
           ? `[${req.connection.remoteAddress}]:${req.connection.remotePort}`
           : `${req.connection.remoteAddress}:${req.connection.remotePort}`);
 
-      span.tag(Tag.httpMethod(req.method));
+      span.tag(Tag.httpMethod(req.method ?? 'GET'));
 
       const ret = handler();
 

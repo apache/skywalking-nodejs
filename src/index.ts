@@ -33,12 +33,14 @@ class Agent {
       return;
     }
 
+    if (this.started) {
+      logger.warn('SkyWalking agent started more than once, subsequent options to start ignored.');
+      return;
+    }
+
     Object.assign(config, options);
     finalizeConfig(config);
 
-    if (this.started) {
-      throw new Error('SkyWalking agent is already started and can only be started once.');
-    }
     logger.debug('Starting SkyWalking agent');
 
     this.started = true;
