@@ -23,7 +23,7 @@ import SpanContext from '../../trace/context/SpanContext';
 
 import async_hooks from 'async_hooks';
 
-type AsyncState = { spans: Span[], valid: boolean };
+type AsyncState = { spans: Span[] };
 
 let store: {
   getStore(): AsyncState | undefined;
@@ -58,11 +58,10 @@ if (async_hooks.AsyncLocalStorage) {
 
 class ContextManager {
   get asyncState(): AsyncState {
-    // since `AsyncLocalStorage.getStore` may get previous state, see issue https://github.com/nodejs/node/issues/35286#issuecomment-697207158, so recreate when asyncState is not valid
-    // Necessary because span may "finish()" in a child async task of where the asyncState was actually created and so clearing in the child would not clear in parent and invalid asyncState would be reused in new children of that parent.
     let asyncState = store.getStore();
-    if (!asyncState?.valid) {
-      asyncState = { spans: [], valid: true };
+
+    if (!asyncState) {
+      asyncState = { spans: [] };
       store.enterWith(asyncState);
     }
 
@@ -76,7 +75,7 @@ class ContextManager {
   };
 
   get hasContext(): boolean | undefined {
-    return store.getStore()?.valid;
+    return Boolean(store.getStore()?.spans.length);
   }
 
   get current(): Context {
@@ -92,10 +91,10 @@ class ContextManager {
   spansDup(): Span[] {
     let asyncState = store.getStore();
 
-    if (!asyncState?.valid) {
-      asyncState = { spans: [], valid: true };
+    if (!asyncState) {
+      asyncState = { spans: [] };
     } else {
-      asyncState = { spans: [...asyncState.spans], valid: asyncState.valid };
+      asyncState = { spans: [...asyncState.spans] };
     }
 
     store.enterWith(asyncState);
@@ -103,13 +102,19 @@ class ContextManager {
     return asyncState.spans;
   }
 
-  clear(): void {
-    this.asyncState.valid = false;
-    store.enterWith(undefined as unknown as AsyncState);
+  clear(span: Span): void {
+    const spans = this.spansDup();  // this needed to make sure async tasks created before this call will still have this span at the top of their span list
+    const idx = spans.indexOf(span);
+
+    if (idx !== -1)
+      spans.splice(idx, 1);
   }
 
-  restore(context: Context, spans: Span[]): void {
-    store.enterWith({ spans: spans || [], valid: this.asyncState.valid });
+  restore(span: Span): void {
+    const spans = this.spansDup();
+
+    if (spans.indexOf(span) === -1)
+      spans.push(span);
   }
 
   withSpan(span: Span, callback: (...args: any[]) => any, ...args: any[]): any {
