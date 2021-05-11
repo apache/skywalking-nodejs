@@ -67,7 +67,7 @@ export default class SpanContext implements Context {
     const spans = ContextManager.spansDup();
     const parent = spans[spans.length - 1];
 
-    if (logger.isDebugEnabled()) {
+    if (logger._isDebugEnabled) {
       logger.debug('Creating entry span', {
         spans,
         parent,
@@ -103,7 +103,7 @@ export default class SpanContext implements Context {
     const spans = ContextManager.spansDup();
     const parent = spans[spans.length - 1];
 
-    if (logger.isDebugEnabled()) {
+    if (logger._isDebugEnabled) {
       logger.debug('Creating exit span', {
         operation,
         parent,
@@ -139,7 +139,7 @@ export default class SpanContext implements Context {
 
     ContextManager.spansDup();
 
-    if (logger.isDebugEnabled()) {
+    if (logger._isDebugEnabled) {
       logger.debug('Creating local span', {
         parentId: this.parentId,
         executionAsyncId: executionAsyncId(),

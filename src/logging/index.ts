@@ -21,12 +21,12 @@ import * as winston from 'winston';
 import { Logger } from 'winston';
 
 type LoggerLevelAware = Logger & {
-  isDebugEnabled(): boolean;
-  isInfoEnabled(): boolean;
+  _isDebugEnabled: boolean;
+  _isInfoEnabled: boolean;
 };
 
 export function createLogger(name: string): LoggerLevelAware {
-  const loggingLevel = process.env.SW_AGENT_LOGGING_LEVEL || (process.env.NODE_ENV !== 'production' ? 'debug' : 'info');
+  const loggingLevel = (process.env.SW_AGENT_LOGGING_LEVEL || 'error').toLowerCase();
 
   const logger = winston.createLogger({
     level: loggingLevel,
@@ -35,6 +35,7 @@ export function createLogger(name: string): LoggerLevelAware {
       file: name,
     },
   });
+
   if (process.env.NODE_ENV !== 'production' || process.env.SW_LOGGING_TARGET === 'console') {
     logger.add(
       new winston.transports.Console({
@@ -49,11 +50,25 @@ export function createLogger(name: string): LoggerLevelAware {
     );
   }
 
-  const isDebugEnabled = (): boolean => logger.levels[logger.level] >= logger.levels.debug;
-  const isInfoEnabled = (): boolean => logger.levels[logger.level] >= logger.levels.info;
+  const loggerLevel = logger.levels[logger.level];
+  const _isDebugEnabled = loggerLevel >= logger.levels.debug;
+  const _isInfoEnabled = loggerLevel >= logger.levels.info;
 
-  return Object.assign(logger, {
-    isDebugEnabled,
-    isInfoEnabled,
-  } as LoggerLevelAware);
+  Object.assign(logger, {
+    _isDebugEnabled,
+    _isInfoEnabled,
+  });
+
+  const nop = (): void => {};
+
+  if (loggerLevel < logger.levels.debug)  // we do this because logger still seems to stringify anything sent to it even if it is below the logging level, costing performance
+    (logger as any).debug = nop;
+
+  if (loggerLevel < logger.levels.info)
+    (logger as any).info = nop;
+
+  if (loggerLevel < logger.levels.warn)
+    (logger as any).warn = nop;
+
+  return logger as LoggerLevelAware;
 }

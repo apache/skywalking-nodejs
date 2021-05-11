@@ -70,7 +70,7 @@ export default class TraceReportClient implements Client {
         while (this.buffer.length > 0) {
           const segment = this.buffer.take();
           if (segment) {
-            if (logger.isDebugEnabled()) {
+            if (logger._isDebugEnabled) {
               logger.debug('Sending segment ', { segment });
             }
 
