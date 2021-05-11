@@ -59,7 +59,7 @@ export function createLogger(name: string): LoggerLevelAware {
     _isInfoEnabled,
   });
 
-  const nop = (): void => {};
+  const nop = (): void => { /* a cookie for the linter */ };
 
   if (loggerLevel < logger.levels.debug)  // we do this because logger still seems to stringify anything sent to it even if it is below the logging level, costing performance
     (logger as any).debug = nop;

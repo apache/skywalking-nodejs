@@ -63,7 +63,7 @@ class HttpPlugin implements SwPlugin {
       const method = arguments[url instanceof URL || typeof url === 'string' ? 1 : 0]?.method || 'GET';
       const span = ignoreHttpMethodCheck(method)
         ? DummySpan.create()
-        : ContextManager.current.newExitSpan(operation, host, Component.HTTP);
+        : ContextManager.current.newExitSpan(operation, Component.HTTP);
 
       if (span.depth)  // if we inherited from a higher level plugin then do nothing, higher level should do all the work and we don't duplicate here
         return _request.apply(this, arguments);

@@ -94,7 +94,7 @@ export default class SpanContext implements Context {
     return span;
   }
 
-  newExitSpan(operation: string, peer: string, component: Component, inherit?: Component): Span {
+  newExitSpan(operation: string, component: Component, inherit?: Component): Span {
     let span = this.ignoreCheck(operation, SpanType.EXIT);
 
     if (span)
@@ -108,7 +108,6 @@ export default class SpanContext implements Context {
         operation,
         parent,
         spans,
-        peer,
       });
     }
 
@@ -120,7 +119,6 @@ export default class SpanContext implements Context {
         id: this.spanId++,
         parentId: this.parentId,
         context: this,
-        peer,
         operation,
       });
     }
