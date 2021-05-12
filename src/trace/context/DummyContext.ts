@@ -31,27 +31,23 @@ export default class DummyContext implements Context {
   finished = false;
 
   newEntrySpan(operation: string, carrier?: ContextCarrier, inherit?: Component): Span {
-    ContextManager.spansDup();
-
     return DummySpan.create(this);
   }
 
   newExitSpan(operation: string, component: Component, inherit?: Component): Span {
-    ContextManager.spansDup();
-
     return DummySpan.create(this);
   }
 
   newLocalSpan(operation: string): Span {
-    ContextManager.spansDup();
-
     return DummySpan.create(this);
   }
 
   start(span: Span): Context {
+    const spans = ContextManager.spansDup();
+
     if (!this.nSpans++) {
-      if (ContextManager.spans.indexOf(span) === -1)
-        ContextManager.spans.push(span);
+      if (spans.indexOf(span) === -1)
+        spans.push(span);
     }
 
     return this;

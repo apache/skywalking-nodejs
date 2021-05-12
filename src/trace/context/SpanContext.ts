@@ -54,12 +54,12 @@ export default class SpanContext implements Context {
   }
 
   spanCheck(spanType: SpanType, operation: string, carrier?: ContextCarrier): [Span | null, Span?] {
-    const spans = ContextManager.spansDup();
     let span = this.ignoreCheck(operation, SpanType.ENTRY, carrier);
 
     if (span)
       return [span];
 
+    const spans = ContextManager.spans;
     const parent = spans[spans.length - 1];
 
     if (parent instanceof DummySpan)
@@ -165,17 +165,19 @@ export default class SpanContext implements Context {
   }
 
   start(span: Span): Context {
+    const spans = ContextManager.spansDup();
+
     logger.debug(`Starting span ${span.operation}`, {
       span,
-      spans: ContextManager.spans,
+      spans,
       nSpans: this.nSpans,
     });
 
     if (!this.nSpans++)
       SpanContext.nActiveSegments += 1;
 
-    if (ContextManager.spans.indexOf(span) === -1)
-      ContextManager.spans.push(span);
+    if (spans.indexOf(span) === -1)
+      spans.push(span);
 
     return this;
   }
