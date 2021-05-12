@@ -35,7 +35,12 @@ import { emitter } from '../../lib/EventEmitter';
 
 const logger = createLogger(__filename);
 
+emitter.on('segments-sent', () => {
+  SpanContext.nActiveSegments = 0;  // reset limiter
+});
+
 export default class SpanContext implements Context {
+  static nActiveSegments = 0;  // counter to allow only config.maxBufferSize active (non-dummy) segments per reporting frame
   spanId = 0;
   nSpans = 0;
   finished = false;
@@ -166,7 +171,8 @@ export default class SpanContext implements Context {
       nSpans: this.nSpans,
     });
 
-    this.nSpans += 1;
+    if (!this.nSpans++)
+      SpanContext.nActiveSegments += 1;
 
     if (ContextManager.spans.indexOf(span) === -1)
       ContextManager.spans.push(span);

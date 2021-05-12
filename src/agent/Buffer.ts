@@ -18,16 +18,13 @@
  */
 
 import { createLogger } from '../logging';
-import config from '../config/AgentConfig';
 
 const logger = createLogger(__filename);
 
 export default class Buffer<T> {
-  private readonly maxSize: number;
   private readonly buffer: T[];
 
   constructor() {
-    this.maxSize = config.maxBufferSize;
     this.buffer = [];
   }
 
@@ -36,10 +33,6 @@ export default class Buffer<T> {
   }
 
   put(element: T): boolean {
-    if (this.length > this.maxSize) {
-      logger.warn('Drop the data because of the buffer is oversize');
-      return false;
-    }
     this.buffer.push(element);
 
     return true;

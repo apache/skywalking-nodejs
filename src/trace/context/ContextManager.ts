@@ -17,9 +17,11 @@
  *
  */
 
+import config from '../../config/AgentConfig';
 import Context from '../../trace/context/Context';
 import Span from '../../trace/span/Span';
 import SpanContext from '../../trace/context/SpanContext';
+import DummyContext from '../../trace/context/DummyContext';
 
 import async_hooks from 'async_hooks';
 
@@ -81,7 +83,13 @@ class ContextManager {
   get current(): Context {
     const asyncState = this.asyncState;
 
-    return !asyncState.spans.length ? new SpanContext() : asyncState.spans[asyncState.spans.length - 1].context;
+    if (asyncState.spans.length)
+      return asyncState.spans[asyncState.spans.length - 1].context;
+
+    if (SpanContext.nActiveSegments < config.maxBufferSize)
+      return new SpanContext();
+
+    return new DummyContext();
   }
 
   get spans(): Span[] {

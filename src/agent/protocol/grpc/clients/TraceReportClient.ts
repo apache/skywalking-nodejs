@@ -56,6 +56,8 @@ export default class TraceReportClient implements Client {
 
   start() {
     const reportFunction = () => {
+      emitter.emit('segments-sent');  // reset limiter in SpanContext
+
       try {
         if (this.buffer.length === 0) {
           return;
