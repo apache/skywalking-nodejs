@@ -75,7 +75,7 @@ export class ContextCarrier extends CarrierItem {
       !isNaN(this.spanId) &&
       this.service &&
       this.endpoint &&
-      this.clientAddress
+      this.clientAddress !== undefined
     );
   }
 
