@@ -49,7 +49,7 @@ export default class PluginInstaller {
 
   private checkModuleVersion = (plugin: SwPlugin): { version: string; isSupported: boolean } => {
     try {
-      if (this.isBuiltIn(plugin.module)) {
+      if (plugin.versions === '!' || this.isBuiltIn(plugin.module)) {
         return {
           version: '*',
           isSupported: true,
@@ -101,7 +101,11 @@ export default class PluginInstaller {
           return;
         }
 
-        logger.info(`Installing plugin ${plugin.module} ${plugin.versions}`);
+        if (plugin.versions === '!') {
+          logger.info(`Explicit instrumentation plugin ${plugin.module} available`);
+        } else {
+          logger.info(`Installing plugin ${plugin.module} ${plugin.versions}`);
+        }
 
         plugin.install(this);
       } catch (e) {

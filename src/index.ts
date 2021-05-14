@@ -53,3 +53,4 @@ class Agent {
 
 export default new Agent();
 export { default as ContextManager } from './trace/context/ContextManager';
+export { default as AzureHttpTriggerPlugin } from './plugins/AzureHttpTriggerPlugin';
