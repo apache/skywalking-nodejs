@@ -40,7 +40,7 @@ export default class ExitSpan extends Span {
       this.id,
       config.serviceName,
       config.serviceInstance,
-      ContextManager.spans[0].operation,
+      this.operation,
       this.peer,
       [],
     );

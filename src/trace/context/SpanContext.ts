@@ -25,105 +25,123 @@ import Segment from '../../trace/context/Segment';
 import EntrySpan from '../../trace/span/EntrySpan';
 import ExitSpan from '../../trace/span/ExitSpan';
 import LocalSpan from '../../trace/span/LocalSpan';
+import SegmentRef from './SegmentRef';
+import ContextManager from './ContextManager';
 import { Component } from '../../trace/Component';
 import { createLogger } from '../../logging';
-import { executionAsyncId } from 'async_hooks';
 import { ContextCarrier } from './ContextCarrier';
-import ContextManager from './ContextManager';
 import { SpanType } from '../../proto/language-agent/Tracing_pb';
 import { emitter } from '../../lib/EventEmitter';
 
 const logger = createLogger(__filename);
 
+emitter.on('segments-sent', () => {
+  SpanContext.nActiveSegments = 0;  // reset limiter
+});
+
 export default class SpanContext implements Context {
+  static nActiveSegments = 0;  // counter to allow only config.maxBufferSize active (non-dummy) segments per reporting frame
   spanId = 0;
   nSpans = 0;
+  finished = false;
   segment: Segment = new Segment();
 
-  get parent(): Span | null {
-    if (ContextManager.spans.length > 0) {
-      return ContextManager.spans[ContextManager.spans.length - 1];
-    }
-    return null;
-  }
-
-  get parentId(): number {
-    return this.parent ? this.parent.id : -1;
-  }
-
-  ignoreCheck(operation: string, type: SpanType): Span | undefined {
-    if (operation.match(config.reIgnoreOperation))
+  ignoreCheck(operation: string, type: SpanType, carrier?: ContextCarrier): Span | undefined {
+    if (operation.match(config.reIgnoreOperation) || (carrier && !carrier.isValid()))
       return DummySpan.create();
 
     return undefined;
   }
 
-  newEntrySpan(operation: string, carrier?: ContextCarrier, inherit?: Component): Span {
-    let span = this.ignoreCheck(operation, SpanType.ENTRY);
+  spanCheck(spanType: SpanType, operation: string, carrier?: ContextCarrier): [Span | null, Span?] {
+    let span = this.ignoreCheck(operation, SpanType.ENTRY, carrier);
 
     if (span)
-      return span;
+      return [span];
 
-    const spans = ContextManager.spansDup();
+    const spans = ContextManager.spans;
     const parent = spans[spans.length - 1];
 
-    if (logger.isDebugEnabled()) {
-      logger.debug('Creating entry span', {
-        spans,
-        parent,
-      });
-    }
+    if (parent instanceof DummySpan)
+      return [parent];
 
-    if (parent && parent.type === SpanType.ENTRY && inherit && inherit === parent.component) {
-      span = parent;
-      parent.operation = operation;
+    return [null, parent];
+  }
 
-    } else {
-      span = new EntrySpan({
-        id: this.spanId++,
-        parentId: this.parentId,
-        context: this,
-        operation,
-      });
+  newSpan(spanClass: typeof EntrySpan | typeof ExitSpan | typeof LocalSpan, parent: Span, operation: string): Span {
+    const context = !this.finished ? this : new SpanContext();
 
-      if (carrier && carrier.isValid()) {
-        span.extract(carrier);
-      }
+    const span = new spanClass({
+      id: context.spanId++,
+      parentId: this.finished ? -1 : parent?.id ?? -1,
+      context: context,
+      operation,
+    });
+
+    if (this.finished && parent) {  // segment has already been closed and sent to server, if there is a parent span then need new segment to reference
+      const carrier = new ContextCarrier(
+        parent.context.segment.relatedTraces[0],
+        parent.context.segment.segmentId,
+        parent.id,
+        config.serviceName,
+        config.serviceInstance,
+        parent.operation,
+        parent.peer,
+        [],
+      );
+
+      const ref = SegmentRef.fromCarrier(carrier);
+
+      context.segment.relate(carrier.traceId!);
+      span.refer(ref);
     }
 
     return span;
   }
 
-  newExitSpan(operation: string, peer: string, component: Component, inherit?: Component): Span {
-    let span = this.ignoreCheck(operation, SpanType.EXIT);
+  newEntrySpan(operation: string, carrier?: ContextCarrier, inherit?: Component): Span {
+    let [span, parent] = this.spanCheck(SpanType.ENTRY, operation, carrier);
 
     if (span)
       return span;
 
-    const spans = ContextManager.spansDup();
-    const parent = spans[spans.length - 1];
+    if (logger._isDebugEnabled) {
+      logger.debug('Creating entry span', {
+        parent,
+      });
+    }
 
-    if (logger.isDebugEnabled()) {
+    if (!this.finished && parent?.type === SpanType.ENTRY && inherit && inherit === parent.component) {
+      span = parent;
+      parent.operation = operation;
+
+    } else {
+      span = this.newSpan(EntrySpan, parent!, operation);
+
+      if (carrier && carrier.isValid())
+        span.extract(carrier);
+    }
+
+    return span;
+  }
+
+  newExitSpan(operation: string, component: Component, inherit?: Component): Span {
+    let [span, parent] = this.spanCheck(SpanType.EXIT, operation);
+
+    if (span)
+      return span;
+
+    if (logger._isDebugEnabled) {
       logger.debug('Creating exit span', {
         operation,
         parent,
-        spans,
-        peer,
       });
     }
 
-    if (parent && parent.type === SpanType.EXIT && component === parent.inherit) {
+    if (!this.finished && parent?.type === SpanType.EXIT && component === parent.inherit)
       span = parent;
-
-    } else {
-      span = new ExitSpan({
-        id: this.spanId++,
-        parentId: this.parentId,
-        context: this,
-        peer,
-        operation,
-      });
-    }
+    else
+      span = this.newSpan(ExitSpan, parent!, operation);
 
     if (inherit)
       span.inherit = inherit;
@@ -132,39 +150,34 @@ export default class SpanContext implements Context {
   }
 
   newLocalSpan(operation: string): Span {
-    const span = this.ignoreCheck(operation, SpanType.LOCAL);
+    let [span, parent] = this.spanCheck(SpanType.LOCAL, operation);
 
     if (span)
       return span;
 
-    ContextManager.spansDup();
-
-    if (logger.isDebugEnabled()) {
+    if (logger._isDebugEnabled) {
       logger.debug('Creating local span', {
-        parentId: this.parentId,
-        executionAsyncId: executionAsyncId(),
+        parentId: parent?.id ?? -1,
       });
     }
 
-    return new LocalSpan({
-      id: this.spanId++,
-      parentId: this.parentId,
-      context: this,
-      operation,
-    });
+    return this.newSpan(LocalSpan, parent!, operation);
   }
 
   start(span: Span): Context {
+    const spans = ContextManager.spansDup();
+
     logger.debug(`Starting span ${span.operation}`, {
       span,
-      spans: ContextManager.spans,
+      spans,
       nSpans: this.nSpans,
     });
 
-    this.nSpans += 1;
-    if (ContextManager.spans.every((s) => s.id !== span.id || s.context !== span.context)) {
-      ContextManager.spans.push(span);
-    }
+    if (!this.nSpans++)
+      SpanContext.nActiveSegments += 1;
+
+    if (spans.indexOf(span) === -1)
+      spans.push(span);
 
     return this;
   }
@@ -177,15 +190,13 @@ export default class SpanContext implements Context {
     });
 
     span.finish(this.segment);
-
-    const idx = ContextManager.spans.indexOf(span);
-    if (idx !== -1) {
-      ContextManager.spans.splice(idx, 1);
-    }
+    ContextManager.clear(span);
 
     if (--this.nSpans === 0) {
+      this.finished = true;
+
       emitter.emit('segment-finished', this.segment);
-      ContextManager.clear();
+
       return true;
     }
 
@@ -199,16 +210,7 @@ export default class SpanContext implements Context {
       nSpans: this.nSpans,
     });
 
-    const spans = ContextManager.spansDup();  // this needed to make sure async tasks created before this call will still have this span at the top of their span list
-    const idx = spans.indexOf(span);
-
-    if (idx !== -1) {
-      spans.splice(idx, 1);
-
-      if (!spans.length) {  // this will pass the context to child async task so it doesn't mess with other tasks here
-        ContextManager.clear();
-      }
-    }
+    ContextManager.clear(span);
   }
 
   resync(span: Span) {
@@ -218,10 +220,6 @@ export default class SpanContext implements Context {
       nSpans: this.nSpans,
     });
 
-    if (!ContextManager.hasContext || !ContextManager.spans.length) {
-      ContextManager.restore(span.context, [span]);
-    } else if (ContextManager.spans.every((s) => s.id !== span.id || s.context !== span.context)) {
-      ContextManager.spans.push(span);
-    }
+    ContextManager.restore(span);
   }
 }

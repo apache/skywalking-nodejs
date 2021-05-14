@@ -24,7 +24,6 @@ import { createLogger } from '../../../../logging';
 import Client from './Client';
 import { TraceSegmentReportServiceClient } from '../../../../proto/language-agent/Tracing_grpc_pb';
 import AuthInterceptor from '../AuthInterceptor';
-import Buffer from '../../../../agent/Buffer';
 import SegmentObjectAdapter from '../SegmentObjectAdapter';
 import { emitter } from '../../../../lib/EventEmitter';
 import Segment from '../../../../trace/context/Segment';
@@ -33,20 +32,18 @@ const logger = createLogger(__filename);
 
 export default class TraceReportClient implements Client {
   private readonly reporterClient: TraceSegmentReportServiceClient;
-  private readonly buffer: Buffer<Segment>;
+  private readonly buffer: Segment[] = [];
   private timeout?: NodeJS.Timeout;
 
   constructor() {
-    this.buffer = new Buffer();
     this.reporterClient = new TraceSegmentReportServiceClient(
       config.collectorAddress,
       config.secure ? grpc.credentials.createSsl() : grpc.credentials.createInsecure(),
       { interceptors: [AuthInterceptor] },
     );
     emitter.on('segment-finished', (segment) => {
-      if (this.buffer.put(segment)) {
-        this.timeout?.ref();
-      }
+      this.buffer.push(segment);
+      this.timeout?.ref();
     });
   }
 
@@ -56,6 +53,8 @@ export default class TraceReportClient implements Client {
 
   start() {
     const reportFunction = () => {
+      emitter.emit('segments-sent');  // reset limiter in SpanContext
+
       try {
         if (this.buffer.length === 0) {
           return;
@@ -67,15 +66,18 @@ export default class TraceReportClient implements Client {
           }
         });
 
-        while (this.buffer.length > 0) {
-          const segment = this.buffer.take();
-          if (segment) {
-            if (logger.isDebugEnabled()) {
-              logger.debug('Sending segment ', { segment });
-            }
+        try {
+          for (const segment of this.buffer) {
+            if (segment) {
+              if (logger._isDebugEnabled) {
+                logger.debug('Sending segment ', { segment });
+              }
 
-            stream.write(new SegmentObjectAdapter(segment));
+              stream.write(new SegmentObjectAdapter(segment));
+            }
           }
+        } finally {
+          this.buffer.length = 0;
         }
 
         stream.end();

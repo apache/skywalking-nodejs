@@ -49,7 +49,7 @@ class AxiosPlugin implements SwPlugin {
       const method = (config.method || 'GET').toUpperCase();
       const span = ignoreHttpMethodCheck(method)
         ? DummySpan.create()
-        : ContextManager.current.newExitSpan(operation, host, Component.AXIOS, Component.HTTP);
+        : ContextManager.current.newExitSpan(operation, Component.AXIOS, Component.HTTP);
 
       span.start();
 

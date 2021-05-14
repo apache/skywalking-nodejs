@@ -23,38 +23,50 @@ import DummySpan from '../../trace/span/DummySpan';
 import Segment from '../../trace/context/Segment';
 import { Component } from '../../trace/Component';
 import { ContextCarrier } from './ContextCarrier';
+import ContextManager from './ContextManager';
 
 export default class DummyContext implements Context {
-  span: Span = DummySpan.create(this);
   segment: Segment = new Segment();
   nSpans = 0;
+  finished = false;
 
   newEntrySpan(operation: string, carrier?: ContextCarrier, inherit?: Component): Span {
-    return this.span;
+    return DummySpan.create(this);
   }
 
-  newExitSpan(operation: string, peer: string, component: Component, inherit?: Component): Span {
-    return this.span;
+  newExitSpan(operation: string, component: Component, inherit?: Component): Span {
+    return DummySpan.create(this);
   }
 
   newLocalSpan(operation: string): Span {
-    return this.span;
+    return DummySpan.create(this);
   }
 
-  start(): Context {
-    this.nSpans++;
+  start(span: Span): Context {
+    const spans = ContextManager.spansDup();
+
+    if (!this.nSpans++) {
+      if (spans.indexOf(span) === -1)
+        spans.push(span);
+    }
+
     return this;
   }
 
-  stop(): boolean {
-    return --this.nSpans === 0;
+  stop(span: Span): boolean {
+    if (--this.nSpans)
+      return false;
+
+    ContextManager.clear(span);
+
+    return true;
   }
 
   async(span: Span) {
-    return;
+    ContextManager.clear(span);
   }
 
   resync(span: Span) {
-    return;
+    ContextManager.restore(span);
   }
 }

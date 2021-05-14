@@ -28,7 +28,12 @@ const logger = createLogger(__filename);
 
 let topModule = module;
 while (topModule.parent) {
+  const filename = topModule.filename;
+
   topModule = topModule.parent;
+
+  if (filename.endsWith('/skywalking-nodejs/lib/index.js')) // stop at the appropriate level in case app is being run by some other framework
+    break;
 }
 
 export default class PluginInstaller {
@@ -88,7 +93,7 @@ export default class PluginInstaller {
       const pluginFile = path.join(this.pluginDir, file);
 
       try {
-        plugin = require(pluginFile).default as SwPlugin;
+        plugin = this.require(pluginFile).default as SwPlugin;
         const { isSupported, version } = this.checkModuleVersion(plugin);
 
         if (!isSupported) {
