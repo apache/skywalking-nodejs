@@ -17,7 +17,6 @@
  *
  */
 
-import SwPlugin from '../core/SwPlugin';
 import { URL } from 'url';
 import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
@@ -27,12 +26,7 @@ import { ContextCarrier } from '../trace/context/ContextCarrier';
 import DummySpan from '../trace/span/DummySpan';
 import { ignoreHttpMethodCheck } from '../config/AgentConfig';
 
-class AzureHttpTriggerPlugin implements SwPlugin {
-  readonly module = 'azureHttpTrigger';
-  readonly versions = '!';
-
-  install(): void { /* linter kibble */ }
-
+class AzureHttpTriggerPlugin {
   wrap(func: any) {
     return function(this: any, context: any) {
       let outRet = true;
@@ -55,7 +49,7 @@ class AzureHttpTriggerPlugin implements SwPlugin {
         : ContextManager.current.newEntrySpan(operation, carrier);
 
       span.layer = SpanLayer.HTTP;
-      span.component = Component.HTTP_SERVER;
+      span.component = Component.AZURE_HTTPTRIGGER  ;
       span.peer = (req.headers['x-forwarded-for'] || '???').split(',').shift();
 
       span.tag(Tag.httpMethod(req.method));
