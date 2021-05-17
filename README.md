@@ -94,6 +94,27 @@ Library | Underlying Plugin Name
 | [`request-promise`](https://github.com/request/request-promise) | `http` / `https` |
 | [`koa`](https://github.com/koajs/koa) | `http` / `https` |
 
+## Experimental Azure Functions Support
+
+The plugin `AzureHttpTriggerPlugin` provides a wrapper function for an Azure Functions Javascript HttpTrigger endpoint. This is an http server endpoint and it must be instrumented manually currently. So far all other plugins tested work within the HttpTrigger and so a trace can pass through the Function and on to other endpoints called by the function. How much sense it makes to instrument an Azure Function which already lives in the cloud and has robust monitoring incorporated is a good question, but at the least this plugin will allow those endpoints to show up in a Skywalking trace.
+
+### Usage:
+
+```javascript
+const {default: agent, AzureHttpTriggerPlugin} = require('skywalking-backend-js');
+
+agent.start({ ... });
+
+module.exports = AzureHttpTriggerPlugin.wrap(async function (context, req) {
+
+  /* contents of http trigger function */
+
+});
+```
+
+All that needs to be done is the actual trigger function needs to be wrapped with `azureHttpTriggerPlugin.wrap()`, whether that function is a default export or an explicitly named `entryPoint` or `run` or `index`.
+
+
 ## Contact Us
 * Submit [an issue](https://github.com/apache/skywalking/issues/new) by using [Nodejs] as title prefix.
 * Mail list: **dev@skywalking.apache.org**. Mail to `dev-subscribe@skywalking.apache.org`, follow the reply to subscribe the mail list.
