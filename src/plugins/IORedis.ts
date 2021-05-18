@@ -11,7 +11,7 @@ class IORedisPlugin implements SwPlugin {
 
 	install(installer: PluginInstaller): void {
 		const Redis = installer.require('ioredis');
-		
+
 		this.interceptOperation(Redis, 'sendCommand');
 	}
 
@@ -24,7 +24,7 @@ class IORedisPlugin implements SwPlugin {
 		Cls.prototype[operation] = function (...args: any[]) {
 			const command = args[0];
 			const host = `${this.options.host}:${this.options.port}`;
-			const span = ContextManager.current.newExitSpan(`redis/${command.name}`, host, Component.REDIS);
+			const span = ContextManager.current.newExitSpan(`redis/${command?.name}`, host, Component.REDIS);
 
 			span.start();
 			span.component = Component.REDIS;
