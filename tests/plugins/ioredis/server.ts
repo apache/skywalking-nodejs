@@ -25,16 +25,17 @@ import assert from 'assert';
 agent.start({
   serviceName: 'server',
   maxBufferSize: 1000,
-})
+});
+
+const client = new Redis({
+  host: process.env.REDIS_HOST || 'redis',
+});
 
 const server = http.createServer((req, res) => {
   (async () => {
     const cacheKey = 'now';
     const now = '' + Date.now();
 
-    const client = new Redis({
-      host: process.env.REDIS_HOST || 'redis',
-    });
     await client.set(cacheKey, now);
     const _now = await client.get(cacheKey);
     assert.strictEqual(now, _now);
