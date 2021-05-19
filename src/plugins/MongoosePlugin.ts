@@ -98,7 +98,7 @@ class MongoosePlugin implements SwPlugin {
         return _original.apply(this, arguments);
 
       const host = `${this.db.host}:${this.db.port}`;
-      span = ContextManager.current.newExitSpan('Mongoose/' + operation, host, Component.MONGOOSE, Component.MONGODB);
+      span = ContextManager.current.newExitSpan('Mongoose/' + operation, Component.MONGOOSE, Component.MONGODB);
 
       span.start();
 

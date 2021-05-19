@@ -27,6 +27,7 @@ export class Component {
   static readonly HTTP_SERVER = new Component(49);
   static readonly RABBITMQ_PRODUCER = new Component(52);
   static readonly RABBITMQ_CONSUMER = new Component(53);
+  static readonly AZURE_HTTPTRIGGER = new Component(111);
   static readonly EXPRESS = new Component(4002);
   static readonly AXIOS = new Component(4005);
   static readonly MONGOOSE = new Component(4006);

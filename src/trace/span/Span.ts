@@ -50,6 +50,7 @@ export default abstract class Span {
   operation: string;
   layer = SpanLayer.UNKNOWN;
   component = Component.UNKNOWN;
+  depth = 0;
   inherit?: Component;
 
   readonly tags: Tag[] = [];
@@ -74,12 +75,15 @@ export default abstract class Span {
   }
 
   start(): void {
-    this.startTime = new Date().getTime();
-    this.context.start(this);
+    if (++this.depth === 1) {
+      this.startTime = new Date().getTime();
+      this.context.start(this);
+    }
   }
 
   stop(): void {
-    this.context.stop(this);
+    if (--this.depth === 0)
+      this.context.stop(this);
   }
 
   async(): void {

@@ -42,7 +42,7 @@ agent.start({
 });
 ```
 
-note that all options given (including empty/null values) will override the corresponding default values, e.g. `agent.start({ collectorAddress: '' })` will override the default value of `collectorAddress` to empty string, causing errors like `DNS resolution failed`.
+Note that all options given (including empty/null values) will override the corresponding default values, e.g. `agent.start({ collectorAddress: '' })` will override the default value of `collectorAddress` to empty string, causing errors like `DNS resolution failed`.
 
 - Use environment variables.
 
@@ -53,16 +53,20 @@ Environment Variable | Description | Default
 | `SW_AGENT_NAME` | The name of the service | `your-nodejs-service` |
 | `SW_AGENT_INSTANCE` | The name of the service instance | Randomly generated |
 | `SW_AGENT_COLLECTOR_BACKEND_SERVICES` | The backend OAP server address | `127.0.0.1:11800` |
+| `SW_AGENT_SECURE` | Whether to use secure connection to backend OAP server | `false` |
 | `SW_AGENT_AUTHENTICATION` | The authentication token to verify that the agent is trusted by the backend OAP, as for how to configure the backend, refer to [the yaml](https://github.com/apache/skywalking/blob/4f0f39ffccdc9b41049903cc540b8904f7c9728e/oap-server/server-bootstrap/src/main/resources/application.yml#L155-L158). | not set |
 | `SW_AGENT_LOGGING_LEVEL` | The logging level, could be one of `error`, `warn`, `info`, `debug` | `info` |
 | `SW_AGENT_DISABLE_PLUGINS` | Comma-delimited list of plugins to disable in the plugins directory (e.g. "mysql", "express"). | `` |
 | `SW_IGNORE_SUFFIX` | The suffices of endpoints that will be ignored (not traced), comma separated | `.jpg,.jpeg,.js,.css,.png,.bmp,.gif,.ico,.mp3,.mp4,.html,.svg` |
 | `SW_TRACE_IGNORE_PATH` | The paths of endpoints that will be ignored (not traced), comma separated | `` |
+| `SW_HTTP_IGNORE_METHOD` | Comma-delimited list of http methods to ignore (GET, POST, HEAD, OPTIONS, etc...) | `` |
 | `SW_SQL_TRACE_PARAMETERS` | If set to 'true' then SQL query parameters will be included | `false` |
 | `SW_SQL_PARAMETERS_MAX_LENGTH` | The maximum string length of SQL parameters to log | `512` |
 | `SW_MONGO_TRACE_PARAMETERS` | If set to 'true' then mongodb query parameters will be included | `false` |
 | `SW_MONGO_PARAMETERS_MAX_LENGTH` | The maximum string length of mongodb parameters to log | `512` |
 | `SW_AGENT_MAX_BUFFER_SIZE` | The maximum buffer size before sending the segment data to backend | `'1000'` |
+
+Note that the various ignore options like `SW_IGNORE_SUFFIX`, `SW_TRACE_IGNORE_PATH` and `SW_HTTP_IGNORE_METHOD` as well as endpoints which are not recorded due to exceeding `SW_AGENT_MAX_BUFFER_SIZE` all propagate their ignored status downstream to any other endpoints they may call. If that endpoint is running the Node Skywalking agent then regardless of its ignore settings it will not be recorded since its upstream parent was not recorded. This allows elimination of entire trees of endpoints you are not interested in as well as eliminating partial traces if a span in the chain is ignored but calls out to other endpopints which are recorded as children of ROOT instead of the actual parent.
 
 ## Supported Libraries
 
@@ -89,6 +93,27 @@ Library | Underlying Plugin Name
 | [`request`](https://github.com/request/request) | `http` / `https` |
 | [`request-promise`](https://github.com/request/request-promise) | `http` / `https` |
 | [`koa`](https://github.com/koajs/koa) | `http` / `https` |
+
+## Experimental Azure Functions Support
+
+The plugin `AzureHttpTriggerPlugin` provides a wrapper function for an Azure Functions Javascript HttpTrigger endpoint. This is an http server endpoint and it must be instrumented manually currently. So far all other plugins tested work within the HttpTrigger and so a trace can pass through the Function and on to other endpoints called by the function. How much sense it makes to instrument an Azure Function which already lives in the cloud and has robust monitoring incorporated is a good question, but at the least this plugin will allow those endpoints to show up in a Skywalking trace.
+
+### Usage:
+
+```javascript
+const {default: agent, AzureHttpTriggerPlugin} = require('skywalking-backend-js');
+
+agent.start({ ... });
+
+module.exports = AzureHttpTriggerPlugin.wrap(async function (context, req) {
+
+  /* contents of http trigger function */
+
+});
+```
+
+All that needs to be done is the actual trigger function needs to be wrapped with `azureHttpTriggerPlugin.wrap()`, whether that function is a default export or an explicitly named `entryPoint` or `run` or `index`.
+
 
 ## Contact Us
 * Submit [an issue](https://github.com/apache/skywalking/issues/new) by using [Nodejs] as title prefix.
