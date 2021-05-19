@@ -58,7 +58,7 @@ services:
     depends_on:
       collector:
         condition: service_healthy
-      postgres:
+      redis:
         condition: service_healthy
 
   client:
