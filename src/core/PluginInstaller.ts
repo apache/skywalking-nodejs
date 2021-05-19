@@ -110,6 +110,7 @@ export default class PluginInstaller {
         } else {
           logger.error(`Error processing plugin ${pluginFile}`);
         }
+        console.error(e);
       }
     });
   }
