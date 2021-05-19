@@ -25,6 +25,7 @@ import { ContextCarrier } from './ContextCarrier';
 export default interface Context {
   segment: Segment;
   nSpans: number;
+  finished: boolean;
 
   newLocalSpan(operation: string): Span;
 
@@ -36,7 +37,7 @@ export default interface Context {
   /* if 'inherit' is specified then the span returned is marked for inheritance by an Exit span component which is
      created later and calls this function with a matching 'component' value. For example Axios using an Http exit
      connection will be merged into a single exit span, see those plugins for how this is done. */
-  newExitSpan(operation: string, peer: string, component: Component, inherit?: Component): Span;
+  newExitSpan(operation: string, component: Component, inherit?: Component): Span;
 
   start(span: Span): Context;
 

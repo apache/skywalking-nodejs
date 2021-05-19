@@ -24,6 +24,7 @@ import Segment from '../trace/context/Segment';
 
 declare interface SkyWalkingEventEmitter {
   on(event: 'segment-finished', listener: (segment: Segment) => void): this;
+  on(event: 'segments-sent', listener: () => void): this;
 }
 
 class SkyWalkingEventEmitter extends EventEmitter {

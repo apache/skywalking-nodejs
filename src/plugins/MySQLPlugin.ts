@@ -37,7 +37,7 @@ class MySQLPlugin implements SwPlugin {
       let query: any;
 
       const host = `${this.config.host}:${this.config.port}`;
-      const span = ContextManager.current.newExitSpan('mysql/query', host, Component.MYSQL);
+      const span = ContextManager.current.newExitSpan('mysql/query', Component.MYSQL);
 
       span.start();
 

@@ -22,8 +22,9 @@ import { IncomingMessage, ServerResponse } from 'http';
 import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
 import Tag from '../Tag';
-import EntrySpan from '../trace/span/EntrySpan';
 import { ContextCarrier } from '../trace/context/ContextCarrier';
+import DummySpan from '../trace/span/DummySpan';
+import { ignoreHttpMethodCheck } from '../config/AgentConfig';
 import PluginInstaller from '../core/PluginInstaller';
 import HttpPlugin from './HttpPlugin';
 
@@ -42,7 +43,9 @@ class ExpressPlugin implements SwPlugin {
     router.handle = function(req: IncomingMessage, res: ServerResponse, next: any) {
       const carrier = ContextCarrier.from((req as any).headers || {});
       const operation = (req.url || '/').replace(/\?.*/g, '');
-      const span: EntrySpan = ContextManager.current.newEntrySpan(operation, carrier, Component.HTTP_SERVER) as EntrySpan;
+      const span = ignoreHttpMethodCheck(req.method ?? 'GET')
+        ? DummySpan.create()
+        : ContextManager.current.newEntrySpan(operation, carrier, Component.HTTP_SERVER);
 
       span.component = Component.EXPRESS;
 

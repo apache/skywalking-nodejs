@@ -291,7 +291,7 @@ class MongoDBPlugin implements SwPlugin {
         host = db.serverConfig.s.options.servers.map((s: any) => `${s.host}:${s.port}`).join(',');  // will this work for non-NativeTopology?
       } catch { /* nop */ }
 
-      span = ContextManager.current.newExitSpan('MongoDB/' + operation, host, Component.MONGODB);
+      span = ContextManager.current.newExitSpan('MongoDB/' + operation, Component.MONGODB);
 
       span.start();
 
