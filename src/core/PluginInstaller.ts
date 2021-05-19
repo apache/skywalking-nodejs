@@ -106,11 +106,10 @@ export default class PluginInstaller {
         plugin.install(this);
       } catch (e) {
         if (plugin) {
-          logger.error(`Error installing plugin ${plugin.module} ${plugin.versions}`);
+          logger.error(`Error installing plugin ${plugin.module} ${plugin.versions}`, e);
         } else {
-          logger.error(`Error processing plugin ${pluginFile}`);
+          logger.error(`Error processing plugin ${pluginFile}`, e);
         }
-        console.error(e);
       }
     });
   }
