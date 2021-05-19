@@ -17,7 +17,7 @@
  *
  */
 
-import PluginInstaller from 'core/PluginInstaller';
+import PluginInstaller from '../core/PluginInstaller';
 import SwPlugin, { wrapPromise } from '../core/SwPlugin';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import Tag from '../Tag';
