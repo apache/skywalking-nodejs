@@ -53,6 +53,8 @@ segmentItems:
             peer: not null
             skipAnalysis: false
             tags:
+              - key: coldStart
+                value: 'true'
               - key: http.url
                 value: http://server:5000/axios
               - key: http.method
@@ -101,6 +103,8 @@ segmentItems:
             spanId: 0
             spanLayer: Http
             tags:
+              - key: coldStart
+                value: 'true'
               - key: http.url
                 value: http://localhost:5001/axios
               - key: http.method
