@@ -24,20 +24,6 @@ segmentItems:
           - operationName: redis/get
             operationId: 0
             parentSpanId: 0
-            spanId: 3
-            spanLayer: Cache
-            startTime: gt 0
-            endTime: gt 0
-            componentId: 22
-            spanType: Exit
-            peer: redis:6379
-            skipAnalysis: false
-            tags:
-              - { key: cache.type, value: Redis }
-              - { key: cache.instance, value: 0 }
-          - operationName: redis/set
-            operationId: 0
-            parentSpanId: 0
             spanId: 2
             spanLayer: Cache
             startTime: gt 0
@@ -49,7 +35,7 @@ segmentItems:
             tags:
               - { key: cache.type, value: Redis }
               - { key: cache.instance, value: 0 }
-          - operationName: redis/auth
+          - operationName: redis/set
             operationId: 0
             parentSpanId: 0
             spanId: 1
