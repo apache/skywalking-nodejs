@@ -17,24 +17,26 @@
 
 segmentItems:
   - serviceName: server
-    segmentSize: 1
+    segmentSize: 2
     segments:
       - segmentId: not null
         spans:
-          - operationName: redis/get
+          - operationName: redis/info
             operationId: 0
-            parentSpanId: 0
-            spanId: 2
+            parentSpanId: -1
+            spanId: 0
             spanLayer: Cache
             startTime: gt 0
             endTime: gt 0
-            componentId: 22
+            componentId: 7
             spanType: Exit
             peer: redis:6379
             skipAnalysis: false
             tags:
               - { key: cache.type, value: Redis }
-              - { key: cache.instance, value: 0 }
+              - { key: cache.instance, value: "0" }
+      - segmentId: not null
+        spans:
           - operationName: redis/set
             operationId: 0
             parentSpanId: 0
@@ -42,13 +44,27 @@ segmentItems:
             spanLayer: Cache
             startTime: gt 0
             endTime: gt 0
-            componentId: 22
+            componentId: 7
             spanType: Exit
             peer: redis:6379
             skipAnalysis: false
             tags:
               - { key: cache.type, value: Redis }
-              - { key: cache.instance, value: 0 }
+              - { key: cache.instance, value: "0" }
+          - operationName: redis/get
+            operationId: 0
+            parentSpanId: 0
+            spanId: 2
+            spanLayer: Cache
+            startTime: gt 0
+            endTime: gt 0
+            componentId: 7
+            spanType: Exit
+            peer: redis:6379
+            skipAnalysis: false
+            tags:
+              - { key: cache.type, value: Redis }
+              - { key: cache.instance, value: "0" }
           - operationName: /ioredis
             operationId: 0
             parentSpanId: -1
