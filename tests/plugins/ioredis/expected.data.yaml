@@ -19,7 +19,7 @@ segmentItems:
   - serviceName: server
     segmentSize: 2
     segments:
-      # connect
+      # connect auth (if set password) and info
       - segmentId: not null
         spans:
           - operationName: redis/info
@@ -29,7 +29,7 @@ segmentItems:
             spanLayer: Cache
             startTime: gt 0
             endTime: gt 0
-            componentId: 22
+            componentId: 7
             spanType: Exit
             peer: redis:6379
             skipAnalysis: false
@@ -45,7 +45,7 @@ segmentItems:
             spanLayer: Cache
             startTime: gt 0
             endTime: gt 0
-            componentId: 22
+            componentId: 7
             spanType: Exit
             peer: redis:6379
             skipAnalysis: false
@@ -59,7 +59,7 @@ segmentItems:
             spanLayer: Cache
             startTime: gt 0
             endTime: gt 0
-            componentId: 22
+            componentId: 7
             spanType: Exit
             peer: redis:6379
             skipAnalysis: false
