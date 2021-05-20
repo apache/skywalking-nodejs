@@ -24,6 +24,7 @@ export interface Tag {
 }
 
 export default {
+  coldStartKey: 'coldStart',
   httpStatusCodeKey: 'http.status.code',  // TODO: maybe find a better place to put these?
   httpStatusMsgKey: 'http.status.msg',
   httpURLKey: 'http.url',
@@ -37,6 +38,13 @@ export default {
   mqTopicKey: 'mq.topic',
   mqQueueKey: 'mq.queue',
 
+  coldStart(val: boolean = true): Tag {
+    return {
+      key: this.coldStartKey,
+      overridable: true,
+      val: `${val}`,
+    } as Tag;
+  },
   httpStatusCode(val: string | number | undefined): Tag {
     return {
       key: this.httpStatusCodeKey,

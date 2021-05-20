@@ -59,6 +59,19 @@ if (async_hooks.AsyncLocalStorage) {
 }
 
 class ContextManager {
+  isCold = true;
+
+  cosntructor() {
+    setTimeout(() => this.isCold = false, 1000).unref();
+  }
+
+  checkCold(): boolean {
+    const isCold = this.isCold;
+    this.isCold = false;
+
+    return isCold;
+  }
+
   get asyncState(): AsyncState {
     let asyncState = store.getStore();
 

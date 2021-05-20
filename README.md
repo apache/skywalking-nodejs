@@ -56,7 +56,8 @@ Environment Variable | Description | Default
 | `SW_AGENT_SECURE` | Whether to use secure connection to backend OAP server | `false` |
 | `SW_AGENT_AUTHENTICATION` | The authentication token to verify that the agent is trusted by the backend OAP, as for how to configure the backend, refer to [the yaml](https://github.com/apache/skywalking/blob/4f0f39ffccdc9b41049903cc540b8904f7c9728e/oap-server/server-bootstrap/src/main/resources/application.yml#L155-L158). | not set |
 | `SW_AGENT_LOGGING_LEVEL` | The logging level, could be one of `error`, `warn`, `info`, `debug` | `info` |
-| `SW_AGENT_DISABLE_PLUGINS` | Comma-delimited list of plugins to disable in the plugins directory (e.g. "mysql", "express"). | `` |
+| `SW_AGENT_DISABLE_PLUGINS` | Comma-delimited list of plugins to disable in the plugins directory (e.g. "mysql", "express") | `` |
+| `SW_COLD_ENDPOINT` | Cold start detection is as follows: First span to run within 1 second of skywalking init is considered a cold start. This span gets the tag `coldStart` set to 'true'. This span also optionally gets the text '\<cold\>' appended to the endpoint name if SW_COLD_ENDPOINT is set to 'true'. | `false` |
 | `SW_IGNORE_SUFFIX` | The suffices of endpoints that will be ignored (not traced), comma separated | `.jpg,.jpeg,.js,.css,.png,.bmp,.gif,.ico,.mp3,.mp4,.html,.svg` |
 | `SW_TRACE_IGNORE_PATH` | The paths of endpoints that will be ignored (not traced), comma separated | `` |
 | `SW_HTTP_IGNORE_METHOD` | Comma-delimited list of http methods to ignore (GET, POST, HEAD, OPTIONS, etc...) | `` |
