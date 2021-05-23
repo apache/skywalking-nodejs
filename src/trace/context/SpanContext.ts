@@ -27,6 +27,7 @@ import ExitSpan from '../../trace/span/ExitSpan';
 import LocalSpan from '../../trace/span/LocalSpan';
 import SegmentRef from './SegmentRef';
 import ContextManager from './ContextManager';
+import Tag from '../../Tag';
 import { Component } from '../../trace/Component';
 import { createLogger } from '../../logging';
 import { ContextCarrier } from './ContextCarrier';
@@ -173,8 +174,13 @@ export default class SpanContext implements Context {
       nSpans: this.nSpans,
     });
 
-    if (!this.nSpans++)
+    if (!this.nSpans++) {
       SpanContext.nActiveSegments += 1;
+      span.isCold = ContextManager.checkCold();
+
+      if (span.isCold)
+        span.tag(Tag.coldStart(), true);
+    }
 
     if (spans.indexOf(span) === -1)
       spans.push(span);
