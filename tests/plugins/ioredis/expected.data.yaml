@@ -33,6 +33,7 @@ segmentItems:
             peer: redis:6379
             skipAnalysis: false
             tags:
+              - { key: coldStart, value: "true" }
               - { key: cache.type, value: Redis }
               - { key: cache.instance, value: "0" }
       - segmentId: not null
@@ -107,6 +108,7 @@ segmentItems:
             peer: not null
             skipAnalysis: false
             tags:
+              - { key: coldStart, value: "true" }
               - { key: http.url, value: "http://localhost:5001/ioredis" }
               - { key: http.method, value: GET }
               - { key: http.status.code, value: "200" }
