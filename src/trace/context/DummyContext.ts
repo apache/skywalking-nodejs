@@ -42,10 +42,12 @@ export default class DummyContext implements Context {
     return DummySpan.create(this);
   }
 
-  start(span: Span): Context {
+  start(span: DummySpan): Context {
     const spans = ContextManager.spansDup();
 
     if (!this.nSpans++) {
+      ContextManager.checkCold();  // set cold to false
+
       if (spans.indexOf(span) === -1)
         spans.push(span);
     }
@@ -53,7 +55,7 @@ export default class DummyContext implements Context {
     return this;
   }
 
-  stop(span: Span): boolean {
+  stop(span: DummySpan): boolean {
     if (--this.nSpans)
       return false;
 
@@ -62,11 +64,11 @@ export default class DummyContext implements Context {
     return true;
   }
 
-  async(span: Span) {
+  async(span: DummySpan) {
     ContextManager.clear(span);
   }
 
-  resync(span: Span) {
+  resync(span: DummySpan) {
     ContextManager.restore(span);
   }
 }

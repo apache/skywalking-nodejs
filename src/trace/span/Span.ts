@@ -17,6 +17,7 @@
  *
  */
 
+import config from '../../config/AgentConfig';
 import Context from '../../trace/context/Context';
 import { Component } from '../Component';
 import { Tag } from '../../Tag';
@@ -51,6 +52,7 @@ export default abstract class Span {
   layer = SpanLayer.UNKNOWN;
   component = Component.UNKNOWN;
   depth = 0;
+  isCold = false;
   inherit?: Component;
 
   readonly tags: Tag[] = [];
@@ -95,6 +97,9 @@ export default abstract class Span {
   }
 
   finish(segment: Segment): boolean {
+    if (this.isCold && config.coldEndpoint)
+      this.operation = this.operation + '<cold>';
+
     this.endTime = new Date().getTime();
     segment.archive(this);
     return true;
@@ -118,18 +123,23 @@ export default abstract class Span {
     return !this.tags.every((t) => t.key !== key);
   }
 
-  tag(tag: Tag): this {
-    if (!tag.overridable) {
-      this.tags.push(Object.assign({}, tag));
+  tag(tag: Tag, insert?: boolean): this {
+    if (tag.overridable) {
+      const sameTags = this.tags.filter((it) => it.key === tag.key);
+
+      if (sameTags.length) {
+        sameTags.forEach((it) => (it.val = tag.val));
+
+        return this;
+      }
     }
 
-    const sameTags = this.tags.filter((it) => it.key === tag.key);
+    const tagObj = Object.assign({}, tag);
 
-    if (sameTags.length) {
-      sameTags.forEach((it) => (it.val = tag.val));
-    } else {
-      this.tags.push(Object.assign({}, tag));
-    }
+    if (!insert)
+      this.tags.push(tagObj);
+    else
+      this.tags.unshift(tagObj)
 
     return this;
   }

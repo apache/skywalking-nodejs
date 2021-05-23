@@ -26,6 +26,7 @@ export type AgentConfig = {
   secure?: boolean;
   authorization?: string;
   maxBufferSize?: number;
+  coldEndpoint?: boolean;
   disablePlugins?: string;
   ignoreSuffix?: string;
   traceIgnorePath?: string;
@@ -66,10 +67,11 @@ const _config = {
       return os.hostname();
     })(),
   collectorAddress: process.env.SW_AGENT_COLLECTOR_BACKEND_SERVICES || '127.0.0.1:11800',
-  secure: process.env.SW_AGENT_SECURE?.toLocaleLowerCase() === 'true',
+  secure: process.env.SW_AGENT_SECURE?.toLowerCase() === 'true',
   authorization: process.env.SW_AGENT_AUTHENTICATION,
   maxBufferSize: Number.isSafeInteger(process.env.SW_AGENT_MAX_BUFFER_SIZE) ?
     Number.parseInt(process.env.SW_AGENT_MAX_BUFFER_SIZE as string, 10) : 1000,
+  coldEndpoint: process.env.SW_COLD_ENDPOINT?.toLowerCase() === 'true',
   disablePlugins: process.env.SW_AGENT_DISABLE_PLUGINS || '',
   ignoreSuffix: process.env.SW_IGNORE_SUFFIX ?? '.jpg,.jpeg,.js,.css,.png,.bmp,.gif,.ico,.mp3,.mp4,.html,.svg',
   traceIgnorePath: process.env.SW_TRACE_IGNORE_PATH || '',

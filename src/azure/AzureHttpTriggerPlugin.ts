@@ -49,7 +49,7 @@ class AzureHttpTriggerPlugin {
         : ContextManager.current.newEntrySpan(operation, carrier);
 
       span.layer = SpanLayer.HTTP;
-      span.component = Component.AZURE_HTTPTRIGGER  ;
+      span.component = Component.AZURE_HTTPTRIGGER;
       span.peer = (req.headers['x-forwarded-for'] || '???').split(',').shift();
 
       span.tag(Tag.httpMethod(req.method));
