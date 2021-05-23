@@ -48,6 +48,7 @@ segmentItems:
             peer: not null
             skipAnalysis: false
             tags:
+              - { key: coldStart, value: 'true' }
               - { key: http.url, value: 'http://server:5000/postgres' }
               - { key: http.method, value: GET }
               - { key: http.status.code, value: '200' }
@@ -78,6 +79,7 @@ segmentItems:
             peer: not null
             skipAnalysis: false
             tags:
+              - { key: coldStart, value: 'true' }
               - { key: http.url, value: 'http://localhost:5001/postgres' }
               - { key: http.method, value: GET }
               - { key: http.status.code, value: '200' }
