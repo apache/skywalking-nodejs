@@ -49,8 +49,8 @@ class IORedisPlugin implements SwPlugin {
 			span.component = Component.REDIS;
 			span.layer = SpanLayer.CACHE;
 			span.peer = host;
-			span.tag(Tag.cacheType('Redis'));
-			span.tag(Tag.cacheInstance(`${this.condition.select}`));
+			span.tag(Tag.dbType('Redis'));
+			span.tag(Tag.dbInstance(`${this.condition.select}`));
 
 			const ret = wrapPromise(span, _original.apply(this, args));
 			span.async();

@@ -34,8 +34,8 @@ segmentItems:
             skipAnalysis: false
             tags:
               - { key: coldStart, value: "true" }
-              - { key: cache.type, value: Redis }
-              - { key: cache.instance, value: "0" }
+              - { key: db.type, value: Redis }
+              - { key: db.instance, value: "0" }
       - segmentId: not null
         spans:
           - operationName: redis/set
@@ -50,8 +50,8 @@ segmentItems:
             peer: redis:6379
             skipAnalysis: false
             tags:
-              - { key: cache.type, value: Redis }
-              - { key: cache.instance, value: "0" }
+              - { key: db.type, value: Redis }
+              - { key: db.instance, value: "0" }
           - operationName: redis/get
             operationId: 0
             parentSpanId: 0
@@ -64,8 +64,8 @@ segmentItems:
             peer: redis:6379
             skipAnalysis: false
             tags:
-              - { key: cache.type, value: Redis }
-              - { key: cache.instance, value: "0" }
+              - { key: db.type, value: Redis }
+              - { key: db.instance, value: "0" }
           - operationName: /ioredis
             operationId: 0
             parentSpanId: -1
