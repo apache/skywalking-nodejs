@@ -17,20 +17,34 @@
  *
  */
 
-export class Component {
-  static readonly UNKNOWN = new Component(0);
-  static readonly HTTP = new Component(2);
-  static readonly MYSQL = new Component(5);
-  static readonly REDIS = new Component(7);
-  static readonly MONGODB = new Component(9);
-  static readonly POSTGRESQL = new Component(22);
-  static readonly HTTP_SERVER = new Component(49);
-  static readonly RABBITMQ_PRODUCER = new Component(52);
-  static readonly RABBITMQ_CONSUMER = new Component(53);
-  static readonly AZURE_HTTPTRIGGER = new Component(111);
-  static readonly EXPRESS = new Component(4002);
-  static readonly AXIOS = new Component(4005);
-  static readonly MONGOOSE = new Component(4006);
+import * as http from 'http';
+import Redis from 'ioredis';
+import agent from '../../../src';
+import assert from 'assert';
 
-  constructor(public readonly id: number) { }
-}
+agent.start({
+  serviceName: 'server',
+  maxBufferSize: 1000,
+});
+
+const client = new Redis({
+  host: process.env.REDIS_HOST || 'redis',
+});
+
+const server = http.createServer((req, res) => {
+  (async () => {
+    const cacheKey = 'now';
+    const now = '' + Date.now();
+
+    await client.set(cacheKey, now);
+    const _now = await client.get(cacheKey);
+    assert.strictEqual(now, _now);
+
+    res.end(_now);
+  })().catch((err: Error) => {
+    res.statusCode = 500;
+    res.end(err.message);
+  });
+})
+
+server.listen(5000, () => console.info('Listening on port 5000...'));

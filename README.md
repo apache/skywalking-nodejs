@@ -79,11 +79,13 @@ Library | Plugin Name
 | [`Express`](https://expressjs.com) | `express` |
 | [`Axios`](https://github.com/axios/axios) | `axios` |
 | [`MySQL`](https://github.com/mysqljs/mysql) | `mysql` |
+| [`MySQL`](https://github.com/sidorares/node-mysql2) | `mysql2` |
 | [`PostgreSQL`](https://github.com/brianc/node-postgres) | `pg` |
 | [`pg-cursor`](https://github.com/brianc/node-postgres) | `pg-cursor` |
 | [`MongoDB`](https://github.com/mongodb/node-mongodb-native) | `mongodb` |
 | [`Mongoose`](https://github.com/Automattic/mongoose) | `mongoose` |
 | [`RabbitMQ`](https://github.com/squaremo/amqp.node) | `amqplib` |
+| [`Redis`](https://github.com/luin/ioredis) | `ioredis` |
 
 ### Compatible Libraries
 
