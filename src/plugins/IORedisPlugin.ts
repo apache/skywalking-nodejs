@@ -52,9 +52,17 @@ class IORedisPlugin implements SwPlugin {
 			span.tag(Tag.dbType('Redis'));
 			span.tag(Tag.dbInstance(`${this.condition.select}`));
 
-			const ret = wrapPromise(span, _original.apply(this, args));
-			span.async();
-			return ret;
+			try {
+				const ret = wrapPromise(span, _original.apply(this, args));
+				span.async();
+				return ret;
+
+			} catch (err) {
+				span.error(err);
+				span.stop();
+
+				throw err;
+			}
 		}
 	}
 }
