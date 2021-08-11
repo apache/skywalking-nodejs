@@ -28,7 +28,7 @@ import LocalSpan from '../../trace/span/LocalSpan';
 import SegmentRef from './SegmentRef';
 import ContextManager from './ContextManager';
 import Tag from '../../Tag';
-import { Component } from '../../trace/Component';
+import { Component } from '../Component';
 import { createLogger } from '../../logging';
 import { ContextCarrier } from './ContextCarrier';
 import { SpanType } from '../../proto/language-agent/Tracing_pb';
@@ -55,7 +55,7 @@ export default class SpanContext implements Context {
   }
 
   spanCheck(spanType: SpanType, operation: string, carrier?: ContextCarrier): [Span | null, Span?] {
-    let span = this.ignoreCheck(operation, SpanType.ENTRY, carrier);
+    const span = this.ignoreCheck(operation, SpanType.ENTRY, carrier);
 
     if (span)
       return [span];
@@ -75,7 +75,7 @@ export default class SpanContext implements Context {
     const span = new spanClass({
       id: context.spanId++,
       parentId: this.finished ? -1 : parent?.id ?? -1,
-      context: context,
+      context,
       operation,
     });
 
@@ -101,6 +101,7 @@ export default class SpanContext implements Context {
   }
 
   newEntrySpan(operation: string, carrier?: ContextCarrier, inherit?: Component): Span {
+    // tslint:disable-next-line:prefer-const
     let [span, parent] = this.spanCheck(SpanType.ENTRY, operation, carrier);
 
     if (span)
@@ -127,6 +128,7 @@ export default class SpanContext implements Context {
   }
 
   newExitSpan(operation: string, component: Component, inherit?: Component): Span {
+    // tslint:disable-next-line:prefer-const
     let [span, parent] = this.spanCheck(SpanType.EXIT, operation);
 
     if (span)
@@ -151,7 +153,7 @@ export default class SpanContext implements Context {
   }
 
   newLocalSpan(operation: string): Span {
-    let [span, parent] = this.spanCheck(SpanType.LOCAL, operation);
+    const [span, parent] = this.spanCheck(SpanType.LOCAL, operation);
 
     if (span)
       return span;
@@ -227,5 +229,12 @@ export default class SpanContext implements Context {
     });
 
     ContextManager.restore(span);
+  }
+
+  traceId(): string {
+    if (!this.segment.relatedTraces) {
+      return 'N/A';
+    }
+    return this.segment.relatedTraces[0].toString();
   }
 }
