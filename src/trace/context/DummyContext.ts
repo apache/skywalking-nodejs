@@ -21,7 +21,7 @@ import Context from '../../trace/context/Context';
 import Span from '../../trace/span/Span';
 import DummySpan from '../../trace/span/DummySpan';
 import Segment from '../../trace/context/Segment';
-import { Component } from '../../trace/Component';
+import { Component } from '../Component';
 import { ContextCarrier } from './ContextCarrier';
 import ContextManager from './ContextManager';
 
@@ -70,5 +70,12 @@ export default class DummyContext implements Context {
 
   resync(span: DummySpan) {
     ContextManager.restore(span);
+  }
+
+  traceId(): string {
+    if (!this.segment.relatedTraces) {
+      return 'N/A';
+    }
+    return this.segment.relatedTraces[0].toString();
   }
 }

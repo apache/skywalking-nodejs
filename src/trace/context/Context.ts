@@ -19,7 +19,7 @@
 
 import Span from '../../trace/span/Span';
 import Segment from '../../trace/context/Segment';
-import { Component } from '../../trace/Component';
+import { Component } from '../Component';
 import { ContextCarrier } from './ContextCarrier';
 
 export default interface Context {
@@ -51,4 +51,10 @@ export default interface Context {
   /* This should be called upon entering the new async context for a span that has previously executed .async(), it
      should be the first thing the callback function belonging to the span does. */
   resync(span: Span): void;
+
+  /**
+   * Returns the global trace id of the current trace, if there is no trace when invoking this method,
+   * "N/A" is returned.
+   */
+  traceId(): string;
 }
