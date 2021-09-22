@@ -120,6 +120,7 @@ class HttpPlugin implements SwPlugin {
         span.inject().items.forEach((item) => req.setHeader(item.key, item.value));
 
         wrapEmit(span, req, true, 'close');
+        wrapEmit(span, req, true, 'finish');
 
         req.on('timeout', () => span.log('Timeout', true));
         req.on('abort', () => span.log('Abort', span.errored = true));
