@@ -23,6 +23,7 @@ import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
 import Tag from '../Tag';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
+import { ContextCarrier } from '../trace/context/ContextCarrier';
 import DummySpan from '../trace/span/DummySpan';
 import { ignoreHttpMethodCheck } from '../config/AgentConfig';
 import PluginInstaller from '../core/PluginInstaller';
@@ -45,11 +46,14 @@ class AxiosPlugin implements SwPlugin {
       else
         config = url ? {...url} : {};
 
+      const carrier = ContextCarrier.from(config.headers || {});
       const {origin, host, pathname: operation} = new URL(config.url, config.baseURL);  // TODO: this may throw invalid URL
       const method = (config.method || 'GET').toUpperCase();
       const span = ignoreHttpMethodCheck(method)
         ? DummySpan.create()
-        : ContextManager.current.newExitSpan(operation, Component.AXIOS, Component.HTTP);
+        : carrier
+          ? ContextManager.current.newEntrySpan(operation, carrier)
+          : ContextManager.current.newExitSpan(operation, Component.AXIOS, Component.HTTP);
 
       span.start();
 
@@ -63,7 +67,9 @@ class AxiosPlugin implements SwPlugin {
         span.tag(Tag.httpURL(origin + operation));
         span.tag(Tag.httpMethod(method));
 
-        span.inject().items.forEach((item) => config.headers[item.key] = item.value);
+        if (!carrier) {
+          span.inject().items.forEach((item) => config.headers[item.key] = item.value);
+        }
 
         const copyStatus = (response: any) => {
           if (response) {
