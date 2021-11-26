@@ -59,7 +59,7 @@ export default class TraceReportClient implements Client {
           return;
         }
 
-        const stream = this.reporterClient.collect(AuthInterceptor(),(error, _) => {
+        const stream = this.reporterClient.collect(AuthInterceptor(), (error, _) => {
           if (error) {
             logger.error('Failed to report trace data', error);
           }
