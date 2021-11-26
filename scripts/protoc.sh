@@ -24,7 +24,6 @@ mkdir -p $OUT_DIR || true
 cd "${ROOT_DIR}"/protocol || exit
 
 PROTOC_GEN_TS_PATH="${ROOT_DIR}/node_modules/.bin/protoc-gen-ts"
-#PROTOC_PLUGIN="${ROOT_DIR}/node_modules/.bin/grpc_tools_node_protoc_plugin"
 PROTOC="${ROOT_DIR}/node_modules/.bin/grpc_tools_node_protoc"
 
 ${PROTOC} \
