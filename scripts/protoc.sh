@@ -24,17 +24,15 @@ mkdir -p $OUT_DIR || true
 cd "${ROOT_DIR}"/protocol || exit
 
 PROTOC_GEN_TS_PATH="${ROOT_DIR}/node_modules/.bin/protoc-gen-ts"
-PROTOC_PLUGIN="${ROOT_DIR}/node_modules/.bin/grpc_tools_node_protoc_plugin"
 PROTOC="${ROOT_DIR}/node_modules/.bin/grpc_tools_node_protoc"
 
 ${PROTOC} \
     --js_out=import_style=commonjs,binary:$OUT_DIR \
-    --grpc_out=$OUT_DIR \
-    --plugin=protoc-gen-grpc="${PROTOC_PLUGIN}" \
+    --grpc_out=grpc_js:$OUT_DIR \
       **/*.proto
 
 ${PROTOC} \
     --plugin=protoc-gen-ts="${PROTOC_GEN_TS_PATH}" \
-    --ts_out=$OUT_DIR \
+    --ts_out=grpc_js:$OUT_DIR \
       **/*.proto
 

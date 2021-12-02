@@ -48,8 +48,8 @@
     "amqplib": "^0.7.0",
     "axios": "^0.21.0",
     "express": "^4.17.1",
-    "grpc-tools": "^1.10.0",
-    "grpc_tools_node_protoc_ts": "^4.0.0",
+    "grpc-tools": "^1.11.1",
+    "grpc_tools_node_protoc_ts": "^5.3.0",
     "ioredis": "^4.27.2",
     "jest": "^26.6.3",
     "mongodb": "^3.6.4",
@@ -68,8 +68,8 @@
     "wait-for-expect": "^3.0.2"
   },
   "dependencies": {
+    "@grpc/grpc-js": "^1.4.4",
     "google-protobuf": "^3.14.0",
-    "grpc": "^1.10.1",
     "semver": "^7.3.2",
     "tslib": "^2.0.3",
     "uuid": "^8.1.0",

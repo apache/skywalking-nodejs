@@ -18,8 +18,8 @@
  */
 
 import config from '../../../../config/AgentConfig';
-import * as grpc from 'grpc';
-import { connectivityState } from 'grpc';
+import * as grpc from '@grpc/grpc-js';
+import { connectivityState } from '@grpc/grpc-js';
 import { createLogger } from '../../../../logging';
 import Client from './Client';
 import { TraceSegmentReportServiceClient } from '../../../../proto/language-agent/Tracing_grpc_pb';
@@ -38,8 +38,7 @@ export default class TraceReportClient implements Client {
   constructor() {
     this.reporterClient = new TraceSegmentReportServiceClient(
       config.collectorAddress,
-      config.secure ? grpc.credentials.createSsl() : grpc.credentials.createInsecure(),
-      { interceptors: [AuthInterceptor] },
+      config.secure ? grpc.credentials.createSsl() : grpc.credentials.createInsecure()
     );
     emitter.on('segment-finished', (segment) => {
       this.buffer.push(segment);
@@ -53,14 +52,14 @@ export default class TraceReportClient implements Client {
 
   start() {
     const reportFunction = () => {
-      emitter.emit('segments-sent');  // reset limiter in SpanContext
+      emitter.emit('segments-sent'); // reset limiter in SpanContext
 
       try {
         if (this.buffer.length === 0) {
           return;
         }
 
-        const stream = this.reporterClient.collect((error, _) => {
+        const stream = this.reporterClient.collect(AuthInterceptor(), (error, _) => {
           if (error) {
             logger.error('Failed to report trace data', error);
           }

@@ -17,8 +17,8 @@
  *
  */
 
-import * as grpc from 'grpc';
-import { connectivityState } from 'grpc';
+import * as grpc from '@grpc/grpc-js';
+import { connectivityState } from '@grpc/grpc-js';
 
 import * as packageInfo from '../../../../../package.json';
 import { createLogger } from '../../../../logging';
@@ -39,8 +39,7 @@ export default class HeartbeatClient implements Client {
   constructor() {
     this.managementServiceClient = new ManagementServiceClient(
       config.collectorAddress,
-      config.secure ? grpc.credentials.createSsl() : grpc.credentials.createInsecure(),
-      { interceptors: [AuthInterceptor] },
+      config.secure ? grpc.credentials.createSsl() : grpc.credentials.createInsecure()
     );
   }
 
@@ -75,7 +74,7 @@ export default class HeartbeatClient implements Client {
     this.heartbeatTimer = setInterval(() => {
       this.managementServiceClient.reportInstanceProperties(
         instanceProperties,
-
+        AuthInterceptor(),
         (error, _) => {
           if (error) {
             logger.error('Failed to send heartbeat', error);
@@ -84,7 +83,7 @@ export default class HeartbeatClient implements Client {
       );
       this.managementServiceClient.keepAlive(
         keepAlivePkg,
-
+        AuthInterceptor(),
         (error, _) => {
           if (error) {
             logger.error('Failed to send heartbeat', error);
