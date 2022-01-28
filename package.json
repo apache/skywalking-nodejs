@@ -6,10 +6,11 @@
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "scripts": {
-    "prepare": "npm run generate-source",
+    "prepare": "npm run generate-source & husky install",
     "generate-source": "scripts/protoc.sh",
     "build": "npm run clean && npm run prepare && tsc --build src && OUT_DIR=lib/proto/ scripts/protoc.sh",
     "lint": "tslint -p src/tsconfig.json src/**/*.ts",
+    "lint-staged": "lint-staged",
     "test": "DEBUG=testcontainers* jest",
     "format": "prettier --write \"src/**/*.ts\"",
     "clean": "(rm -rf src/proto || true) && (rm -rf src/proto || true) && (rm -rf lib || true)",
@@ -50,8 +51,10 @@
     "express": "^4.17.1",
     "grpc-tools": "^1.11.1",
     "grpc_tools_node_protoc_ts": "^5.3.0",
+    "husky": "^7.0.4",
     "ioredis": "^4.27.2",
     "jest": "^26.6.3",
+    "lint-staged": "^12.3.2",
     "mongodb": "^3.6.4",
     "mongoose": "^5.12.2",
     "mysql": "^2.18.1",
@@ -74,5 +77,11 @@
     "tslib": "^2.0.3",
     "uuid": "^8.1.0",
     "winston": "^3.2.1"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "tslint -p",
+      "prettier --write"
+    ]
   }
 }
