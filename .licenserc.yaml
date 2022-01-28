@@ -32,5 +32,6 @@ header:
     - '.gitmodules'
     - '.prettierrc'
     - 'lib'
+    - '.husky'
 
   comment: on-failure
