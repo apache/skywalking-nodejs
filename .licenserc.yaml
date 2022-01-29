@@ -33,5 +33,7 @@ header:
     - '.prettierrc'
     - 'lib'
     - '.husky'
+    - '.file-headerrc'
+    - '.eslintrc.js'
 
   comment: on-failure
