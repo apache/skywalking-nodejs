@@ -32,7 +32,8 @@ while (topModule.parent) {
 
   topModule = topModule.parent;
 
-  if (filename.endsWith('/skywalking-nodejs/lib/index.js')) // stop at the appropriate level in case app is being run by some other framework
+  if (filename.endsWith('/skywalking-nodejs/lib/index.js'))
+    // stop at the appropriate level in case app is being run by some other framework
     break;
 }
 
@@ -55,7 +56,8 @@ export default class PluginInstaller {
           isSupported: true,
         };
       }
-    } catch {  // module not found
+    } catch {
+      // module not found
       return {
         version: 'not found,',
         isSupported: false,
@@ -82,35 +84,35 @@ export default class PluginInstaller {
 
   install(): void {
     fs.readdirSync(this.pluginDir)
-    .filter((file) => !(file.endsWith('.d.ts') || file.endsWith('.js.map')))
-    .forEach((file) => {
-      if (file.replace(/(?:Plugin)?\.js$/i, '').match(config.reDisablePlugins)) {
-        logger.info(`Plugin ${file} not installed because it is disabled`);
-        return;
-      }
-
-      let plugin;
-      const pluginFile = path.join(this.pluginDir, file);
-
-      try {
-        plugin = this.require(pluginFile).default as SwPlugin;
-        const { isSupported, version } = this.checkModuleVersion(plugin);
-
-        if (!isSupported) {
-          logger.info(`Plugin ${plugin.module} ${version} doesn't satisfy the supported version ${plugin.versions}`);
+      .filter((file) => !(file.endsWith('.d.ts') || file.endsWith('.js.map')))
+      .forEach((file) => {
+        if (file.replace(/(?:Plugin)?\.js$/i, '').match(config.reDisablePlugins)) {
+          logger.info(`Plugin ${file} not installed because it is disabled`);
           return;
         }
 
-        logger.info(`Installing plugin ${plugin.module} ${plugin.versions}`);
+        let plugin;
+        const pluginFile = path.join(this.pluginDir, file);
 
-        plugin.install(this);
-      } catch (e) {
-        if (plugin) {
-          logger.error(`Error installing plugin ${plugin.module} ${plugin.versions}`);
-        } else {
-          logger.error(`Error processing plugin ${pluginFile}`);
+        try {
+          plugin = this.require(pluginFile).default as SwPlugin;
+          const { isSupported, version } = this.checkModuleVersion(plugin);
+
+          if (!isSupported) {
+            logger.info(`Plugin ${plugin.module} ${version} doesn't satisfy the supported version ${plugin.versions}`);
+            return;
+          }
+
+          logger.info(`Installing plugin ${plugin.module} ${plugin.versions}`);
+
+          plugin.install(this);
+        } catch (e) {
+          if (plugin) {
+            logger.error(`Error installing plugin ${plugin.module} ${plugin.versions}`);
+          } else {
+            logger.error(`Error processing plugin ${pluginFile}`);
+          }
         }
-      }
-    });
+      });
   }
 }

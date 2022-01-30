@@ -39,13 +39,11 @@ class AxiosPlugin implements SwPlugin {
     const Axios = installer.require('axios/lib/core/Axios');
     const _request = Axios.prototype.request;
 
-    Axios.prototype.request = function(url?: any, config?: any) {
-      if (typeof url === 'string')
-        config = config ? {...config, url} : {url};
-      else
-        config = url ? {...url} : {};
+    Axios.prototype.request = function (url?: any, config?: any) {
+      if (typeof url === 'string') config = config ? { ...config, url } : { url };
+      else config = url ? { ...url } : {};
 
-      const {origin, host, pathname: operation} = new URL(config.url, config.baseURL);  // TODO: this may throw invalid URL
+      const { origin, host, pathname: operation } = new URL(config.url, config.baseURL); // TODO: this may throw invalid URL
       const method = (config.method || 'GET').toUpperCase();
       const span = ignoreHttpMethodCheck(method)
         ? DummySpan.create()
@@ -54,7 +52,7 @@ class AxiosPlugin implements SwPlugin {
       span.start();
 
       try {
-        config.headers = config.headers ? {...config.headers} : {};
+        config.headers = config.headers ? { ...config.headers } : {};
 
         span.component = Component.AXIOS;
         span.layer = SpanLayer.HTTP;
@@ -63,19 +61,17 @@ class AxiosPlugin implements SwPlugin {
         span.tag(Tag.httpURL(origin + operation));
         span.tag(Tag.httpMethod(method));
 
-        span.inject().items.forEach((item) => config.headers[item.key] = item.value);
+        span.inject().items.forEach((item) => (config.headers[item.key] = item.value));
 
         const copyStatus = (response: any) => {
           if (response) {
             if (response.status) {
               span.tag(Tag.httpStatusCode(response.status));
 
-              if (response.status >= 400)
-                span.errored = true;
+              if (response.status >= 400) span.errored = true;
             }
 
-            if (response.statusText)
-              span.tag(Tag.httpStatusMsg(response.statusText));
+            if (response.statusText) span.tag(Tag.httpStatusMsg(response.statusText));
           }
         };
 
@@ -93,13 +89,12 @@ class AxiosPlugin implements SwPlugin {
             span.stop();
 
             return Promise.reject(err);
-          }
+          },
         );
 
         span.async();
 
         return ret;
-
       } catch (err) {
         span.error(err);
         span.stop();

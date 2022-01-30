@@ -32,5 +32,5 @@ export class Component {
   static readonly AXIOS = new Component(4005);
   static readonly MONGOOSE = new Component(4006);
 
-  constructor(public readonly id: number) { }
+  constructor(public readonly id: number) {}
 }

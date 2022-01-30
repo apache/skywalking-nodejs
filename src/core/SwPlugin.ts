@@ -27,44 +27,43 @@ export default interface SwPlugin {
   install(installer: PluginInstaller): void;
 }
 
-export const wrapEmit = (span: Span, ee: any, doError: boolean = true, stop: any = NaN) => {  // stop = NaN because NaN !== NaN
+export const wrapEmit = (span: Span, ee: any, doError: boolean = true, stop: any = NaN) => {
+  // stop = NaN because NaN !== NaN
   const stopIsFunc = typeof stop === 'function';
   const _emit = ee.emit;
 
-  Object.defineProperty(ee, 'emit', {configurable: true, writable: true, value: (function(this: any): any {
-    const event = arguments[0];
+  Object.defineProperty(ee, 'emit', {
+    configurable: true,
+    writable: true,
+    value: function (this: any): any {
+      const event = arguments[0];
 
-    span.resync();
+      span.resync();
 
-    try {
-      if (doError && event === 'error')
-        span.error(arguments[1]);
+      try {
+        if (doError && event === 'error') span.error(arguments[1]);
 
-      return _emit.apply(this, arguments);
+        return _emit.apply(this, arguments);
+      } catch (err) {
+        span.error(err);
 
-    } catch (err) {
-      span.error(err);
-
-      throw err;
-
-    } finally {
-      if (stopIsFunc ? stop(event) : event === stop)
-        span.stop();
-      else
-        span.async();
-    }
-  })});
+        throw err;
+      } finally {
+        if (stopIsFunc ? stop(event) : event === stop) span.stop();
+        else span.async();
+      }
+    },
+  });
 };
 
 export const wrapCallback = (span: Span, callback: any, idxError: any = false) => {
-  return function(this: any) {
-    if (idxError !== false && arguments[idxError])
-      span.error(arguments[idxError]);
+  return function (this: any) {
+    if (idxError !== false && arguments[idxError]) span.error(arguments[idxError]);
 
     span.stop();
 
     return callback.apply(this, arguments);
-  }
+  };
 };
 
 export const wrapPromise = (span: Span, promise: any) => {
@@ -80,6 +79,6 @@ export const wrapPromise = (span: Span, promise: any) => {
       span.stop();
 
       return Promise.reject(err);
-    }
+    },
   );
 };

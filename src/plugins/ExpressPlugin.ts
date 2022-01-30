@@ -40,7 +40,7 @@ class ExpressPlugin implements SwPlugin {
     const router = installer.require('express/lib/router');
     const _handle = router.handle;
 
-    router.handle = function(req: IncomingMessage, res: ServerResponse, next: any) {
+    router.handle = function (req: IncomingMessage, res: ServerResponse, next: any) {
       const carrier = ContextCarrier.from((req as any).headers || {});
       const operation = (req.url || '/').replace(/\?.*/g, '');
       const span = ignoreHttpMethodCheck(req.method ?? 'GET')
@@ -49,18 +49,24 @@ class ExpressPlugin implements SwPlugin {
 
       span.component = Component.EXPRESS;
 
-      if (span.depth)  // if we inherited from http then just change component ID and let http do the work
+      if (span.depth)
+        // if we inherited from http then just change component ID and let http do the work
         return _handle.apply(this, arguments);
 
-      return HttpPlugin.wrapHttpResponse(span, req, res, () => {  // http plugin disabled, we use its mechanism anyway
+      return HttpPlugin.wrapHttpResponse(span, req, res, () => {
+        // http plugin disabled, we use its mechanism anyway
         try {
           return _handle.call(this, req, res, (err: Error) => {
             span.error(err);
             next.call(this, err);
           });
-
-        } finally {  // req.protocol is only possibly available after call to _handle()
-          span.tag(Tag.httpURL(((req as any).protocol ? (req as any).protocol + '://' : '') + (req.headers.host || '') + req.url));
+        } finally {
+          // req.protocol is only possibly available after call to _handle()
+          span.tag(
+            Tag.httpURL(
+              ((req as any).protocol ? (req as any).protocol + '://' : '') + (req.headers.host || '') + req.url,
+            ),
+          );
         }
       });
     };
