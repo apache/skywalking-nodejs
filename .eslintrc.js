@@ -6,7 +6,14 @@ module.exports = {
     sourceType: "module"
   },
   rules: {
-    "header/header": [2, ".file-headerrc"]
+    "header/header": ["error", ".file-headerrc"],
+    "no-useless-escape": "off",
+    "no-unused-vars": [
+      "error",
+      // we are only using this rule to check for unused arguments since TS
+      // catches unused variables but not args.
+      { varsIgnorePattern: ".*", args: "none" }
+    ]
   },
   env: {
     node: true
