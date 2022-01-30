@@ -27,7 +27,6 @@ declare interface SkyWalkingEventEmitter {
   on(event: 'segments-sent', listener: () => void): this;
 }
 
-class SkyWalkingEventEmitter extends EventEmitter {
-}
+class SkyWalkingEventEmitterImpl extends EventEmitter {}
 
-export const emitter: SkyWalkingEventEmitter = new SkyWalkingEventEmitter();
+export const emitter: SkyWalkingEventEmitterImpl = new SkyWalkingEventEmitterImpl();
