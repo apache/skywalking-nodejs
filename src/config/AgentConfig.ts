@@ -42,21 +42,51 @@ export type AgentConfig = {
 };
 
 export function finalizeConfig(config: AgentConfig): void {
-  const escapeRegExp = (s: string) => s.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1");
+  const escapeRegExp = (s: string) => s.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, '\\$1');
 
-  config.reDisablePlugins = RegExp(`^(?:${config.disablePlugins!.split(',').map((s) => escapeRegExp(s.trim())).join('|')})$`, 'i');
+  config.reDisablePlugins = RegExp(
+    `^(?:${config
+      .disablePlugins!.split(',')
+      .map((s) => escapeRegExp(s.trim()))
+      .join('|')})$`,
+    'i',
+  );
 
-  const ignoreSuffix =`^.+(?:${config.ignoreSuffix!.split(',').map((s) => escapeRegExp(s.trim())).join('|')})$`;
-  const ignorePath = '^(?:' + config.traceIgnorePath!.split(',').map(
-    (s1) => s1.trim().split('**').map(
-      (s2) => s2.split('*').map(
-        (s3) => s3.split('?').map(escapeRegExp).join('[^/]')  // replaces "?"
-      ).join('[^/]*')                                         // replaces "*"
-    ).join('(?:(?:[^/]+/)*[^/]+)?')                           // replaces "**"
-  ).join('|') + ')$';                                         // replaces ","
+  const ignoreSuffix = `^.+(?:${config
+    .ignoreSuffix!.split(',')
+    .map((s) => escapeRegExp(s.trim()))
+    .join('|')})$`;
+  const ignorePath =
+    '^(?:' +
+    config
+      .traceIgnorePath!.split(',')
+      .map(
+        (s1) =>
+          s1
+            .trim()
+            .split('**')
+            .map(
+              (s2) =>
+                s2
+                  .split('*')
+                  .map(
+                    (s3) => s3.split('?').map(escapeRegExp).join('[^/]'), // replaces "?"
+                  )
+                  .join('[^/]*'), // replaces "*"
+            )
+            .join('(?:(?:[^/]+/)*[^/]+)?'), // replaces "**"
+      )
+      .join('|') +
+    ')$'; // replaces ","
 
   config.reIgnoreOperation = RegExp(`${ignoreSuffix}|${ignorePath}`);
-  config.reHttpIgnoreMethod = RegExp(`^(?:${config.httpIgnoreMethod!.split(',').map((s) => s.trim()).join('|')})$`, 'i');
+  config.reHttpIgnoreMethod = RegExp(
+    `^(?:${config
+      .httpIgnoreMethod!.split(',')
+      .map((s) => s.trim())
+      .join('|')})$`,
+    'i',
+  );
 }
 
 const _config = {
@@ -69,8 +99,9 @@ const _config = {
   collectorAddress: process.env.SW_AGENT_COLLECTOR_BACKEND_SERVICES || '127.0.0.1:11800',
   secure: process.env.SW_AGENT_SECURE?.toLowerCase() === 'true',
   authorization: process.env.SW_AGENT_AUTHENTICATION,
-  maxBufferSize: Number.isSafeInteger(process.env.SW_AGENT_MAX_BUFFER_SIZE) ?
-    Number.parseInt(process.env.SW_AGENT_MAX_BUFFER_SIZE as string, 10) : 1000,
+  maxBufferSize: Number.isSafeInteger(process.env.SW_AGENT_MAX_BUFFER_SIZE)
+    ? Number.parseInt(process.env.SW_AGENT_MAX_BUFFER_SIZE as string, 10)
+    : 1000,
   coldEndpoint: process.env.SW_COLD_ENDPOINT?.toLowerCase() === 'true',
   disablePlugins: process.env.SW_AGENT_DISABLE_PLUGINS || '',
   ignoreSuffix: process.env.SW_IGNORE_SUFFIX ?? '.jpg,.jpeg,.js,.css,.png,.bmp,.gif,.ico,.mp3,.mp4,.html,.svg',
@@ -80,7 +111,7 @@ const _config = {
   sqlParametersMaxLength: Math.trunc(Math.max(0, Number(process.env.SW_SQL_PARAMETERS_MAX_LENGTH))) || 512,
   mongoTraceParameters: (process.env.SW_MONGO_TRACE_PARAMETERS || '').toLowerCase() === 'true',
   mongoParametersMaxLength: Math.trunc(Math.max(0, Number(process.env.SW_MONGO_PARAMETERS_MAX_LENGTH))) || 512,
-  reDisablePlugins: RegExp(''),  // temporary placeholder so Typescript doesn't throw a fit
+  reDisablePlugins: RegExp(''), // temporary placeholder so Typescript doesn't throw a fit
   reIgnoreOperation: RegExp(''),
   reHttpIgnoreMethod: RegExp(''),
 };

@@ -28,14 +28,14 @@ import { ignoreHttpMethodCheck } from '../config/AgentConfig';
 
 class AzureHttpTriggerPlugin {
   wrap(func: any) {
-    return function(this: any, context: any) {
+    return function (this: any, context: any) {
       let outRet = true;
       let outName: any;
 
       for (const def of context.bindingDefinitions || []) {
         if (def.type === 'http' && def.directioun === 'out') {
           outName = def.name;
-          outRet = outName === '$return'
+          outRet = outName === '$return';
         }
       }
 
@@ -66,8 +66,7 @@ class AzureHttpTriggerPlugin {
         if (status) {
           span.tag(Tag.httpStatusCode(status));
 
-          if (status >= 400)
-            span.errored = true;
+          if (status >= 400) span.errored = true;
         }
 
         span.stop();
@@ -78,15 +77,12 @@ class AzureHttpTriggerPlugin {
       const done = context.done;
       let did = false;
 
-      context.done = function(err: any, _ret: any) {
+      context.done = function (err: any, _ret: any) {
         if (!did) {
-          if (err)
-            span.error(err);
+          if (err) span.error(err);
 
-          if (arguments.length >= 2)
-            arguments[1] = stop(_ret);
-          else
-            stop();
+          if (arguments.length >= 2) arguments[1] = stop(_ret);
+          else stop();
 
           did = true;
         }
@@ -98,7 +94,6 @@ class AzureHttpTriggerPlugin {
 
       try {
         ret = func.apply(this, arguments);
-
       } catch (err) {
         span.error(err);
         stop();
@@ -106,10 +101,10 @@ class AzureHttpTriggerPlugin {
         throw err;
       }
 
-      if (ret && typeof ret.then === 'function') {  // generic Promise check
+      if (ret && typeof ret.then === 'function') {
+        // generic Promise check
         ret = ret.then(
           (_ret: any) => {
-
             return stop(_ret);
           },
 
@@ -118,7 +113,7 @@ class AzureHttpTriggerPlugin {
             stop();
 
             return Promise.reject(err);
-          }
+          },
         );
       }
 

@@ -29,7 +29,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        node-version: [ 10, 12, 14 ]
+        node-version: [ 10, 12, 14, 16 ]
     steps:
       - uses: actions/checkout@v2
         with:
@@ -47,8 +47,15 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Build
+      - name: Build On Node@12 And Above(Current:Node@${{matrix.node-version}})
+        if: matrix.node-version >= 12
         run: |
           npm i
           npm run lint
+          npm run build
+
+      - name: Build On Node@10
+        if: matrix.node-version == 10
+        run: |
+          npm i
           npm run build

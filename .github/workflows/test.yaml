@@ -49,10 +49,17 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Test
+      - name: Test On Node@12 And Above(Current:Node@${{matrix.node-version}})
+        if: matrix.node-version >= 12
         run: |
           npm i
           npm run lint
+          npm run test
+
+      - name: Test On Node@10
+        if: matrix.node-version == 10
+        run: |
+          npm i
           npm run test
 
   TestLib:

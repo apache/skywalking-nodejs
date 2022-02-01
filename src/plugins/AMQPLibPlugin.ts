@@ -30,7 +30,7 @@ class AMQPLibPlugin implements SwPlugin {
   readonly versions = '*';
 
   install(installer: PluginInstaller): void {
-    const {BaseChannel} = installer.require('amqplib/lib/channel');
+    const { BaseChannel } = installer.require('amqplib/lib/channel');
 
     this.interceptProducer(BaseChannel);
     this.interceptConsumer(BaseChannel);
@@ -39,11 +39,14 @@ class AMQPLibPlugin implements SwPlugin {
   interceptProducer(BaseChannel: any): void {
     const _sendMessage = BaseChannel.prototype.sendMessage;
 
-    BaseChannel.prototype.sendMessage = function(fields: any, properties: any, content: any) {
+    BaseChannel.prototype.sendMessage = function (fields: any, properties: any, content: any) {
       const topic = fields.exchange || '';
       const queue = fields.routingKey || '';
       const peer = `${this.connection.stream.remoteAddress}:${this.connection.stream.remotePort}`;
-      const span = ContextManager.current.newExitSpan('RabbitMQ/' + topic + '/' + queue + '/Producer', Component.RABBITMQ_PRODUCER);
+      const span = ContextManager.current.newExitSpan(
+        'RabbitMQ/' + topic + '/' + queue + '/Producer',
+        Component.RABBITMQ_PRODUCER,
+      );
 
       span.start();
 
@@ -58,31 +61,28 @@ class AMQPLibPlugin implements SwPlugin {
 
         span.tag(Tag.mqBroker((this.connection.stream.constructor.name === 'Socket' ? 'amqp://' : 'amqps://') + peer));
 
-        if (topic)
-          span.tag(Tag.mqTopic(topic));
+        if (topic) span.tag(Tag.mqTopic(topic));
 
-        if (queue)
-          span.tag(Tag.mqQueue(queue));
+        if (queue) span.tag(Tag.mqQueue(queue));
 
         const ret = _sendMessage.call(this, fields, properties, content);
 
         span.stop();
 
         return ret;
-
       } catch (e) {
         span.error(e);
         span.stop();
 
         throw e;
       }
-    }
+    };
   }
 
   interceptConsumer(BaseChannel: any): void {
     const _dispatchMessage = BaseChannel.prototype.dispatchMessage;
 
-    BaseChannel.prototype.dispatchMessage = function(fields: any, message: any) {
+    BaseChannel.prototype.dispatchMessage = function (fields: any, message: any) {
       const topic = message?.fields?.exchange || '';
       const queue = message?.fields?.routingKey || '';
       const carrier = ContextCarrier.from(message?.properties?.headers || {});
@@ -95,30 +95,28 @@ class AMQPLibPlugin implements SwPlugin {
         span.layer = SpanLayer.MQ;
         span.peer = `${this.connection.stream.remoteAddress}:${this.connection.stream.remotePort}`;
 
-        span.tag(Tag.mqBroker((this.connection.stream.constructor.name === 'Socket' ? 'amqp://' : 'amqps://') + span.peer));
+        span.tag(
+          Tag.mqBroker((this.connection.stream.constructor.name === 'Socket' ? 'amqp://' : 'amqps://') + span.peer),
+        );
 
-        if (topic)
-          span.tag(Tag.mqTopic(topic));
+        if (topic) span.tag(Tag.mqTopic(topic));
 
-        if (queue)
-          span.tag(Tag.mqQueue(queue));
+        if (queue) span.tag(Tag.mqQueue(queue));
 
-        if (message === null)
-          span.log('Cancel', true);
+        if (message === null) span.log('Cancel', true);
 
         const ret = _dispatchMessage.call(this, fields, message);
 
         span.stop();
 
         return ret;
-
       } catch (e) {
         span.error(e);
         span.stop();
 
         throw e;
       }
-    }
+    };
   }
 }
 

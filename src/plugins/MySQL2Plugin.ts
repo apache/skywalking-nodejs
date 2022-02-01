@@ -55,14 +55,12 @@ class MySQL2Plugin implements SwPlugin {
 
         if (typeof sql === 'function') {
           sql = wrapCallback(span, sql, 0);
-
         } else if (typeof sql === 'object') {
           _sql = sql.sql;
 
           if (typeof values === 'function') {
             values = wrapCallback(span, values, 0);
             _values = sql.values;
-
           } else if (values !== undefined) {
             _values = values;
 
@@ -71,17 +69,14 @@ class MySQL2Plugin implements SwPlugin {
             } else {
               streaming = true;
             }
-
           } else {
             streaming = true;
           }
-
         } else {
           _sql = sql;
 
           if (typeof values === 'function') {
             values = wrapCallback(span, values, 0);
-
           } else if (values !== undefined) {
             _values = values;
 
@@ -90,7 +85,6 @@ class MySQL2Plugin implements SwPlugin {
             } else {
               streaming = true;
             }
-
           } else {
             streaming = true;
           }
@@ -99,7 +93,7 @@ class MySQL2Plugin implements SwPlugin {
         span.tag(Tag.dbStatement(`${_sql}`));
 
         if (agentConfig.sqlTraceParameters && _values) {
-          let vals = _values.map((v: any) => v === undefined ? 'undefined' : JSON.stringify(v)).join(', ');
+          let vals = _values.map((v: any) => (v === undefined ? 'undefined' : JSON.stringify(v))).join(', ');
 
           if (vals.length > agentConfig.sqlParametersMaxLength)
             vals = vals.slice(0, agentConfig.sqlParametersMaxLength) + ' ...';
@@ -109,9 +103,7 @@ class MySQL2Plugin implements SwPlugin {
 
         query = _query.call(this, sql, values, cb);
 
-        if (streaming)
-          wrapEmit(span, query, true, 'end');
-
+        if (streaming) wrapEmit(span, query, true, 'end');
       } catch (e) {
         span.error(e);
         span.stop();

@@ -17,7 +17,7 @@
  *
  */
 
-import SwPlugin, {wrapCallback, wrapPromise} from '../core/SwPlugin';
+import SwPlugin, { wrapCallback, wrapPromise } from '../core/SwPlugin';
 import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
 import Tag from '../Tag';
@@ -30,7 +30,7 @@ class MongoosePlugin implements SwPlugin {
   mongodbEnabled?: boolean;
 
   install(installer: PluginInstaller): void {
-    const {Model} = installer.require('mongoose');
+    const { Model } = installer.require('mongoose');
 
     this.interceptOperation(Model, 'aggregate');
     this.interceptOperation(Model, 'bulkWrite');
@@ -88,13 +88,13 @@ class MongoosePlugin implements SwPlugin {
   interceptOperation(Container: any, operation: string): void {
     const _original = Container[operation];
 
-    if (!_original)
-        return;
+    if (!_original) return;
 
-    Container[operation] = function() {
+    Container[operation] = function () {
       let span = ContextManager.currentSpan;
 
-      if ((span as any)?.mongooseInCall)  // mongoose has called into itself internally
+      if ((span as any)?.mongooseInCall)
+        // mongoose has called into itself internally
         return _original.apply(this, arguments);
 
       const host = `${this.db.host}:${this.db.port}`;
@@ -104,7 +104,7 @@ class MongoosePlugin implements SwPlugin {
 
       try {
         span.component = Component.MONGOOSE;
-        span.layer = SpanLayer.DATABASE;  // mongodb may not actually be called so we set these here in case
+        span.layer = SpanLayer.DATABASE; // mongodb may not actually be called so we set these here in case
         span.peer = host;
 
         span.tag(Tag.dbType('MongoDB'));
@@ -115,22 +115,24 @@ class MongoosePlugin implements SwPlugin {
         if (hasCB) {
           const wrappedCallback = wrapCallback(span, arguments[arguments.length - 1], 0);
 
-          arguments[arguments.length - 1] = function() {  // in case of immediate synchronous callback from mongoose
+          arguments[arguments.length - 1] = function () {
+            // in case of immediate synchronous callback from mongoose
             (span as any).mongooseInCall = false;
 
             wrappedCallback.apply(this, arguments as any);
           };
         }
 
-        (span as any).mongooseInCall = true;  // if mongoose calls into itself while executing this operation then ignore it
+        (span as any).mongooseInCall = true; // if mongoose calls into itself while executing this operation then ignore it
         let ret = _original.apply(this, arguments);
         (span as any).mongooseInCall = false;
 
         if (!hasCB) {
-          if (ret && typeof ret.then === 'function') {  // generic Promise check
+          if (ret && typeof ret.then === 'function') {
+            // generic Promise check
             ret = wrapPromise(span, ret);
-
-          } else {  // no callback passed in and no Promise or Cursor returned, play it safe
+          } else {
+            // no callback passed in and no Promise or Cursor returned, play it safe
             span.stop();
 
             return ret;
@@ -140,7 +142,6 @@ class MongoosePlugin implements SwPlugin {
         span.async();
 
         return ret;
-
       } catch (err) {
         span.error(err);
         span.stop();

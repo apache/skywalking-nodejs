@@ -16,17 +16,3 @@
  * limitations under the License.
  *
  */
-
-/* tslint:disable:unified-signatures */
-
-import { EventEmitter } from 'events';
-import Segment from '../trace/context/Segment';
-
-declare interface SkyWalkingEventEmitter {
-  on(event: 'segment-finished', listener: (segment: Segment) => void): this;
-  on(event: 'segments-sent', listener: () => void): this;
-}
-
-class SkyWalkingEventEmitterImpl extends EventEmitter {}
-
-export const emitter: SkyWalkingEventEmitterImpl = new SkyWalkingEventEmitterImpl();

@@ -17,7 +17,7 @@
  *
  */
 
-import SwPlugin, {wrapEmit, wrapPromise} from '../core/SwPlugin';
+import SwPlugin, { wrapEmit, wrapPromise } from '../core/SwPlugin';
 import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
 import Tag from '../Tag';
@@ -34,8 +34,7 @@ class MongoDBPlugin implements SwPlugin {
   Db: any;
 
   hookCursorMaybe(span: any, cursor: any): boolean {
-    if (!(cursor instanceof this.Cursor))
-      return false;
+    if (!(cursor instanceof this.Cursor)) return false;
 
     wrapEmit(span, cursor, true, 'close');
 
@@ -43,37 +42,33 @@ class MongoDBPlugin implements SwPlugin {
   }
 
   install(installer: PluginInstaller): void {
-    const plugin    = this;
+    const plugin = this;
     this.Collection = installer.require('mongodb/lib/collection');
-    this.Cursor     = installer.require('mongodb/lib/cursor');
-    this.Db         = installer.require('mongodb/lib/db');
+    this.Cursor = installer.require('mongodb/lib/cursor');
+    this.Db = installer.require('mongodb/lib/db');
 
     const wrapCallbackWithCursorMaybe = (span: any, args: any[], idx: number): boolean => {
-      const callback = args.length > idx && typeof args[idx = args.length - 1] === 'function' ? args[idx] : null;
+      const callback = args.length > idx && typeof args[(idx = args.length - 1)] === 'function' ? args[idx] : null;
 
-      if (!callback)
-        return false;
+      if (!callback) return false;
 
-      args[idx] = function(this: any) {  // arguments = [error: any, result: any]
-        span.mongodbInCall = false;  // we do this because some operations may call callback immediately which would not create a new span for any operations in that callback (db.collection())
+      args[idx] = function (this: any) {
+        // arguments = [error: any, result: any]
+        span.mongodbInCall = false; // we do this because some operations may call callback immediately which would not create a new span for any operations in that callback (db.collection())
 
-        if (arguments[0])
-          span.error(arguments[0]);
+        if (arguments[0]) span.error(arguments[0]);
 
-        if (arguments[0] || !plugin.hookCursorMaybe(span, arguments[1]))
-          span.stop();
+        if (arguments[0] || !plugin.hookCursorMaybe(span, arguments[1])) span.stop();
 
         return callback.apply(this, arguments);
-      }
+      };
 
       return true;
     };
 
     const stringify = (params: any) => {
-      if (params === undefined)
-        return '';
-      else if (typeof params === 'function')
-        return `${params}`;
+      if (params === undefined) return '';
+      else if (typeof params === 'function') return `${params}`;
 
       let str = JSON.stringify(params);
 
@@ -81,53 +76,66 @@ class MongoDBPlugin implements SwPlugin {
         str = str.slice(0, agentConfig.mongoParametersMaxLength) + ' ...';
 
       return str;
-    }
+    };
 
-    const collInsertFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [doc(s), options, callback]
+    const collInsertFunc = function (this: any, operation: string, span: any, args: any[]): boolean {
+      // args = [doc(s), options, callback]
       span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}()`));
 
-      if (agentConfig.mongoTraceParameters)
-        span.tag(Tag.dbMongoParameters(stringify(args[0])));
+      if (agentConfig.mongoTraceParameters) span.tag(Tag.dbMongoParameters(stringify(args[0])));
 
       return wrapCallbackWithCursorMaybe(span, args, 1);
     };
 
-    const collDeleteFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [filter, options, callback]
+    const collDeleteFunc = function (this: any, operation: string, span: any, args: any[]): boolean {
+      // args = [filter, options, callback]
       span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}(${stringify(args[0])})`));
 
       return wrapCallbackWithCursorMaybe(span, args, 1);
     };
 
-    const collUpdateFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [filter, update, options, callback]
+    const collUpdateFunc = function (this: any, operation: string, span: any, args: any[]): boolean {
+      // args = [filter, update, options, callback]
       span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}(${stringify(args[0])})`));
 
-      if (agentConfig.mongoTraceParameters)
-        span.tag(Tag.dbMongoParameters(stringify(args[1])));
+      if (agentConfig.mongoTraceParameters) span.tag(Tag.dbMongoParameters(stringify(args[1])));
 
       return wrapCallbackWithCursorMaybe(span, args, 2);
     };
 
-    const collFindOneFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [query, options, callback]
-      span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}(${typeof args[0] !== 'function' ? stringify(args[0]) : ''})`));
+    const collFindOneFunc = function (this: any, operation: string, span: any, args: any[]): boolean {
+      // args = [query, options, callback]
+      span.tag(
+        Tag.dbStatement(
+          `${this.s.namespace.collection}.${operation}(${typeof args[0] !== 'function' ? stringify(args[0]) : ''})`,
+        ),
+      );
 
       return wrapCallbackWithCursorMaybe(span, args, 0);
     };
 
-    const collFindAndRemoveFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [query, sort, options, callback]
-      span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}(${stringify(args[0])}${typeof args[1] !== 'function' && args[1] !== undefined ? ', ' + stringify(args[1]) : ''})`));
+    const collFindAndRemoveFunc = function (this: any, operation: string, span: any, args: any[]): boolean {
+      // args = [query, sort, options, callback]
+      span.tag(
+        Tag.dbStatement(
+          `${this.s.namespace.collection}.${operation}(${stringify(args[0])}${
+            typeof args[1] !== 'function' && args[1] !== undefined ? ', ' + stringify(args[1]) : ''
+          })`,
+        ),
+      );
 
       return wrapCallbackWithCursorMaybe(span, args, 1);
     };
 
-    const collFindAndModifyFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [query, sort, doc, options, callback]
+    const collFindAndModifyFunc = function (this: any, operation: string, span: any, args: any[]): boolean {
+      // args = [query, sort, doc, options, callback]
       let params = stringify(args[0]);
 
       if (typeof args[1] !== 'function' && args[1] !== undefined) {
         params += ', ' + stringify(args[1]);
 
         if (typeof args[2] !== 'function' && args[2] !== undefined) {
-          if (agentConfig.mongoTraceParameters)
-            span.tag(Tag.dbMongoParameters(stringify(args[2])));
+          if (agentConfig.mongoTraceParameters) span.tag(Tag.dbMongoParameters(stringify(args[2])));
         }
       }
 
@@ -136,44 +144,59 @@ class MongoDBPlugin implements SwPlugin {
       return wrapCallbackWithCursorMaybe(span, args, 1);
     };
 
-    const collMapReduceFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [map, reduce, options, callback]
-      span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}(${stringify(args[0])}, ${stringify(args[1])})`));
+    const collMapReduceFunc = function (this: any, operation: string, span: any, args: any[]): boolean {
+      // args = [map, reduce, options, callback]
+      span.tag(
+        Tag.dbStatement(`${this.s.namespace.collection}.${operation}(${stringify(args[0])}, ${stringify(args[1])})`),
+      );
 
       return wrapCallbackWithCursorMaybe(span, args, 2);
     };
 
-    const collDropFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [options, callback]
+    const collDropFunc = function (this: any, operation: string, span: any, args: any[]): boolean {
+      // args = [options, callback]
       span.tag(Tag.dbStatement(`${this.s.namespace.collection}.${operation}()`));
 
       return wrapCallbackWithCursorMaybe(span, args, 0);
     };
 
-    const dbAddUserFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [username, password, options, callback]
+    const dbAddUserFunc = function (this: any, operation: string, span: any, args: any[]): boolean {
+      // args = [username, password, options, callback]
       span.tag(Tag.dbStatement(`${operation}(${stringify(args[0])})`));
 
       return wrapCallbackWithCursorMaybe(span, args, 2);
     };
 
-    const dbRemoveUserFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [username, options, callback]
+    const dbRemoveUserFunc = function (this: any, operation: string, span: any, args: any[]): boolean {
+      // args = [username, options, callback]
       span.tag(Tag.dbStatement(`${operation}(${stringify(args[0])})`));
 
       return wrapCallbackWithCursorMaybe(span, args, 1);
     };
 
-    const dbRenameCollectionFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [fromCollection, toCollection, options, callback]
+    const dbRenameCollectionFunc = function (this: any, operation: string, span: any, args: any[]): boolean {
+      // args = [fromCollection, toCollection, options, callback]
       span.tag(Tag.dbStatement(`${operation}(${stringify(args[0])}, ${stringify(args[1])})`));
 
       return wrapCallbackWithCursorMaybe(span, args, 2);
     };
 
-    const dbCollectionsFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [options, callback]
+    const dbCollectionsFunc = function (this: any, operation: string, span: any, args: any[]): boolean {
+      // args = [options, callback]
       span.tag(Tag.dbStatement(`${operation}()`));
 
       return wrapCallbackWithCursorMaybe(span, args, 0);
     };
 
-    const dbEvalFunc = function(this: any, operation: string, span: any, args: any[]): boolean {  // args = [code, parameters, options, callback]
-      span.tag(Tag.dbStatement(`${operation}(${stringify(args[0])}${typeof args[1] !== 'function' && args[1] !== undefined ? ', ' + stringify(args[1]) : ''})`));
+    const dbEvalFunc = function (this: any, operation: string, span: any, args: any[]): boolean {
+      // args = [code, parameters, options, callback]
+      span.tag(
+        Tag.dbStatement(
+          `${operation}(${stringify(args[0])}${
+            typeof args[1] !== 'function' && args[1] !== undefined ? ', ' + stringify(args[1]) : ''
+          })`,
+        ),
+      );
 
       return wrapCallbackWithCursorMaybe(span, args, 1);
     };
@@ -191,7 +214,7 @@ class MongoDBPlugin implements SwPlugin {
     this.interceptOperation(this.Collection, 'updateOne', collUpdateFunc);
     this.interceptOperation(this.Collection, 'updateMany', collUpdateFunc);
     this.interceptOperation(this.Collection, 'replaceOne', collUpdateFunc);
-    this.interceptOperation(this.Collection, 'find', collFindOneFunc);  // cursor
+    this.interceptOperation(this.Collection, 'find', collFindOneFunc); // cursor
     this.interceptOperation(this.Collection, 'findOne', collFindOneFunc);
     this.interceptOperation(this.Collection, 'findOneAndDelete', collDeleteFunc);
     this.interceptOperation(this.Collection, 'findOneAndReplace', collUpdateFunc);
@@ -201,7 +224,7 @@ class MongoDBPlugin implements SwPlugin {
 
     this.interceptOperation(this.Collection, 'bulkWrite', collInsertFunc);
     this.interceptOperation(this.Collection, 'mapReduce', collMapReduceFunc);
-    this.interceptOperation(this.Collection, 'aggregate', collDeleteFunc);  // cursor
+    this.interceptOperation(this.Collection, 'aggregate', collDeleteFunc); // cursor
     this.interceptOperation(this.Collection, 'distinct', collFindAndRemoveFunc);
     this.interceptOperation(this.Collection, 'count', collFindOneFunc);
     this.interceptOperation(this.Collection, 'estimatedDocumentCount', collDropFunc);
@@ -218,7 +241,7 @@ class MongoDBPlugin implements SwPlugin {
     this.interceptOperation(this.Collection, 'indexes', collDropFunc);
     this.interceptOperation(this.Collection, 'indexExists', collDeleteFunc);
     this.interceptOperation(this.Collection, 'indexInformation', collDropFunc);
-    this.interceptOperation(this.Collection, 'listIndexes', collDropFunc);  // cursor
+    this.interceptOperation(this.Collection, 'listIndexes', collDropFunc); // cursor
     this.interceptOperation(this.Collection, 'stats', collDropFunc);
 
     this.interceptOperation(this.Collection, 'rename', collDeleteFunc);
@@ -226,7 +249,7 @@ class MongoDBPlugin implements SwPlugin {
     this.interceptOperation(this.Collection, 'options', collDropFunc);
     this.interceptOperation(this.Collection, 'isCapped', collDropFunc);
 
-    this.interceptOperation(this.Db, 'aggregate', dbAddUserFunc);  // cursor
+    this.interceptOperation(this.Db, 'aggregate', dbAddUserFunc); // cursor
 
     this.interceptOperation(this.Db, 'addUser', dbAddUserFunc);
     this.interceptOperation(this.Db, 'removeUser', dbRemoveUserFunc);
@@ -236,7 +259,7 @@ class MongoDBPlugin implements SwPlugin {
     this.interceptOperation(this.Db, 'renameCollection', dbRenameCollectionFunc);
     this.interceptOperation(this.Db, 'dropCollection', dbRemoveUserFunc);
     this.interceptOperation(this.Db, 'collections', dbCollectionsFunc);
-    this.interceptOperation(this.Db, 'listCollections', dbAddUserFunc);  // cursor
+    this.interceptOperation(this.Db, 'listCollections', dbAddUserFunc); // cursor
 
     this.interceptOperation(this.Db, 'createIndex', dbRenameCollectionFunc);
     this.interceptOperation(this.Db, 'ensureIndex', dbRenameCollectionFunc);
@@ -268,35 +291,38 @@ class MongoDBPlugin implements SwPlugin {
   }
 
   interceptOperation(Cls: any, operation: string, operationFunc: any): void {
-    const plugin    = this;
+    const plugin = this;
     const _original = Cls.prototype[operation];
 
-    if (!_original)
-        return;
+    if (!_original) return;
 
-    Cls.prototype[operation] = function(...args: any[]) {
+    Cls.prototype[operation] = function (...args: any[]) {
       let span = ContextManager.currentSpan;
 
       // XXX: mongodb calls back into itself at this level in several places, for this reason we just do a normal call
       // if this is detected instead of opening a new span. This should not affect secondary db calls being recorded
       // from a cursor since this span is kept async until the cursor is closed, at which point it is stoppped.
 
-      if ((span as any)?.mongodbInCall)  // mongodb has called into itself internally
+      if ((span as any)?.mongodbInCall)
+        // mongodb has called into itself internally
         return _original.apply(this, args);
 
       let host = '???';
 
       try {
         const db = this instanceof plugin.Collection ? this.s.db : this;
-        host = db.serverConfig.s.options.servers.map((s: any) => `${s.host}:${s.port}`).join(',');  // will this work for non-NativeTopology?
-      } catch { /* nop */ }
+        host = db.serverConfig.s.options.servers.map((s: any) => `${s.host}:${s.port}`).join(','); // will this work for non-NativeTopology?
+      } catch {
+        /* nop */
+      }
 
       span = ContextManager.current.newExitSpan('MongoDB/' + operation, Component.MONGODB);
 
       span.start();
 
       try {
-        if (span.component === Component.UNKNOWN)  // in case mongoose sitting on top
+        if (span.component === Component.UNKNOWN)
+          // in case mongoose sitting on top
           span.component = Component.MONGODB;
 
         span.layer = SpanLayer.DATABASE;
@@ -314,11 +340,11 @@ class MongoDBPlugin implements SwPlugin {
         if (!hasCB) {
           if (plugin.hookCursorMaybe(span, ret)) {
             // NOOP
-
-          } else if (ret && typeof ret.then === 'function') {  // generic Promise check
+          } else if (ret && typeof ret.then === 'function') {
+            // generic Promise check
             ret = wrapPromise(span, ret);
-
-          } else {  // no callback passed in and no Promise or Cursor returned, play it safe
+          } else {
+            // no callback passed in and no Promise or Cursor returned, play it safe
             span.stop();
 
             return ret;
@@ -328,7 +354,6 @@ class MongoDBPlugin implements SwPlugin {
         span.async();
 
         return ret;
-
       } catch (e) {
         span.error(e);
         span.stop();
