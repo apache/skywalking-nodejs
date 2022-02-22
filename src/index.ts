@@ -18,6 +18,7 @@
  */
 
 import config, { AgentConfig, finalizeConfig } from './config/AgentConfig';
+import Protocol from './agent/protocol/Protocol';
 import GrpcProtocol from './agent/protocol/grpc/GrpcProtocol';
 import { createLogger } from './logging';
 import PluginInstaller from './core/PluginInstaller';
@@ -26,6 +27,7 @@ const logger = createLogger(__filename);
 
 class Agent {
   private started = false;
+  private protocol: Protocol | null = null;
 
   start(options: AgentConfig = {}): void {
     if (process.env.SW_DISABLE === 'true') {
@@ -43,14 +45,25 @@ class Agent {
 
     logger.debug('Starting SkyWalking agent');
 
-    this.started = true;
-
     new PluginInstaller().install();
 
-    new GrpcProtocol().heartbeat().report();
+    this.protocol = new GrpcProtocol().heartbeat().report();
+    this.started = true;
+  }
+
+  flush(): Promise<any> | null {
+    if (this.protocol === null) {
+      logger.warn('Trying to flush() SkyWalking agent which is not started.');
+      return null;
+    }
+
+    return this.protocol.flush();
   }
 }
 
 export default new Agent();
 export { default as ContextManager } from './trace/context/ContextManager';
 export { default as AzureHttpTriggerPlugin } from './azure/AzureHttpTriggerPlugin';
+export { default as AWSLambdaTriggerPlugin } from './aws/AWSLambdaTriggerPlugin';
+export { default as AWSLambdaGatewayAPIHTTP } from './aws/AWSLambdaGatewayAPIHTTP';
+export { default as AWSLambdaGatewayAPIREST } from './aws/AWSLambdaGatewayAPIREST';

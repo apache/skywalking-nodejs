@@ -39,7 +39,7 @@ export default class HeartbeatClient implements Client {
   constructor() {
     this.managementServiceClient = new ManagementServiceClient(
       config.collectorAddress,
-      config.secure ? grpc.credentials.createSsl() : grpc.credentials.createInsecure()
+      config.secure ? grpc.credentials.createSsl() : grpc.credentials.createInsecure(),
     );
   }
 
@@ -58,38 +58,35 @@ export default class HeartbeatClient implements Client {
     }
 
     const keepAlivePkg = new InstancePingPkg()
-    .setService(config.serviceName)
-    .setServiceinstance(config.serviceInstance);
+      .setService(config.serviceName)
+      .setServiceinstance(config.serviceInstance);
 
     const instanceProperties = new InstanceProperties()
-    .setService(config.serviceName)
-    .setServiceinstance(config.serviceInstance)
-    .setPropertiesList([
-      new KeyStringValuePair().setKey('language').setValue('NodeJS'),
-      new KeyStringValuePair().setKey('OS Name').setValue(os.platform()),
-      new KeyStringValuePair().setValue('hostname').setValue(os.hostname()),
-      new KeyStringValuePair().setValue('Process No.').setValue(`${process.pid}`),
-    ]);
+      .setService(config.serviceName)
+      .setServiceinstance(config.serviceInstance)
+      .setPropertiesList([
+        new KeyStringValuePair().setKey('language').setValue('NodeJS'),
+        new KeyStringValuePair().setKey('OS Name').setValue(os.platform()),
+        new KeyStringValuePair().setValue('hostname').setValue(os.hostname()),
+        new KeyStringValuePair().setValue('Process No.').setValue(`${process.pid}`),
+      ]);
 
     this.heartbeatTimer = setInterval(() => {
-      this.managementServiceClient.reportInstanceProperties(
-        instanceProperties,
-        AuthInterceptor(),
-        (error, _) => {
-          if (error) {
-            logger.error('Failed to send heartbeat', error);
-          }
-        },
-      );
-      this.managementServiceClient.keepAlive(
-        keepAlivePkg,
-        AuthInterceptor(),
-        (error, _) => {
-          if (error) {
-            logger.error('Failed to send heartbeat', error);
-          }
-        },
-      );
+      this.managementServiceClient.reportInstanceProperties(instanceProperties, AuthInterceptor(), (error, _) => {
+        if (error) {
+          logger.error('Failed to send heartbeat', error);
+        }
+      });
+      this.managementServiceClient.keepAlive(keepAlivePkg, AuthInterceptor(), (error, _) => {
+        if (error) {
+          logger.error('Failed to send heartbeat', error);
+        }
+      });
     }, 20000).unref();
+  }
+
+  flush(): Promise<any> | null {
+    logger.warn('HeartbeatClient does not need flush().');
+    return null;
   }
 }

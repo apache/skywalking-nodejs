@@ -26,4 +26,6 @@ export default interface Protocol {
   heartbeat(): this;
 
   report(): this;
+
+  flush(): Promise<any> | null;
 }

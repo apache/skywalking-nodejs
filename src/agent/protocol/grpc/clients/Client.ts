@@ -21,4 +21,6 @@ export default interface Client {
   readonly isConnected: boolean;
 
   start(): void;
+
+  flush(): Promise<any> | null;
 }
