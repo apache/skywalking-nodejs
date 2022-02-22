@@ -17,5 +17,8 @@ module.exports = {
   },
   env: {
     node: true
+  },
+  globals: {
+    "NodeJS": true
   }
 };

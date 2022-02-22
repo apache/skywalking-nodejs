@@ -38,7 +38,7 @@ export default class TraceReportClient implements Client {
   constructor() {
     this.reporterClient = new TraceSegmentReportServiceClient(
       config.collectorAddress,
-      config.secure ? grpc.credentials.createSsl() : grpc.credentials.createInsecure()
+      config.secure ? grpc.credentials.createSsl() : grpc.credentials.createInsecure(),
     );
     emitter.on('segment-finished', (segment) => {
       this.buffer.push(segment);
@@ -50,41 +50,57 @@ export default class TraceReportClient implements Client {
     return this.reporterClient?.getChannel().getConnectivityState(true) === connectivityState.READY;
   }
 
-  start() {
-    const reportFunction = () => {
-      emitter.emit('segments-sent'); // reset limiter in SpanContext
+  private reportFunction(callback?: any) {
+    emitter.emit('segments-sent'); // reset limiter in SpanContext
+
+    try {
+      if (this.buffer.length === 0) {
+        if (callback) callback();
+
+        return;
+      }
+
+      const stream = this.reporterClient.collect(AuthInterceptor(), (error, _) => {
+        if (error) {
+          logger.error('Failed to report trace data', error);
+        }
+
+        if (callback) callback();
+      });
 
       try {
-        if (this.buffer.length === 0) {
-          return;
-        }
-
-        const stream = this.reporterClient.collect(AuthInterceptor(), (error, _) => {
-          if (error) {
-            logger.error('Failed to report trace data', error);
-          }
-        });
-
-        try {
-          for (const segment of this.buffer) {
-            if (segment) {
-              if (logger._isDebugEnabled) {
-                logger.debug('Sending segment ', { segment });
-              }
-
-              stream.write(new SegmentObjectAdapter(segment));
+        for (const segment of this.buffer) {
+          if (segment) {
+            if (logger._isDebugEnabled) {
+              logger.debug('Sending segment ', { segment });
             }
+
+            stream.write(new SegmentObjectAdapter(segment));
           }
-        } finally {
-          this.buffer.length = 0;
         }
-
-        stream.end();
       } finally {
-        this.timeout = setTimeout(reportFunction, 1000).unref();
+        this.buffer.length = 0;
       }
-    };
 
-    this.timeout = setTimeout(reportFunction, 1000).unref();
+      stream.end();
+    } finally {
+      this.timeout = setTimeout(this.reportFunction.bind(this), 1000).unref();
+    }
+  }
+
+  start() {
+    this.timeout = setTimeout(this.reportFunction.bind(this), 1000).unref();
+  }
+
+  flush(): Promise<any> | null {
+    // This function explicitly returns null instead of a resolved Promise in case of nothing to flush so that in this
+    // case passing control back to the event loop can be avoided. Even a resolved Promise will run other things in
+    // the event loop when it is awaited and before it continues.
+
+    return this.buffer.length === 0
+      ? null
+      : new Promise((resolve) => {
+          this.reportFunction(resolve);
+        });
   }
 }

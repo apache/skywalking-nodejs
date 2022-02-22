@@ -57,7 +57,7 @@ Environment Variable | Description | Default
 | `SW_AGENT_AUTHENTICATION` | The authentication token to verify that the agent is trusted by the backend OAP, as for how to configure the backend, refer to [the yaml](https://github.com/apache/skywalking/blob/4f0f39ffccdc9b41049903cc540b8904f7c9728e/oap-server/server-bootstrap/src/main/resources/application.yml#L155-L158). | not set |
 | `SW_AGENT_LOGGING_LEVEL` | The logging level, could be one of `error`, `warn`, `info`, `debug` | `info` |
 | `SW_AGENT_DISABLE_PLUGINS` | Comma-delimited list of plugins to disable in the plugins directory (e.g. "mysql", "express") | `` |
-| `SW_COLD_ENDPOINT` | Cold start detection is as follows: First span to run within 1 second of skywalking init is considered a cold start. This span gets the tag `coldStart` set to 'true'. This span also optionally gets the text '\<cold\>' appended to the endpoint name if SW_COLD_ENDPOINT is set to 'true'. | `false` |
+| `SW_COLD_ENDPOINT` | Cold start detection is as follows: First span to run is considered a cold start. This span gets the tag `coldStart` set to 'true'. This span also optionally gets the text '\<cold\>' appended to the endpoint name if SW_COLD_ENDPOINT is set to 'true'. | `false` |
 | `SW_IGNORE_SUFFIX` | The suffices of endpoints that will be ignored (not traced), comma separated | `.jpg,.jpeg,.js,.css,.png,.bmp,.gif,.ico,.mp3,.mp4,.html,.svg` |
 | `SW_TRACE_IGNORE_PATH` | The paths of endpoints that will be ignored (not traced), comma separated | `` |
 | `SW_HTTP_IGNORE_METHOD` | Comma-delimited list of http methods to ignore (GET, POST, HEAD, OPTIONS, etc...) | `` |
@@ -117,6 +117,25 @@ module.exports = AzureHttpTriggerPlugin.wrap(async function (context, req) {
 
 All that needs to be done is the actual trigger function needs to be wrapped with `azureHttpTriggerPlugin.wrap()`, whether that function is a default export or an explicitly named `entryPoint` or `run` or `index`.
 
+## Experimental AWS Lambda Functions Support
+
+The plugins `AWSLambdaTriggerPlugin`, `AWSLambdaGatewayAPIHTTP` and `AWSLambdaGatewayAPIREST` provide a wrapper functions for AWS Lambda Functions endpoints. `AWSLambdaTriggerPlugin` is a generic wrapper plugin which should work with any kind of Lambda trigger but also stores the least amount of informations since it does not know anything about the incoming data format. For this reason this type of trigger also can not link back to the caller, but it can create a new segment which will be propagated to all downstream children, this starting its own trace. `AWSLambdaGatewayAPIHTTP` and `AWSLambdaGatewayAPIREST` are specific wrappers for Lambda functions triggered by the GatewayAPI HTTP or REST triggers. They have the advantage of knowing the incoming data format and can thus extract existing trace segment information from incoming requests and chain correctly from upstream to any downstream endpoints.
+
+### Usage:
+
+```javascript
+const {default: agent, AWSLambdaGatewayAPIHTTP} = require('skywalking-backend-js');
+
+agent.start({ ... });
+
+exports.handler = AWSLambdaGatewayAPIHTTP.wrap(async function (event, context, callback) {
+
+  /* contents of http trigger function */
+
+});
+```
+
+This is similar to Azure Functions wrapping, just wrap your handler function with `AWSLambdaTriggerPlugin.wrap()` or `AWSLambdaGatewayAPIHTTP.wrap()` or `AWSLambdaGatewayAPIREST.wrap()`. One thing to note is that AWS freezes processes in between invocations of lambda functions so whether you are doing async or sync handler functions with callbacks, you should make sure everything you need to do finishes before returning control to AWS or calling the synchronous callback. These plugins take this into account and automatically flush the segment buffers before closing a trace span.
 
 ## Contact Us
 * Submit [an issue](https://github.com/apache/skywalking/issues/new) by using [Nodejs] as title prefix.

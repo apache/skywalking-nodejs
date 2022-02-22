@@ -43,4 +43,8 @@ export default class GrpcProtocol implements Protocol {
     this.traceReportClient.start();
     return this;
   }
+
+  flush(): Promise<any> | null {
+    return this.traceReportClient.flush();
+  }
 }

@@ -34,7 +34,8 @@ let store: {
 
 if (async_hooks.AsyncLocalStorage) {
   store = new async_hooks.AsyncLocalStorage();
-} else {  // Node 10 doesn't have AsyncLocalStore, so recreate it
+} else {
+  // Node 10 doesn't have AsyncLocalStore, so recreate it
   const executionAsyncId = async_hooks.executionAsyncId;
   const asyncLocalStore: { [index: string]: any } = {};
 
@@ -48,22 +49,20 @@ if (async_hooks.AsyncLocalStorage) {
     },
   };
 
-  async_hooks.createHook({
-    init(asyncId: number, type: string, triggerId: number) {
-      asyncLocalStore[asyncId] = asyncLocalStore[triggerId];
-    },
-    destroy(asyncId: number) {
-      delete asyncLocalStore[asyncId];
-    },
-  }).enable();
+  async_hooks
+    .createHook({
+      init(asyncId: number, type: string, triggerId: number) {
+        asyncLocalStore[asyncId] = asyncLocalStore[triggerId];
+      },
+      destroy(asyncId: number) {
+        delete asyncLocalStore[asyncId];
+      },
+    })
+    .enable();
 }
 
 class ContextManager {
   isCold = true;
-
-  cosntructor() {
-    setTimeout(() => this.isCold = false, 1000).unref();
-  }
 
   checkCold(): boolean {
     const isCold = this.isCold;
@@ -87,7 +86,7 @@ class ContextManager {
     const spans = store.getStore()?.spans;
 
     return spans?.[spans.length - 1] as Span;
-  };
+  }
 
   get hasContext(): boolean | undefined {
     return Boolean(store.getStore()?.spans.length);
@@ -96,11 +95,9 @@ class ContextManager {
   get current(): Context {
     const asyncState = this.asyncState;
 
-    if (asyncState.spans.length)
-      return asyncState.spans[asyncState.spans.length - 1].context;
+    if (asyncState.spans.length) return asyncState.spans[asyncState.spans.length - 1].context;
 
-    if (SpanContext.nActiveSegments < config.maxBufferSize)
-      return new SpanContext();
+    if (SpanContext.nActiveSegments < config.maxBufferSize) return new SpanContext();
 
     return new DummyContext();
   }
@@ -124,23 +121,30 @@ class ContextManager {
   }
 
   clear(span: Span): void {
-    const spans = this.spansDup();  // this needed to make sure async tasks created before this call will still have this span at the top of their span list
+    const spans = this.spansDup(); // this needed to make sure async tasks created before this call will still have this span at the top of their span list
     const idx = spans.indexOf(span);
 
-    if (idx !== -1)
-      spans.splice(idx, 1);
+    if (idx !== -1) spans.splice(idx, 1);
   }
 
   restore(span: Span): void {
     const spans = this.spansDup();
 
-    if (spans.indexOf(span) === -1)
-      spans.push(span);
+    if (spans.indexOf(span) === -1) spans.push(span);
+  }
+
+  removeTailFinishedContexts(): void {
+    // XXX: Normally, SpanContexts that finish and send their segments can remain in the span lists of async contexts.
+    // This is so that if an async child that was spawned by the original span code and is executed after the parent
+    // finishes and creates its own span can be linked to the parent segment and span correctly. But in some situations
+    // where successive independent operations are chained linearly instead of hierarchically (AWS Lambda functions),
+    // this can cause a false reference by a subsequent operation as if it were a child of the finished previous span.
+
+    for (const spans = this.asyncState.spans; spans.length && spans[spans.length - 1].context.finished; spans.pop());
   }
 
   withSpan(span: Span, callback: (...args: any[]) => any, ...args: any[]): any {
-    if (!span.startTime)
-      span.start();
+    if (!span.startTime) span.start();
     try {
       return callback(...args);
     } catch (e) {
@@ -152,8 +156,7 @@ class ContextManager {
   }
 
   async withSpanAwait(span: Span, callback: (...args: any[]) => any, ...args: any[]): Promise<any> {
-    if (!span.startTime)
-      span.start();
+    if (!span.startTime) span.start();
     try {
       return await callback(...args);
     } catch (e) {
