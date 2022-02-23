@@ -6,7 +6,7 @@
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "scripts": {
-    "postinstall": "husky install",
+    "postinstall": "node -e \"if(require('fs').existsSync('.git')){process.exit(1)}\" || husky install",
     "prepare": "npm run generate-source",
     "generate-source": "scripts/protoc.sh",
     "build": "npm run clean && npm run prepare && tsc --build src && OUT_DIR=lib/proto/ scripts/protoc.sh",
