@@ -17,6 +17,7 @@
  *
  */
 
+import config from '../config/AgentConfig';
 import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
 import Span from '../trace/span/Span';
@@ -52,9 +53,11 @@ class AWSLambdaTriggerPlugin {
 
         this.stop(span, err, res);
 
-        const p = agent.flush(); // flush all data before aws freezes the process on exit
+        if (config.awsLambdaFlush) {
+          const p = agent.flush(); // flush all data before aws freezes the process on exit
 
-        if (p) await p;
+          if (p) await p;
+        }
 
         return res;
       };
