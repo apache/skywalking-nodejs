@@ -85,10 +85,10 @@ class AWSLambdaTriggerPlugin {
           // generic Promise check
           ret = callbackPromise;
 
-        return stop(null, await ret);
+        return await stop(null, await ret);
       } catch (e) {
         span.error(e);
-        stop(e, null);
+        await stop(e, null);
 
         throw e;
       }

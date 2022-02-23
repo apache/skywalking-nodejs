@@ -112,7 +112,7 @@ const _config = {
   sqlParametersMaxLength: Math.trunc(Math.max(0, Number(process.env.SW_SQL_PARAMETERS_MAX_LENGTH))) || 512,
   mongoTraceParameters: (process.env.SW_MONGO_TRACE_PARAMETERS || '').toLowerCase() === 'true',
   mongoParametersMaxLength: Math.trunc(Math.max(0, Number(process.env.SW_MONGO_PARAMETERS_MAX_LENGTH))) || 512,
-  awsLambdaFlush: (process.env.SW_AWSLAMBDA_FLUSH || '').toLowerCase() === 'true',
+  awsLambdaFlush: (process.env.SW_AWSLAMBDA_FLUSH || 'true').toLowerCase() === 'true',
   reDisablePlugins: RegExp(''), // temporary placeholder so Typescript doesn't throw a fit
   reIgnoreOperation: RegExp(''),
   reHttpIgnoreMethod: RegExp(''),
