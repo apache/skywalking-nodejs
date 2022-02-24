@@ -54,6 +54,8 @@ class AWSLambdaTriggerPlugin {
         this.stop(span, err, res);
 
         if (config.awsLambdaFlush) {
+          await new Promise((resolve) => setTimeout(resolve, 0)); // child spans of this span may have finalization waiting in the event loop in which case we give them a chance to run so that the segment can be archived properly for flushing
+
           const p = agent.flush(); // flush all data before aws freezes the process on exit
 
           if (p) await p;
@@ -85,10 +87,10 @@ class AWSLambdaTriggerPlugin {
           // generic Promise check
           ret = callbackPromise;
 
-        return stop(null, await ret);
+        return await stop(null, await ret);
       } catch (e) {
         span.error(e);
-        stop(e, null);
+        await stop(e, null);
 
         throw e;
       }
