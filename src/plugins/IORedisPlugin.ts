@@ -49,7 +49,7 @@ class IORedisPlugin implements SwPlugin {
       span.layer = SpanLayer.CACHE;
       span.peer = host;
       span.tag(Tag.dbType('Redis'));
-      span.tag(Tag.dbInstance(`${this.condition?.select??host}`));
+      span.tag(Tag.dbInstance(`${this.condition?.select ?? host}`));
 
       try {
         const ret = wrapPromise(span, _original.apply(this, args));
