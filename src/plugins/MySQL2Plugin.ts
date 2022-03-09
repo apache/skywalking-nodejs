@@ -24,13 +24,22 @@ import Tag from '../Tag';
 import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import PluginInstaller from '../core/PluginInstaller';
 import agentConfig from '../config/AgentConfig';
+import * as fs from 'fs';
+import * as path from 'path';
 
 class MySQL2Plugin implements SwPlugin {
   readonly module = 'mysql2';
   readonly versions = '*';
 
+  getVersion(installer: PluginInstaller): string {
+    let indexPath = installer.resolve(this.module);
+    let packageSJonStr = fs.readFileSync(`${path.dirname(indexPath)}${path.sep}package.json`, { encoding: 'utf-8' });
+    const pkg = JSON.parse(packageSJonStr);
+    return pkg.version;
+  }
+
   install(installer: PluginInstaller): void {
-    const Connection = installer.require('mysql2/lib/connection');
+    const Connection = installer.require('mysql2').Connection;
     const _query = Connection.prototype.query;
 
     Connection.prototype.query = function (sql: any, values: any, cb: any) {
