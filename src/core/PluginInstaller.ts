@@ -40,7 +40,7 @@ while (topModule.parent) {
 export default class PluginInstaller {
   private readonly pluginDir: string;
   readonly require: (name: string) => any = topModule.require.bind(topModule);
-  private readonly resolve = (request: string) => (module.constructor as any)._resolveFilename(request, topModule);
+  readonly resolve = (request: string) => (module.constructor as any)._resolveFilename(request, topModule);
 
   constructor() {
     this.pluginDir = path.resolve(__dirname, '..', 'plugins');
@@ -64,8 +64,13 @@ export default class PluginInstaller {
       };
     }
 
-    const packageJsonPath = this.resolve(`${plugin.module}/package.json`);
-    const version = this.require(packageJsonPath).version;
+    let version = null;
+    try {
+      const packageJsonPath = this.resolve(`${plugin.module}/package.json`);
+      version = this.require(packageJsonPath).version;
+    } catch (e) {
+      version = plugin.getVersion?.(this);
+    }
 
     if (!semver.satisfies(version, plugin.versions)) {
       logger.info(`Plugin ${plugin.module} ${version} doesn't satisfy the supported version ${plugin.versions}`);

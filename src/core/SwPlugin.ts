@@ -19,8 +19,9 @@
 
 import PluginInstaller from './PluginInstaller';
 import Span from '../trace/span/Span';
+import OptionMethods from './OptionMethods';
 
-export default interface SwPlugin {
+export default interface SwPlugin extends OptionMethods {
   readonly module: string;
   readonly versions: string;
 
