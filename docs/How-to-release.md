@@ -144,7 +144,7 @@ Vote result should follow these:
 1. Publish to npmjs.com, this is optional for Apache releases, but we usually want to do this to let users use it conveniently.
 
   ```shell
-  npm build && npm pack && npm publish
+  npm run build && npm pack && npm publish
   ```
 
 **NOTE**: please double check before publishing to npmjs.com, it's difficult to unpublish and republish the module at the moment.
