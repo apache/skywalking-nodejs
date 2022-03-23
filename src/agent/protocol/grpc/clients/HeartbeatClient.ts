@@ -67,8 +67,8 @@ export default class HeartbeatClient implements Client {
       .setPropertiesList([
         new KeyStringValuePair().setKey('language').setValue('NodeJS'),
         new KeyStringValuePair().setKey('OS Name').setValue(os.platform()),
-        new KeyStringValuePair().setValue('hostname').setValue(os.hostname()),
-        new KeyStringValuePair().setValue('Process No.').setValue(`${process.pid}`),
+        new KeyStringValuePair().setKey('hostname').setValue(os.hostname()),
+        new KeyStringValuePair().setKey('Process No.').setValue(`${process.pid}`),
       ]);
 
     this.heartbeatTimer = setInterval(() => {
