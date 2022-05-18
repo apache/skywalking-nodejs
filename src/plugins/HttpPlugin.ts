@@ -111,9 +111,21 @@ class HttpPlugin implements SwPlugin {
 
         if (idxCallback) arguments[idxCallback] = responseCB;
 
+        let arg0 = arguments[0];
+        const expect = arg0.headers && (arg0.headers.Expect || arg0.headers.expect);
+
+        if (expect === '100-continue') {
+          span.inject().items.forEach((item) => {
+            arg0.headers[item.key] = item.value;
+          });
+        }
+
         const req: ClientRequest = _request.apply(this, arguments);
 
-        span.inject().items.forEach((item) => req.setHeader(item.key, item.value));
+        span
+          .inject()
+          .items.filter((item) => expect != '100-continue')
+          .forEach((item) => req.setHeader(item.key, item.value));
 
         wrapEmit(span, req, true, 'close');
 
