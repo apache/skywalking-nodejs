@@ -30,7 +30,7 @@ export default class DummyContext implements Context {
   nSpans = 0;
   finished = false;
 
-  newEntrySpan(operation: string, carrier?: ContextCarrier, inherit?: Component): Span {
+  newEntrySpan(operation: string, carrier?: ContextCarrier, inherit?: Component | Component[]): Span {
     return DummySpan.create(this);
   }
 
@@ -46,18 +46,16 @@ export default class DummyContext implements Context {
     const spans = ContextManager.spansDup();
 
     if (!this.nSpans++) {
-      ContextManager.checkCold();  // set cold to false
+      ContextManager.checkCold(); // set cold to false
 
-      if (spans.indexOf(span) === -1)
-        spans.push(span);
+      if (spans.indexOf(span) === -1) spans.push(span);
     }
 
     return this;
   }
 
   stop(span: DummySpan): boolean {
-    if (--this.nSpans)
-      return false;
+    if (--this.nSpans) return false;
 
     ContextManager.clear(span);
 
