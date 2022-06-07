@@ -45,7 +45,7 @@ class ExpressPlugin implements SwPlugin {
       const operation = (req.url || '/').replace(/\?.*/g, '');
       const span = ignoreHttpMethodCheck(req.method ?? 'GET')
         ? DummySpan.create()
-        : ContextManager.current.newEntrySpan(operation, carrier, Component.HTTP_SERVER);
+        : ContextManager.current.newEntrySpan(operation, carrier, [Component.HTTP_SERVER, Component.EXPRESS]);
 
       span.component = Component.EXPRESS;
 

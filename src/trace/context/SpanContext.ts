@@ -37,19 +37,18 @@ import { emitter } from '../../lib/EventEmitter';
 const logger = createLogger(__filename);
 
 emitter.on('segments-sent', () => {
-  SpanContext.nActiveSegments = 0;  // reset limiter
+  SpanContext.nActiveSegments = 0; // reset limiter
 });
 
 export default class SpanContext implements Context {
-  static nActiveSegments = 0;  // counter to allow only config.maxBufferSize active (non-dummy) segments per reporting frame
+  static nActiveSegments = 0; // counter to allow only config.maxBufferSize active (non-dummy) segments per reporting frame
   spanId = 0;
   nSpans = 0;
   finished = false;
   segment: Segment = new Segment();
 
   ignoreCheck(operation: string, type: SpanType, carrier?: ContextCarrier): Span | undefined {
-    if (operation.match(config.reIgnoreOperation) || (carrier && !carrier.isValid()))
-      return DummySpan.create();
+    if (operation.match(config.reIgnoreOperation) || (carrier && !carrier.isValid())) return DummySpan.create();
 
     return undefined;
   }
@@ -57,14 +56,12 @@ export default class SpanContext implements Context {
   spanCheck(spanType: SpanType, operation: string, carrier?: ContextCarrier): [Span | null, Span?] {
     const span = this.ignoreCheck(operation, SpanType.ENTRY, carrier);
 
-    if (span)
-      return [span];
+    if (span) return [span];
 
     const spans = ContextManager.spans;
     const parent = spans[spans.length - 1];
 
-    if (parent instanceof DummySpan)
-      return [parent];
+    if (parent instanceof DummySpan) return [parent];
 
     return [null, parent];
   }
@@ -79,7 +76,8 @@ export default class SpanContext implements Context {
       operation,
     });
 
-    if (this.finished && parent) {  // segment has already been closed and sent to server, if there is a parent span then need new segment to reference
+    if (this.finished && parent) {
+      // segment has already been closed and sent to server, if there is a parent span then need new segment to reference
       const carrier = new ContextCarrier(
         parent.context.segment.relatedTraces[0],
         parent.context.segment.segmentId,
@@ -100,12 +98,11 @@ export default class SpanContext implements Context {
     return span;
   }
 
-  newEntrySpan(operation: string, carrier?: ContextCarrier, inherit?: Component): Span {
+  newEntrySpan(operation: string, carrier?: ContextCarrier, inherit?: Component | Component[]): Span {
     // tslint:disable-next-line:prefer-const
     let [span, parent] = this.spanCheck(SpanType.ENTRY, operation, carrier);
 
-    if (span)
-      return span;
+    if (span) return span;
 
     if (logger._isDebugEnabled) {
       logger.debug('Creating entry span', {
@@ -113,15 +110,18 @@ export default class SpanContext implements Context {
       });
     }
 
-    if (!this.finished && parent?.type === SpanType.ENTRY && inherit && inherit === parent.component) {
+    if (
+      !this.finished &&
+      parent?.type === SpanType.ENTRY &&
+      inherit &&
+      (inherit instanceof Component ? inherit === parent.component : inherit.indexOf(parent.component) != -1)
+    ) {
       span = parent;
       parent.operation = operation;
-
     } else {
       span = this.newSpan(EntrySpan, parent!, operation);
 
-      if (carrier && carrier.isValid())
-        span.extract(carrier);
+      if (carrier && carrier.isValid()) span.extract(carrier);
     }
 
     return span;
@@ -131,8 +131,7 @@ export default class SpanContext implements Context {
     // tslint:disable-next-line:prefer-const
     let [span, parent] = this.spanCheck(SpanType.EXIT, operation);
 
-    if (span)
-      return span;
+    if (span) return span;
 
     if (logger._isDebugEnabled) {
       logger.debug('Creating exit span', {
@@ -141,13 +140,10 @@ export default class SpanContext implements Context {
       });
     }
 
-    if (!this.finished && parent?.type === SpanType.EXIT && component === parent.inherit)
-      span = parent;
-    else
-      span = this.newSpan(ExitSpan, parent!, operation);
+    if (!this.finished && parent?.type === SpanType.EXIT && component === parent.inherit) span = parent;
+    else span = this.newSpan(ExitSpan, parent!, operation);
 
-    if (inherit)
-      span.inherit = inherit;
+    if (inherit) span.inherit = inherit;
 
     return span;
   }
@@ -155,8 +151,7 @@ export default class SpanContext implements Context {
   newLocalSpan(operation: string): Span {
     const [span, parent] = this.spanCheck(SpanType.LOCAL, operation);
 
-    if (span)
-      return span;
+    if (span) return span;
 
     if (logger._isDebugEnabled) {
       logger.debug('Creating local span', {
@@ -180,12 +175,10 @@ export default class SpanContext implements Context {
       SpanContext.nActiveSegments += 1;
       span.isCold = ContextManager.checkCold();
 
-      if (span.isCold)
-        span.tag(Tag.coldStart(), true);
+      if (span.isCold) span.tag(Tag.coldStart(), true);
     }
 
-    if (spans.indexOf(span) === -1)
-      spans.push(span);
+    if (spans.indexOf(span) === -1) spans.push(span);
 
     return this;
   }
