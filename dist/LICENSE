@@ -215,7 +215,7 @@ Apache 2.0 licenses
 The following components are provided under the Apache License. See project link for details.
 The text of each license is the standard Apache 2.0 license.
 
-    grpc-node 1.4.4: https://github.com/grpc/grpc-node, Apache 2.0
+    grpc-node 1.6.7: https://github.com/grpc/grpc-node, Apache 2.0
 
 ========================================================================
 BSD licenses
