@@ -11,7 +11,7 @@
     "generate-source": "scripts/protoc.sh",
     "build": "npm run clean && npm run prepare && tsc --build src && OUT_DIR=lib/proto/ scripts/protoc.sh",
     "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint --fix src/**/*.ts",
+    "lint:fix": "prettier --write \"src/**/*.ts\"",
     "lint-staged": "lint-staged",
     "test": "DEBUG=testcontainers* jest",
     "format": "prettier --write \"src/**/*.ts\"",
