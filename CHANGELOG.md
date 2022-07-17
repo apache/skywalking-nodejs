@@ -1,3 +1,6 @@
+# 0.5.1
+- Fix `sw` header is not validated and might cause service unavailable. (#90)
+
 # 0.5.0
 - Bump up grpc-node to 1.6.7 to fix CVE-2022-25878 (#85)
 - Fix issue #9165 express router entry duplicated (#84)
