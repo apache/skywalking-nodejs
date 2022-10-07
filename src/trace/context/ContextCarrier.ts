@@ -44,20 +44,28 @@ export class ContextCarrier extends CarrierItem {
   };
 
   get value(): string {
-    return [
-      '1',
-      this.encode(this.traceId?.toString() || ''),
-      this.encode(this.segmentId?.toString() || ''),
-      this.spanId?.toString(),
-      this.encode(this.service || ''),
-      this.encode(this.serviceInstance || ''),
-      this.encode(this.endpoint || ''),
-      this.encode(this.clientAddress || ''),
-    ].join('-');
+    return this.isValid()
+      ? [
+          '1',
+          this.encode(this.traceId?.toString() || ''),
+          this.encode(this.segmentId?.toString() || ''),
+          this.spanId?.toString(),
+          this.encode(this.service || ''),
+          this.encode(this.serviceInstance || ''),
+          this.encode(this.endpoint || ''),
+          this.encode(this.clientAddress || ''),
+        ].join('-')
+      : '';
   }
 
   set value(val) {
+    if (!val) {
+      return;
+    }
     const parts = val.split('-');
+    if (parts.length != 8) {
+      return;
+    }
     this.traceId = new ID(this.decode(parts[1]));
     this.segmentId = new ID(this.decode(parts[2]));
     this.spanId = Number.parseInt(parts[3], 10);
@@ -70,22 +78,23 @@ export class ContextCarrier extends CarrierItem {
   isValid(): boolean {
     return Boolean(
       this.traceId?.rawId &&
-      this.segmentId?.rawId &&
-      this.spanId !== undefined &&
-      !isNaN(this.spanId) &&
-      this.service &&
-      this.endpoint &&
-      this.clientAddress !== undefined
+        this.segmentId?.rawId &&
+        this.spanId !== undefined &&
+        !isNaN(this.spanId) &&
+        this.service &&
+        this.endpoint &&
+        this.clientAddress !== undefined,
     );
   }
 
   public static from(map: { [key: string]: string }): ContextCarrier | undefined {
-    if (!map.hasOwnProperty('sw8'))
-      return;
+    if (!Object.prototype.hasOwnProperty.call(map, 'sw8')) return;
 
     const carrier = new ContextCarrier();
 
-    carrier.items.filter((item) => map.hasOwnProperty(item.key)).forEach((item) => (item.value = map[item.key]));
+    carrier.items
+      .filter((item) => Object.prototype.hasOwnProperty.call(map, item.key))
+      .forEach((item) => (item.value = map[item.key]));
 
     return carrier;
   }

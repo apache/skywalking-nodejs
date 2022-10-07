@@ -1,3 +1,15 @@
+# 0.5.1
+- Fix `sw` header is not validated and might cause service unavailable. (#90)
+
+# 0.5.0
+- Bump up grpc-node to 1.6.7 to fix CVE-2022-25878 (#85)
+- Fix issue #9165 express router entry duplicated (#84)
+- Fix skywalking s3 upload error #8824 (#82)
+- Improved ignore path regex (#81)
+- Upgrade data collect protocol (#78)
+- Fix wrong instance properties (#77)
+- Fix wrong command in release doc (#76)
+
 # 0.4.0
 
 - Fix mysql2 plugin install error. (#74)

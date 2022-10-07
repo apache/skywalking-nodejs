@@ -43,7 +43,7 @@ class AxiosPlugin implements SwPlugin {
       if (typeof url === 'string') config = config ? { ...config, url } : { url };
       else config = url ? { ...url } : {};
 
-      const { origin, host, pathname: operation } = new URL(config.url, config.baseURL); // TODO: this may throw invalid URL
+      const { origin, host, pathname: operation } = new URL(config.url, config.baseURL ?? this.defaults?.baseURL);
       const method = (config.method || 'GET').toUpperCase();
       const span = ignoreHttpMethodCheck(method)
         ? DummySpan.create()
