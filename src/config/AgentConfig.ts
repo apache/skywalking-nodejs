@@ -100,7 +100,7 @@ export function finalizeConfig(config: AgentConfig): void {
   config.reHttpIgnoreMethod = RegExp(
     `^(?:${config
       .httpIgnoreMethod!.split(',')
-      .map((s) => s.trim())
+      .map((s) => escapeRegExp(s.trim()))
       .join('|')})$`,
     'i',
   );
