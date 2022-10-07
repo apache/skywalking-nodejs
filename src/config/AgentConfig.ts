@@ -53,10 +53,19 @@ export function finalizeConfig(config: AgentConfig): void {
     'i',
   );
 
-  const ignoreSuffix = `^.+(?:${config
-    .ignoreSuffix!.split(',')
-    .map((s) => escapeRegExp(s.trim()))
-    .join('|')})$`;
+  const convertIgnoreSuffix = (configuredIgnoreSuffix: string | undefined) => {
+    if (!configuredIgnoreSuffix) {
+      // This regexp will never match => no files are ignored.
+      return '\\A(?!x)x';
+    } else {
+      return `^.+(?:${configuredIgnoreSuffix!
+        .split(',')
+        .map((s) => escapeRegExp(s.trim()))
+        .join('|')})$`;
+    }
+  };
+
+  const ignoreSuffix = convertIgnoreSuffix(config.ignoreSuffix);
   const ignorePath =
     '^(?:' +
     config
