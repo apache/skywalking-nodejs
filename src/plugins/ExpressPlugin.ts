@@ -43,7 +43,7 @@ class ExpressPlugin implements SwPlugin {
 
     router.handle = function (req: Request, res: ServerResponse, next: any) {
       const carrier = ContextCarrier.from((req as any).headers || {});
-      const operation = (req.url || '/').replace(/\?.*/g, '');
+      const operation = 'path:' + req.path + ';url:' + req.url + ';baseUrl:' + req.baseUrl;
       const span = ignoreHttpMethodCheck(req.method ?? 'GET')
         ? DummySpan.create()
         : ContextManager.current.newEntrySpan(operation, carrier, [Component.HTTP_SERVER, Component.EXPRESS]);
