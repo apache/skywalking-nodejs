@@ -27,6 +27,7 @@ import DummySpan from '../trace/span/DummySpan';
 import { ignoreHttpMethodCheck } from '../config/AgentConfig';
 import PluginInstaller from '../core/PluginInstaller';
 import HttpPlugin from './HttpPlugin';
+import { Request } from 'express';
 
 class ExpressPlugin implements SwPlugin {
   readonly module = 'express';
@@ -40,7 +41,7 @@ class ExpressPlugin implements SwPlugin {
     const router = installer.require('express/lib/router');
     const _handle = router.handle;
 
-    router.handle = function (req: IncomingMessage, res: ServerResponse, next: any) {
+    router.handle = function (req: Request, res: ServerResponse, next: any) {
       const carrier = ContextCarrier.from((req as any).headers || {});
       const operation = (req.url || '/').replace(/\?.*/g, '');
       const span = ignoreHttpMethodCheck(req.method ?? 'GET')
