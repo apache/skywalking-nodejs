@@ -86,7 +86,7 @@ segmentItems:
               - key: coldStart
                 value: 'true'
               - key: http.url
-                value: http://localhost:5001/express
+                value: http://localhost:5001/test/express
               - key: http.method
                 value: GET
               - key: http.status.code
