@@ -1,6 +1,3 @@
-# 0.5.2
-- Correct entry span url in endponts using Express middleware/router objects
-
 # 0.5.1
 - Fix `sw` header is not validated and might cause service unavailable. (#90)
 
