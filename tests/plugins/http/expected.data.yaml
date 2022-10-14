@@ -21,7 +21,7 @@ segmentItems:
     segments:
       - segmentId: not null
         spans:
-          - operationName: /test
+          - operationName: GET:/test
             operationId: 0
             parentSpanId: -1
             spanId: 0
@@ -77,7 +77,7 @@ segmentItems:
     segments:
       - segmentId: not null
         spans:
-          - operationName: /test
+          - operationName: GET:/test
             operationId: 0
             parentSpanId: -1
             spanId: 0
