@@ -28,7 +28,10 @@ agent.start({
 
 const app = express();
 
-app.get('/express', (req, res) => {
+const testRouter = express.Router();
+app.use('/test', testRouter);
+
+testRouter.get('/express', (req, res) => {
   http
   .request(`http://${process.env.SERVER || 'localhost:5000'}${req.url}`, (r) => {
     let data = '';
