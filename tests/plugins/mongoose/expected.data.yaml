@@ -65,7 +65,7 @@ segmentItems:
               - { key: db.type, value: MongoDB }
               - { key: db.instance, value: admin }
               - { key: db.statement, value: 'tests.find({})' }
-          - operationName: /mongoose
+          - operationName: GET:/mongoose
             operationId: 0
             parentSpanId: -1
             spanId: 0
@@ -96,7 +96,7 @@ segmentItems:
     segments:
       - segmentId: not null
         spans:
-          - operationName: /mongoose
+          - operationName: GET:/mongoose
             operationId: 0
             parentSpanId: -1
             spanId: 0

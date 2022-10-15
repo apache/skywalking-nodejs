@@ -36,7 +36,7 @@ segmentItems:
               - { key: db.type, value: PostgreSQL }
               - { key: db.instance, value: test }
               - { key: db.statement, value: SELECT * FROM "user" where name = 'u1' }
-          - operationName: /postgres
+          - operationName: GET:/postgres
             operationId: 0
             parentSpanId: -1
             spanId: 0
@@ -67,7 +67,7 @@ segmentItems:
     segments:
       - segmentId: not null
         spans:
-          - operationName: /postgres
+          - operationName: GET:/postgres
             operationId: 0
             parentSpanId: -1
             spanId: 0

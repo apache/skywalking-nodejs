@@ -41,7 +41,7 @@ segmentItems:
                 value: '200'
               - key: http.status.msg
                 value: OK
-          - operationName: /axios
+          - operationName: GET:/axios
             operationId: 0
             parentSpanId: -1
             spanId: 0
@@ -97,7 +97,7 @@ segmentItems:
             spanType: Exit
             peer: server:5000
             skipAnalysis: false
-          - operationName: /axios
+          - operationName: GET:/axios
             operationId: 0
             parentSpanId: -1
             spanId: 0

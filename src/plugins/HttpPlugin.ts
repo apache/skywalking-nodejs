@@ -159,8 +159,9 @@ class HttpPlugin implements SwPlugin {
 
       function _sw_request(this: any, req: IncomingMessage, res: ServerResponse, ...reqArgs: any[]) {
         const carrier = ContextCarrier.from((req as any).headers || {});
-        const operation = (req.url || '/').replace(/\?.*/g, '');
-        const span = ignoreHttpMethodCheck(req.method ?? 'GET')
+        const reqMethod = req.method ?? 'GET';
+        const operation = reqMethod + ':' + (req.url || '/').replace(/\?.*/g, '');
+        const span = ignoreHttpMethodCheck(reqMethod)
           ? DummySpan.create()
           : ContextManager.current.newEntrySpan(operation, carrier);
 

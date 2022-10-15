@@ -39,7 +39,7 @@ segmentItems:
                 value: test
               - key: db.statement
                 value: SELECT * FROM `user` WHERE `name` = "u1"
-          - operationName: /mysql
+          - operationName: GET:/mysql
             operationId: 0
             parentSpanId: -1
             spanId: 0
@@ -75,7 +75,7 @@ segmentItems:
     segments:
       - segmentId: not null
         spans:
-          - operationName: /mysql
+          - operationName: GET:/mysql
             operationId: 0
             parentSpanId: -1
             spanId: 0
