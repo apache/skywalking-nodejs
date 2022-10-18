@@ -68,11 +68,11 @@ Environment Variable | Description | Default
 | `SW_AWSLAMBDA_FLUSH` | If set to 'true' then AWS Lambda functions will flush segment data when the handler finishes. `false` will be more optimal for high throughput applications but may lose spans. | `true` |
 | `SW_AGENT_MAX_BUFFER_SIZE` | The maximum buffer size before sending the segment data to backend | `'1000'` |
 
-Note that the various ignore options like `SW_IGNORE_SUFFIX`, `SW_TRACE_IGNORE_PATH` and `SW_HTTP_IGNORE_METHOD` as well as endpoints which are not recorded due to exceeding `SW_AGENT_MAX_BUFFER_SIZE` all propagate their ignored status downstream to any other endpoints they may call. If that endpoint is running the Node Skywalking agent then regardless of its ignore settings it will not be recorded since its upstream parent was not recorded. This allows elimination of entire trees of endpoints you are not interested in as well as eliminating partial traces if a span in the chain is ignored but calls out to other endpopints which are recorded as children of ROOT instead of the actual parent.
+Note that the various ignore options like `SW_IGNORE_SUFFIX`, `SW_TRACE_IGNORE_PATH` and `SW_HTTP_IGNORE_METHOD` as well as endpoints which are not recorded due to exceeding `SW_AGENT_MAX_BUFFER_SIZE` all propagate their ignored status downstream to any other endpoints they may call. If that endpoint is running the Node Skywalking agent then regardless of its ignore settings it will not be recorded since its upstream parent was not recorded. This allows the elimination of entire trees of endpoints you are not interested in as well as eliminating partial traces if a span in the chain is ignored but calls out to other endpoints which are recorded as children of ROOT instead of the actual parent.
 
 ## Supported Libraries
 
-There are some built-in plugins that support automatic instrumentation of NodeJS libraries, the complete lists are as follows:
+Some built-in plugins support automatic instrumentation of NodeJS libraries, the complete list is as follows:
 
 Library | Plugin Name
 | :--- | :--- |
@@ -100,7 +100,7 @@ Library | Underlying Plugin Name
 
 ## Experimental Azure Functions Support
 
-The plugin `AzureHttpTriggerPlugin` provides a wrapper function for an Azure Functions Javascript HttpTrigger endpoint. This is an http server endpoint and it must be instrumented manually currently. So far all other plugins tested work within the HttpTrigger and so a trace can pass through the Function and on to other endpoints called by the function. How much sense it makes to instrument an Azure Function which already lives in the cloud and has robust monitoring incorporated is a good question, but at the least this plugin will allow those endpoints to show up in a Skywalking trace.
+The plugin `AzureHttpTriggerPlugin` provides a wrapper function for an Azure Functions Javascript HttpTrigger endpoint. This is an http server endpoint and currently must be instrumented manually. So far all other plugins tested work within the HttpTrigger and so a trace can pass through the Function and onto other endpoints called by the function. How much sense it makes to instrument an Azure Function which already lives in the cloud and has robust monitoring incorporated is a good question, but at the least, this plugin will allow those endpoints to show up in a Skywalking trace.
 
 ### Usage:
 
@@ -120,7 +120,7 @@ All that needs to be done is the actual trigger function needs to be wrapped wit
 
 ## Experimental AWS Lambda Functions Support
 
-The plugins `AWSLambdaTriggerPlugin`, `AWSLambdaGatewayAPIHTTP` and `AWSLambdaGatewayAPIREST` provide a wrapper functions for AWS Lambda Functions endpoints. `AWSLambdaTriggerPlugin` is a generic wrapper plugin which should work with any kind of Lambda trigger but also stores the least amount of informations since it does not know anything about the incoming data format. For this reason this type of trigger also can not link back to the caller, but it can create a new segment which will be propagated to all downstream children, this starting its own trace. `AWSLambdaGatewayAPIHTTP` and `AWSLambdaGatewayAPIREST` are specific wrappers for Lambda functions triggered by the GatewayAPI HTTP or REST triggers. They have the advantage of knowing the incoming data format and can thus extract existing trace segment information from incoming requests and chain correctly from upstream to any downstream endpoints.
+The plugins `AWSLambdaTriggerPlugin`, `AWSLambdaGatewayAPIHTTP` and `AWSLambdaGatewayAPIREST` provide a wrapper functions for AWS Lambda Functions endpoints. `AWSLambdaTriggerPlugin` is a generic wrapper plugin which should work with any kind of Lambda trigger but also stores the least amount of information since it does not know anything about the incoming data format. For this reason, this type of trigger also can not link back to the caller, but it can create a new segment that will be propagated to all downstream children, thus starting its own trace. `AWSLambdaGatewayAPIHTTP` and `AWSLambdaGatewayAPIREST` are specific wrappers for Lambda functions triggered by the GatewayAPI HTTP or REST triggers. They have the advantage of knowing the incoming data format and can thus extract existing trace segment information from incoming requests and chain correctly from upstream to any downstream endpoints.
 
 ### Usage:
 

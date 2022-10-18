@@ -66,7 +66,7 @@ segmentItems:
             tags:
               - { key: db.type, value: Redis }
               - { key: db.instance, value: "0" }
-          - operationName: /ioredis
+          - operationName: GET:/ioredis
             operationId: 0
             parentSpanId: -1
             spanId: 0
@@ -96,7 +96,7 @@ segmentItems:
     segments:
       - segmentId: not null
         spans:
-          - operationName: /ioredis
+          - operationName: GET:/ioredis
             operationId: 0
             parentSpanId: -1
             spanId: 0

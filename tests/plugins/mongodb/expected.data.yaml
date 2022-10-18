@@ -51,7 +51,7 @@ segmentItems:
               - { key: db.type, value: MongoDB }
               - { key: db.instance, value: admin }
               - { key: db.statement, value: docs.findOne() }
-          - operationName: /mongo
+          - operationName: GET:/mongo
             operationId: 0
             parentSpanId: -1
             spanId: 0
@@ -82,7 +82,7 @@ segmentItems:
     segments:
       - segmentId: not null
         spans:
-          - operationName: /mongo
+          - operationName: GET:/mongo
             operationId: 0
             parentSpanId: -1
             spanId: 0
