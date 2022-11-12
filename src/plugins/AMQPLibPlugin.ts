@@ -30,7 +30,7 @@ class AMQPLibPlugin implements SwPlugin {
   readonly versions = '*';
 
   install(installer: PluginInstaller): void {
-    const { BaseChannel } = installer.require('amqplib/lib/channel');
+    const { BaseChannel } = installer.require?.('amqplib/lib/channel') ?? require('amqplib/lib/channel');
 
     this.interceptProducer(BaseChannel);
     this.interceptConsumer(BaseChannel);

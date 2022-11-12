@@ -30,7 +30,7 @@ class MySQLPlugin implements SwPlugin {
   readonly versions = '*';
 
   install(installer: PluginInstaller): void {
-    const Connection = installer.require('mysql/lib/Connection');
+    const Connection = installer.require?.('mysql/lib/Connection') ?? require('mysql/lib/Connection');
     const _query = Connection.prototype.query;
 
     Connection.prototype.query = function (sql: any, values: any, cb: any) {

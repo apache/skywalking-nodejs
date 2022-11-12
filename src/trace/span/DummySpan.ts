@@ -33,13 +33,11 @@ export default class DummySpan extends Span {
   }
 
   start(): any {
-    if (!this.depth++)
-      this.context.start(this);
+    if (!this.depth++) this.context.start(this);
   }
 
   stop(block?: any): void {
-    if (!--this.depth)
-      this.context.stop(this);
+    if (!--this.depth) this.context.stop(this);
   }
 
   async(block?: any): void {

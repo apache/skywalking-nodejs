@@ -36,7 +36,7 @@ class AxiosPlugin implements SwPlugin {
   }
 
   private interceptClientRequest(installer: PluginInstaller): void {
-    const Axios = installer.require('axios/lib/core/Axios');
+    const Axios = installer.require?.('axios/lib/core/Axios') ?? require('axios/lib/core/Axios');
     const _request = Axios.prototype.request;
 
     Axios.prototype.request = function (url?: any, config?: any) {

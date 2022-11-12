@@ -29,7 +29,7 @@ class IORedisPlugin implements SwPlugin {
   readonly versions = '*';
 
   install(installer: PluginInstaller): void {
-    const Redis = installer.require('ioredis');
+    const Redis = installer.require?.('ioredis') ?? require('ioredis');
 
     this.interceptOperation(Redis, 'sendCommand');
   }

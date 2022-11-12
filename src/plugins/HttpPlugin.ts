@@ -32,6 +32,7 @@ import { ignoreHttpMethodCheck } from '../config/AgentConfig';
 class HttpPlugin implements SwPlugin {
   readonly module = 'http';
   readonly versions = '*';
+  readonly isBuiltIn = true;
 
   install(): void {
     const http = require('http');

@@ -32,14 +32,19 @@ class MySQL2Plugin implements SwPlugin {
   readonly versions = '*';
 
   getVersion(installer: PluginInstaller): string {
-    let indexPath = installer.resolve(this.module);
-    let packageSJonStr = fs.readFileSync(`${path.dirname(indexPath)}${path.sep}package.json`, { encoding: 'utf-8' });
-    const pkg = JSON.parse(packageSJonStr);
-    return pkg.version;
+    // TODO: this method will not work in a bundle
+    try {
+      let indexPath = installer.resolve(this.module);
+      let packageSJonStr = fs.readFileSync(`${path.dirname(indexPath)}${path.sep}package.json`, { encoding: 'utf-8' });
+      const pkg = JSON.parse(packageSJonStr);
+      return pkg.version;
+    } catch {
+      return '';
+    }
   }
 
   install(installer: PluginInstaller): void {
-    const Connection = installer.require('mysql2').Connection;
+    const Connection = (installer.require?.('mysql2') ?? require('mysql2')).Connection;
     const _query = Connection.prototype.query;
 
     Connection.prototype.query = function (sql: any, values: any, cb: any) {

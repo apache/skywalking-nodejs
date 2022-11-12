@@ -24,6 +24,7 @@ import OptionMethods from './OptionMethods';
 export default interface SwPlugin extends OptionMethods {
   readonly module: string;
   readonly versions: string;
+  readonly isBuiltIn?: boolean;
 
   install(installer: PluginInstaller): void;
 }

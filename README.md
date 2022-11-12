@@ -65,7 +65,9 @@ Environment Variable | Description | Default
 | `SW_SQL_PARAMETERS_MAX_LENGTH` | The maximum string length of SQL parameters to log | `512` |
 | `SW_MONGO_TRACE_PARAMETERS` | If set to 'true' then mongodb query parameters will be included | `false` |
 | `SW_MONGO_PARAMETERS_MAX_LENGTH` | The maximum string length of mongodb parameters to log | `512` |
-| `SW_AWSLAMBDA_FLUSH` | If set to 'true' then AWS Lambda functions will flush segment data when the handler finishes. `false` will be more optimal for high throughput applications but may lose spans. | `true` |
+| `SW_AWS_LAMBDA_FLUSH` | Maximum number of float seconds allowed to pass between invocations before consecutive Lambda function calls flush automatically upon exit, 0 means always flush, -1 means never. | `2` |
+| `SW_AWS_LAMBDA_CHAIN` | Pass trace ID to AWS Lambda function in its parameters (to allow linking). Only use if both caller and callee will be instrumented. | `false` |
+| `SW_AWS_SQS_CHECK_BODY` | Incoming SQS messages check inside the body for trace ID in order to allow linking outgoing SNS messages to incoming SQS. | `false` |
 | `SW_AGENT_MAX_BUFFER_SIZE` | The maximum buffer size before sending the segment data to backend | `'1000'` |
 
 Note that the various ignore options like `SW_IGNORE_SUFFIX`, `SW_TRACE_IGNORE_PATH` and `SW_HTTP_IGNORE_METHOD` as well as endpoints which are not recorded due to exceeding `SW_AGENT_MAX_BUFFER_SIZE` all propagate their ignored status downstream to any other endpoints they may call. If that endpoint is running the Node Skywalking agent then regardless of its ignore settings it will not be recorded since its upstream parent was not recorded. This allows the elimination of entire trees of endpoints you are not interested in as well as eliminating partial traces if a span in the chain is ignored but calls out to other endpoints which are recorded as children of ROOT instead of the actual parent.
@@ -87,6 +89,10 @@ Library | Plugin Name
 | [`Mongoose`](https://github.com/Automattic/mongoose) | `mongoose` |
 | [`RabbitMQ`](https://github.com/squaremo/amqp.node) | `amqplib` |
 | [`Redis`](https://github.com/luin/ioredis) | `ioredis` |
+| [`AWS2DynamoDB](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/DynamoDB/DocumentClient.html) | `aws-sdk` |
+| [`AWS2Lambda](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/Lambda.html) | `aws-sdk` |
+| [`AWS2SNS](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/SNS.html) | `aws-sdk` |
+| [`AWS2SQS](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/SQS.html) | `aws-sdk` |
 
 ### Compatible Libraries
 
@@ -137,6 +143,12 @@ exports.handler = AWSLambdaGatewayAPIHTTP.wrap(async function (event, context, c
 ```
 
 This is similar to Azure Functions wrapping, just wrap your handler function with `AWSLambdaTriggerPlugin.wrap()` or `AWSLambdaGatewayAPIHTTP.wrap()` or `AWSLambdaGatewayAPIREST.wrap()`. One thing to note is that AWS freezes processes in between invocations of lambda functions so whether you are doing async or sync handler functions with callbacks, you should make sure everything you need to do finishes before returning control to AWS or calling the synchronous callback. These plugins take this into account and automatically flush the segment buffers before closing a trace span.
+
+## Experimental Webpack Support
+
+Webpack requires that all imports be statically defined at compile-time and so was not compatible with the dynamic search and loading done by the standard `PluginInstaller`. This has been extended to attempt static imports if the application is determined to be running out of a webpack bundle. This requires that any new plugins be manually added to `PluginInstaller.installBundled()`. Only plugins which allow a `require('module/package.json')` will work with this method as `package.json` needs to be loaded to determine the version of the plugin module present. Some modules specifically disallow import of their package.json and so can not be loaded like this.
+
+Upon compile with `webpack` it will complain about missing modules for which imports are attempted in the sw agent but which are not present. Simply add these modules to the list of modules to be ignored by webpack, for example by `resolve: {alias: {'module': false}}`.
 
 ## Contact Us
 * Submit [an issue](https://github.com/apache/skywalking/issues/new) by using [Nodejs] as title prefix.
