@@ -46,9 +46,9 @@ class AWS2SQSPlugin implements SwPlugin {
         sqs[name] = function (params: any, callback: any) {
           const queueUrl = params.QueueUrl;
           const operation = `AWS/SQS/${name}/${queueUrl.slice(queueUrl.lastIndexOf('/') + 1)}`;
-          const span = ContextManager.current.newExitSpan(operation, Component.AWSLAMBDA_FUNCTION, Component.HTTP);
+          const span = ContextManager.current.newExitSpan(operation, Component.AWS_SQS, Component.HTTP);
 
-          span.component = Component.AWSLAMBDA_FUNCTION;
+          span.component = Component.AWS_SQS;
           span.layer = SpanLayer.MQ;
 
           return execute(span, this, _func, addTraceId(params, span), callback, 'mqBroker');
@@ -92,13 +92,9 @@ class AWS2SQSPlugin implements SwPlugin {
 
         const queueUrl = params.QueueUrl;
         const operation = `AWS/SQS/receiveMessage/${queueUrl.slice(queueUrl.lastIndexOf('/') + 1)}`;
-        const span = ContextManager.current.newExitSpan(
-          `${operation}<check>`,
-          Component.AWSLAMBDA_FUNCTION,
-          Component.HTTP,
-        );
+        const span = ContextManager.current.newExitSpan(`${operation}<check>`, Component.AWS_SQS, Component.HTTP);
 
-        span.component = Component.AWSLAMBDA_FUNCTION;
+        span.component = Component.AWS_SQS;
         span.layer = SpanLayer.MQ;
 
         // should always be called on success only, with no err
@@ -152,7 +148,7 @@ class AWS2SQSPlugin implements SwPlugin {
 
             span = ContextManager.current.newEntrySpan(operation, carrier);
 
-            span.component = Component.AWSLAMBDA_FUNCTION;
+            span.component = Component.AWS_SQS;
             span.layer = SpanLayer.MQ;
             span.peer = peer;
 

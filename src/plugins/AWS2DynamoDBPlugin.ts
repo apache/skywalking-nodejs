@@ -37,9 +37,9 @@ class AWS2DynamoDBPlugin implements SwPlugin {
       const _func = DocumentClient.prototype[name];
 
       DocumentClient.prototype[name] = function (params: any, callback?: any): any {
-        const span = ContextManager.current.newExitSpan(`AWS/DynamoDB/${name}`, Component.POSTGRESQL, Component.HTTP);
+        const span = ContextManager.current.newExitSpan(`AWS/DynamoDB/${name}`, Component.AWS_DYNAMODB, Component.HTTP);
 
-        span.component = Component.POSTGRESQL;
+        span.component = Component.AWS_DYNAMODB;
         span.layer = SpanLayer.DATABASE;
         // span.peer = `${this.service.endpoint.host ?? '<unknown>'}:${this.service.endpoint.port ?? '<unknown>'}`;
 

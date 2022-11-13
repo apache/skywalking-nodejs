@@ -50,10 +50,10 @@ class AWS2SNSPlugin implements SwPlugin {
             ? `Phone/${params.PhoneNumber}`
             : '???';
           const operation = `AWS/SNS/${name}/${to}`;
-          const span = ContextManager.current.newExitSpan(operation, Component.AWSLAMBDA_FUNCTION, Component.HTTP);
+          const span = ContextManager.current.newExitSpan(operation, Component.AWS_SNS, Component.HTTP);
           const arn = params.TopicArn || params.TargetArn;
 
-          span.component = Component.AWSLAMBDA_FUNCTION;
+          span.component = Component.AWS_SNS;
           span.layer = SpanLayer.MQ;
 
           if (arn) span.tag(Tag.arn(arn));
