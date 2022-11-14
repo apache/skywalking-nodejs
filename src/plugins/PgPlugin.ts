@@ -30,12 +30,12 @@ class MySQLPlugin implements SwPlugin {
   readonly versions = '*';
 
   install(installer: PluginInstaller): void {
-    const Client = installer.require('pg/lib/client');
+    const Client = installer.require?.('pg/lib/client') ?? require('pg/lib/client');
 
     let Cursor: any;
 
     try {
-      Cursor = installer.require('pg-cursor');
+      Cursor = installer.require?.('pg-cursor') ?? require('pg-cursor');
     } catch {
       /* Linter food */
     }

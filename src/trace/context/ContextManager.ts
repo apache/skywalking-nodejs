@@ -133,14 +133,12 @@ class ContextManager {
     if (spans.indexOf(span) === -1) spans.push(span);
   }
 
-  removeTailFinishedContexts(): void {
-    // XXX: Normally, SpanContexts that finish and send their segments can remain in the span lists of async contexts.
-    // This is so that if an async child that was spawned by the original span code and is executed after the parent
-    // finishes and creates its own span can be linked to the parent segment and span correctly. But in some situations
-    // where successive independent operations are chained linearly instead of hierarchically (AWS Lambda functions),
-    // this can cause a false reference by a subsequent operation as if it were a child of the finished previous span.
+  clearAll(): void {
+    // This is for situations where successive independent operations are chained linearly instead of hierarchically
+    // (AWS Lambda functions), this can cause a false reference by a subsequent operation as if it were a child of the
+    // previous span.
 
-    for (const spans = this.asyncState.spans; spans.length && spans[spans.length - 1].context.finished; spans.pop());
+    this.spansDup().splice(0);
   }
 
   withSpan(span: Span, callback: (...args: any[]) => any, ...args: any[]): any {

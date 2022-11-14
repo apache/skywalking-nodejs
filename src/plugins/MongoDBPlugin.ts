@@ -43,9 +43,9 @@ class MongoDBPlugin implements SwPlugin {
 
   install(installer: PluginInstaller): void {
     const plugin = this;
-    this.Collection = installer.require('mongodb/lib/collection');
-    this.Cursor = installer.require('mongodb/lib/cursor');
-    this.Db = installer.require('mongodb/lib/db');
+    this.Collection = installer.require?.('mongodb/lib/collection') ?? require('mongodb/lib/collection');
+    this.Cursor = installer.require?.('mongodb/lib/cursor') ?? require('mongodb/lib/cursor');
+    this.Db = installer.require?.('mongodb/lib/db') ?? require('mongodb/lib/db');
 
     const wrapCallbackWithCursorMaybe = (span: any, args: any[], idx: number): boolean => {
       const callback = args.length > idx && typeof args[(idx = args.length - 1)] === 'function' ? args[idx] : null;

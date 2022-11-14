@@ -30,7 +30,7 @@ class MongoosePlugin implements SwPlugin {
   mongodbEnabled?: boolean;
 
   install(installer: PluginInstaller): void {
-    const { Model } = installer.require('mongoose');
+    const { Model } = installer.require?.('mongoose') ?? require('mongoose');
 
     this.interceptOperation(Model, 'aggregate');
     this.interceptOperation(Model, 'bulkWrite');

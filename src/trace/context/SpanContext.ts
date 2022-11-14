@@ -42,6 +42,8 @@ emitter.on('segments-sent', () => {
 
 export default class SpanContext implements Context {
   static nActiveSegments = 0; // counter to allow only config.maxBufferSize active (non-dummy) segments per reporting frame
+  static nTotalSegments = 0; // counter of total number of unfinished segments
+  static flushResolve: ((value: unknown) => void)[] = []; // functions to be called on nTotalSegments reaching 0
   spanId = 0;
   nSpans = 0;
   finished = false;
@@ -114,7 +116,7 @@ export default class SpanContext implements Context {
       !this.finished &&
       parent?.type === SpanType.ENTRY &&
       inherit &&
-      (inherit instanceof Component ? inherit === parent.component : inherit.indexOf(parent.component) != -1)
+      (inherit instanceof Component ? inherit === parent.component : inherit.indexOf(parent.component) !== -1)
     ) {
       span = parent;
       parent.operation = operation;
@@ -173,6 +175,7 @@ export default class SpanContext implements Context {
 
     if (!this.nSpans++) {
       SpanContext.nActiveSegments += 1;
+      SpanContext.nTotalSegments += 1;
       span.isCold = ContextManager.checkCold();
 
       if (span.isCold) span.tag(Tag.coldStart(), true);
@@ -198,6 +201,12 @@ export default class SpanContext implements Context {
 
       emitter.emit('segment-finished', this.segment);
 
+      if (!--SpanContext.nTotalSegments && SpanContext.flushResolve.length) {
+        let resolve: ((value: unknown) => void) | undefined;
+
+        while ((resolve = SpanContext.flushResolve.pop())) resolve(null);
+      }
+
       return true;
     }
 
@@ -222,6 +231,18 @@ export default class SpanContext implements Context {
     });
 
     ContextManager.restore(span);
+  }
+
+  static flush(): Promise<any> | null {
+    // This function explicitly returns null instead of a resolved Promise in case of nothing to flush so that in this
+    // case passing control back to the event loop can be avoided. Even a resolved Promise will run other things in
+    // the event loop when it is awaited and before it continues.
+
+    return !SpanContext.nTotalSegments
+      ? null
+      : new Promise((resolve: (value: unknown) => void) => {
+          SpanContext.flushResolve.push(resolve);
+        });
   }
 
   traceId(): string {

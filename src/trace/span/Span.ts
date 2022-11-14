@@ -84,8 +84,7 @@ export default abstract class Span {
   }
 
   stop(): void {
-    if (--this.depth === 0)
-      this.context.stop(this);
+    if (--this.depth === 0) this.context.stop(this);
   }
 
   async(): void {
@@ -97,8 +96,7 @@ export default abstract class Span {
   }
 
   finish(segment: Segment): boolean {
-    if (this.isCold && config.coldEndpoint)
-      this.operation = this.operation + '<cold>';
+    if (this.isCold && config.coldEndpoint) this.operation = this.operation + '<cold>';
 
     this.endTime = new Date().getTime();
     segment.archive(this);
@@ -136,10 +134,8 @@ export default abstract class Span {
 
     const tagObj = Object.assign({}, tag);
 
-    if (!insert)
-      this.tags.push(tagObj);
-    else
-      this.tags.unshift(tagObj)
+    if (!insert) this.tags.push(tagObj);
+    else this.tags.unshift(tagObj);
 
     return this;
   }
@@ -147,14 +143,15 @@ export default abstract class Span {
   log(key: string, val: any): this {
     this.logs.push({
       timestamp: new Date().getTime(),
-      items: [{key, val: `${val}`}]
+      items: [{ key, val: `${val}` }],
     } as Log);
 
     return this;
   }
 
   error(error: Error): this {
-    if (error === this.lastError)  // don't store duplicate identical error twice
+    if (error === this.lastError)
+      // don't store duplicate identical error twice
       return this;
 
     this.errored = true;

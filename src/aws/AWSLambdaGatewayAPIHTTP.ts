@@ -29,7 +29,7 @@ import { ignoreHttpMethodCheck } from '../config/AgentConfig';
 import { AWSLambdaTriggerPlugin } from './AWSLambdaTriggerPlugin';
 
 class AWSLambdaGatewayAPIHTTP extends AWSLambdaTriggerPlugin {
-  start(event: any, context: any): Span {
+  start(event: any, context: any): [Span, any] {
     const headers = event.headers;
     const reqCtx = event.requestContext;
     const http = reqCtx?.http;
@@ -56,7 +56,6 @@ class AWSLambdaGatewayAPIHTTP extends AWSLambdaTriggerPlugin {
         ? DummySpan.create()
         : ContextManager.current.newEntrySpan(operation, carrier);
 
-    span.layer = SpanLayer.HTTP;
     span.component = Component.AWSLAMBDA_GATEWAYAPIHTTP;
     span.peer = http?.sourceIp ?? headers?.['x-forwarded-for'] ?? 'Unknown';
 
@@ -66,7 +65,7 @@ class AWSLambdaGatewayAPIHTTP extends AWSLambdaTriggerPlugin {
 
     span.start();
 
-    return span;
+    return [span, event];
   }
 
   stop(span: Span, err: Error | null, res: any): void {

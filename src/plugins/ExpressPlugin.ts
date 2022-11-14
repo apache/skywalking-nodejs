@@ -18,7 +18,7 @@
  */
 
 import SwPlugin from '../core/SwPlugin';
-import { IncomingMessage, ServerResponse } from 'http';
+import { ServerResponse } from 'http';
 import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
 import Tag from '../Tag';
@@ -38,7 +38,7 @@ class ExpressPlugin implements SwPlugin {
   }
 
   private interceptServerRequest(installer: PluginInstaller) {
-    const router = installer.require('express/lib/router');
+    const router = installer.require?.('express/lib/router') ?? require('express/lib/router');
     const _handle = router.handle;
 
     router.handle = function (req: Request, res: ServerResponse, next: any) {
