@@ -89,10 +89,10 @@ Library | Plugin Name
 | [`Mongoose`](https://github.com/Automattic/mongoose) | `mongoose` |
 | [`RabbitMQ`](https://github.com/squaremo/amqp.node) | `amqplib` |
 | [`Redis`](https://github.com/luin/ioredis) | `ioredis` |
-| [`AWS2DynamoDB](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/DynamoDB/DocumentClient.html) | `aws-sdk` |
-| [`AWS2Lambda](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/Lambda.html) | `aws-sdk` |
-| [`AWS2SNS](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/SNS.html) | `aws-sdk` |
-| [`AWS2SQS](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/SQS.html) | `aws-sdk` |
+| [`AWS2DynamoDB`](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/DynamoDB/DocumentClient.html) | `aws-sdk` |
+| [`AWS2Lambda`](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/Lambda.html) | `aws-sdk` |
+| [`AWS2SNS`](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/SNS.html) | `aws-sdk` |
+| [`AWS2SQS`](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/SQS.html) | `aws-sdk` |
 
 ### Compatible Libraries
 
