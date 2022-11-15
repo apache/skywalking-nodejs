@@ -26,20 +26,39 @@ import { SpanLayer } from '../proto/language-agent/Tracing_pb';
 import DummySpan from '../trace/span/DummySpan';
 import { ignoreHttpMethodCheck } from '../config/AgentConfig';
 import PluginInstaller from '../core/PluginInstaller';
+import * as fs from 'fs';
+import * as path from 'path';
 
 class AxiosPlugin implements SwPlugin {
   readonly module = 'axios';
   readonly versions = '*';
+
+  getVersion(installer: PluginInstaller): string {
+    // TODO: this method will not work in a bundle
+    try {
+      const indexPath = installer.resolve(this.module);
+      const dirname = indexPath.slice(
+        0,
+        indexPath.lastIndexOf(`${path.sep}node_modules${path.sep}axios${path.sep}`) + 20,
+      );
+      const packageJsonStr = fs.readFileSync(`${dirname}package.json`, { encoding: 'utf-8' });
+      const pkg = JSON.parse(packageJsonStr);
+      return pkg.version;
+    } catch {
+      return '';
+    }
+  }
 
   install(installer: PluginInstaller): void {
     this.interceptClientRequest(installer);
   }
 
   private interceptClientRequest(installer: PluginInstaller): void {
-    const Axios = installer.require?.('axios/lib/core/Axios') ?? require('axios/lib/core/Axios');
+    const axios = installer.require?.('axios') ?? require('axios');
+    const Axios = axios.Axios;
     const _request = Axios.prototype.request;
 
-    Axios.prototype.request = function (url?: any, config?: any) {
+    Axios.prototype.request = axios.request = function (url?: any, config?: any) {
       if (typeof url === 'string') config = config ? { ...config, url } : { url };
       else config = url ? { ...url } : {};
 
