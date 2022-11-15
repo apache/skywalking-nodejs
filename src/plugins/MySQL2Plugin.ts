@@ -35,8 +35,8 @@ class MySQL2Plugin implements SwPlugin {
     // TODO: this method will not work in a bundle
     try {
       let indexPath = installer.resolve(this.module);
-      let packageSJonStr = fs.readFileSync(`${path.dirname(indexPath)}${path.sep}package.json`, { encoding: 'utf-8' });
-      const pkg = JSON.parse(packageSJonStr);
+      let packageJsonStr = fs.readFileSync(`${path.dirname(indexPath)}${path.sep}package.json`, { encoding: 'utf-8' });
+      const pkg = JSON.parse(packageJsonStr);
       return pkg.version;
     } catch {
       return '';
