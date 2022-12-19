@@ -19,7 +19,7 @@
 
 import { performance } from 'perf_hooks';
 import config from '../config/AgentConfig';
-import { ContextCarrier } from '../trace/context/ContextCarrier';
+import { ContextCarrier, traceKey } from '../trace/context/ContextCarrier';
 import ContextManager from '../trace/context/ContextManager';
 import { Component } from '../trace/Component';
 import Tag from '../Tag';
@@ -48,7 +48,7 @@ class AWSLambdaTriggerPlugin {
         if (idx !== -1) {
           peer = traceId.slice(idx + 1);
           traceId = traceId.slice(0, idx);
-          carrier = ContextCarrier.from({ sw8: traceId });
+          carrier = ContextCarrier.from({ [traceKey]: traceId });
 
           if (carrier) {
             if (!carrier.isValid()) carrier = undefined;

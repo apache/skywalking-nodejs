@@ -14,6 +14,8 @@ Then run the following commands to build the project:
 
 ```shell
 npm install
+git submodule update --init
+# brew install cmake
 npm run build
 ```
 

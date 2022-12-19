@@ -20,6 +20,7 @@
     "release-src": "npm run prepare && npm run package-src && gpg --batch --yes --armor --detach-sig skywalking-nodejs-src-$npm_package_version.tgz && shasum -a 512 skywalking-nodejs-src-$npm_package_version.tgz > skywalking-nodejs-src-$npm_package_version.tgz.sha512"
   },
   "files": [
+    "README.md",
     "lib/**/*"
   ],
   "keywords": [

@@ -51,6 +51,7 @@ The supported environment variables are as follows:
 Environment Variable | Description | Default
 | :--- | :--- | :--- |
 | `SW_AGENT_NAME` | The name of the service | `your-nodejs-service` |
+| `SW_AGENT_NAMESPACE` | The namespace for trace id prefix in headers | `sw8` |
 | `SW_AGENT_INSTANCE` | The name of the service instance | Randomly generated |
 | `SW_AGENT_COLLECTOR_BACKEND_SERVICES` | The backend OAP server address | `127.0.0.1:11800` |
 | `SW_AGENT_SECURE` | Whether to use secure connection to backend OAP server | `false` |

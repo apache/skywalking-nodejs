@@ -20,6 +20,8 @@
 import ID from '../../trace/ID';
 import { CarrierItem } from './CarrierItem';
 
+export const traceKey = process.env.SW_AGENT_NAMESPACE ? `${process.env.SW_AGENT_NAMESPACE}-sw8` : 'sw8';
+
 export class ContextCarrier extends CarrierItem {
   constructor(
     public traceId?: ID,
@@ -31,7 +33,7 @@ export class ContextCarrier extends CarrierItem {
     public clientAddress?: string,
     public items: CarrierItem[] = [],
   ) {
-    super('sw8');
+    super(traceKey);
     this.items.push(this);
   }
 
@@ -88,7 +90,7 @@ export class ContextCarrier extends CarrierItem {
   }
 
   public static from(map: { [key: string]: string }): ContextCarrier | undefined {
-    if (!Object.prototype.hasOwnProperty.call(map, 'sw8')) return;
+    if (!Object.prototype.hasOwnProperty.call(map, traceKey)) return;
 
     const carrier = new ContextCarrier();
 

@@ -140,7 +140,7 @@ class AWS2SQSPlugin implements SwPlugin {
               if (idx !== -1) {
                 peer = traceId.slice(idx + 1);
                 traceId = traceId.slice(0, idx);
-                carrier = ContextCarrier.from({ sw8: traceId });
+                carrier = ContextCarrier.from({ traceKey: traceId });
               }
             }
 
