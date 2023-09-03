@@ -42,6 +42,7 @@ export type AgentConfig = {
   reDisablePlugins?: RegExp;
   reIgnoreOperation?: RegExp;
   reHttpIgnoreMethod?: RegExp;
+  traceTimeout?: number;
 };
 
 export function finalizeConfig(config: AgentConfig): void {
@@ -136,6 +137,9 @@ const _config = {
   reDisablePlugins: RegExp(''), // temporary placeholder so Typescript doesn't throw a fit
   reIgnoreOperation: RegExp(''),
   reHttpIgnoreMethod: RegExp(''),
+  traceTimeout: Number.isSafeInteger(process.env.SW_AGENT_TRACE_TIMEOUT)
+    ? Number.parseInt(process.env.SW_AGENT_TRACE_TIMEOUT as string, 10)
+    : 10 * 1000,
 };
 
 export default _config;
