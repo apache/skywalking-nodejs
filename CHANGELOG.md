@@ -1,3 +1,7 @@
+# 0.7.0
+
+* Add deadline config for trace request (#118)
+
 # 0.6.0
 
 * Add missing build doc by @kezhenxu94 in https://github.com/apache/skywalking-nodejs/pull/92
