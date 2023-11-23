@@ -87,7 +87,7 @@ class HttpPlugin implements SwPlugin {
 
           if (res.statusMessage) span.tag(Tag.httpStatusMsg(res.statusMessage));
 
-          wrapEmit(span, res, false);
+          wrapEmit(span, res, false, 'end');
         };
 
         const responseCB = function (this: any, res: any) {
