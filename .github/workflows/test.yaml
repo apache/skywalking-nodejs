@@ -89,7 +89,7 @@ jobs:
       - name: Test On Node@10
         run: |
           npm i
-          npm run test tests/plugins/${{ matrix.plugin }}
+          npm run test tests/plugins/${{ matrix.plugin }}/
 
   TestLib:
     runs-on: ubuntu-latest
