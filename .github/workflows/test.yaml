@@ -24,12 +24,49 @@ on:
       - master
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      - name: Set Up NodeJS ${{ matrix.node-version }}
+        uses: actions/setup-node@v2-beta
+        with:
+          node-version: 14
+      - name: Lint
+        run: |
+          npm i
+          npm run lint
+
+  build-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      plugins: ${{ steps.plugins.outputs.plugins }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - id: plugins
+        run: echo "plugins=$(ls tests/plugins | grep -v common | jq --raw-input | jq --slurp --compact-output)" >> "$GITHUB_OUTPUT"
+
   TestPlugins:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    needs: [ build-matrix ]
     strategy:
       matrix:
-        node-version: [ 10, 12, 14, 16, 18 ]
+        node-version: [ 14, 16, 18, 20 ]
+        plugin: ${{ fromJson(needs.build-matrix.outputs.plugins) }}
     env:
       SW_NODE_VERSION: ${{ matrix.node-version }}
     steps:
@@ -49,18 +86,10 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Test On Node@12 And Above(Current:Node@${{matrix.node-version}})
-        if: matrix.node-version >= 12
+      - name: Test On Node@${{ matrix.node-version }}
         run: |
           npm i
-          npm run lint
-          npm run test
-
-      - name: Test On Node@10
-        if: matrix.node-version == 10
-        run: |
-          npm i
-          npm run test
+          npm run test tests/plugins/${{ matrix.plugin }}/
 
   TestLib:
     runs-on: ubuntu-latest
