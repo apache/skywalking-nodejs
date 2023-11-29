@@ -41,7 +41,7 @@ jobs:
       - name: Set Up NodeJS ${{ matrix.node-version }}
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 12
+          node-version: 14
       - name: Lint
         run: |
           npm i
@@ -65,7 +65,7 @@ jobs:
     needs: [ build-matrix ]
     strategy:
       matrix:
-        node-version: [ 10, 12, 14, 16, 18 ]
+        node-version: [ 14, 16, 18, 20 ]
         plugin: ${{ fromJson(needs.build-matrix.outputs.plugins) }}
     env:
       SW_NODE_VERSION: ${{ matrix.node-version }}
