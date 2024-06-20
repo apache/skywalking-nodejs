@@ -25,7 +25,7 @@ export interface Tag {
 
 export default {
   coldStartKey: 'coldStart',
-  httpStatusCodeKey: 'http.status.code', // TODO: maybe find a better place to put these?
+  httpStatusCodeKey: 'http.status_code', // TODO: maybe find a better place to put these?
   httpStatusMsgKey: 'http.status.msg',
   httpURLKey: 'http.url',
   httpMethodKey: 'http.method',
