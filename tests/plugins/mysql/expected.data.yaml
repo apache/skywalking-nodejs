@@ -57,7 +57,7 @@ segmentItems:
                 value: http://server:5000/mysql
               - key: http.method
                 value: GET
-              - key: http.status.code
+              - key: http.status_code
                 value: "200"
               - key: http.status.msg
                 value: OK
@@ -93,7 +93,7 @@ segmentItems:
                 value: http://localhost:5001/mysql
               - key: http.method
                 value: GET
-              - key: http.status.code
+              - key: http.status_code
                 value: "200"
               - key: http.status.msg
                 value: OK
@@ -113,7 +113,7 @@ segmentItems:
                 value: http://server:5000/mysql
               - key: http.method
                 value: GET
-              - key: http.status.code
+              - key: http.status_code
                 value: "200"
               - key: http.status.msg
                 value: OK

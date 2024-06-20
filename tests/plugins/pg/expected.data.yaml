@@ -51,7 +51,7 @@ segmentItems:
               - { key: coldStart, value: 'true' }
               - { key: http.url, value: 'http://server:5000/postgres' }
               - { key: http.method, value: GET }
-              - { key: http.status.code, value: '200' }
+              - { key: http.status_code, value: '200' }
               - { key: http.status.msg, value: OK }
             refs:
               - parentEndpoint: ""
@@ -82,7 +82,7 @@ segmentItems:
               - { key: coldStart, value: 'true' }
               - { key: http.url, value: 'http://localhost:5001/postgres' }
               - { key: http.method, value: GET }
-              - { key: http.status.code, value: '200' }
+              - { key: http.status_code, value: '200' }
               - { key: http.status.msg, value: OK }
           - operationName: /postgres
             operationId: 0
@@ -98,5 +98,5 @@ segmentItems:
             tags:
               - { key: http.url, value: 'http://server:5000/postgres' }
               - { key: http.method, value: GET }
-              - { key: http.status.code, value: '200' }
+              - { key: http.status_code, value: '200' }
               - { key: http.status.msg, value: OK }
