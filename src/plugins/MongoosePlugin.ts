@@ -128,7 +128,46 @@ class MongoosePlugin implements SwPlugin {
         (span as any).mongooseInCall = false;
 
         if (!hasCB) {
-          if (ret && typeof ret.then === 'function') {
+          if (ret && typeof ret === 'object' && ret.constructor.name === 'Query') {
+            console.log("2");
+            // Mongoose Query object
+            const originalThen = ret.then;
+            const originalExec = ret.exec;
+            const originalLean = ret.lean;
+
+            // Preserve the query chain methods
+            ret.then = function (...args) {
+                return SwPlugin_1.wrapPromise(span, originalThen.apply(this, args));
+            };
+
+            ret.exec = function (...args) {
+                return SwPlugin_1.wrapPromise(span, originalExec.apply(this, args));
+            };
+
+            ret.lean = function (...args) {
+                const leanQuery = originalLean.apply(this, args);
+                // Preserve other chain methods on lean result
+                leanQuery.then = ret.then;
+                leanQuery.exec = ret.exec;
+                return leanQuery;
+            };
+
+            // Wrap other common query methods that might be chained
+            const chainMethods = ['select', 'sort', 'skip', 'limit', 'populate'];
+            chainMethods.forEach(method => {
+                if (ret[method]) {
+                    const original = ret[method];
+                    ret[method] = function (...args) {
+                        const result = original.apply(this, args);
+                        result.then = ret.then;
+                        result.exec = ret.exec;
+                        result.lean = ret.lean;
+                        return result;
+                    };
+                }
+            });
+            return ret;
+          } else if (ret && typeof ret.then === 'function') {
             // generic Promise check
             ret = wrapPromise(span, ret);
           } else {
