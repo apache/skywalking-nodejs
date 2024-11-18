@@ -129,7 +129,6 @@ class MongoosePlugin implements SwPlugin {
 
         if (!hasCB) {
           if (ret && typeof ret === 'object' && ret.constructor.name === 'Query') {
-            console.log("2");
             // Mongoose Query object
             const originalThen = ret.then;
             const originalExec = ret.exec;
