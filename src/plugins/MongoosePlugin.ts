@@ -174,7 +174,7 @@ class MongoosePlugin implements SwPlugin {
         span.async();
 
         return ret;
-      } catch (err: any) {
+      } catch (err) {
         span.error(err);
         span.stop();
 
