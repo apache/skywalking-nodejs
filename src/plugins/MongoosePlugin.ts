@@ -130,42 +130,56 @@ class MongoosePlugin implements SwPlugin {
         if (!hasCB) {
           if (ret && typeof ret === 'object' && ret.constructor.name === 'Query') {
             // Mongoose Query object
-            const originalThen = ret.then;
-            const originalExec = ret.exec;
-            const originalLean = ret.lean;
+            const chainMethods = ['then', 'exec', 'lean', 'select', 'sort', 'skip', 'limit', 'populate'];
 
-            // Preserve the query chain methods
-            ret.then = function (...args) {
-                return SwPlugin_1.wrapPromise(span, originalThen.apply(this, args));
+            // Store the original methods for chaining
+            const originalMethods: { [key: string]: Function } = {};
+            const originalThen: Function = ret.then
+            const originalExec: Function = ret.exec
+            const originalLean: Function = ret.lean
+            ret.then = function (...args: any) {
+              return wrapPromise(span, originalThen.apply(this, args));
             };
 
-            ret.exec = function (...args) {
-                return SwPlugin_1.wrapPromise(span, originalExec.apply(this, args));
+            ret.exec = function (...args: any) {
+              return wrapPromise(span, originalExec.apply(this, args));
             };
 
-            ret.lean = function (...args) {
-                const leanQuery = originalLean.apply(this, args);
-                // Preserve other chain methods on lean result
-                leanQuery.then = ret.then;
-                leanQuery.exec = ret.exec;
-                return leanQuery;
+            ret.lean = function (...args: any) {
+              const leanQuery = originalLean.apply(this, args);
+              // Preserve other chain methods on lean result
+              leanQuery.then = ret.then;
+              leanQuery.exec = ret.exec;
+              return leanQuery;
             };
 
-            // Wrap other common query methods that might be chained
-            const chainMethods = ['select', 'sort', 'skip', 'limit', 'populate'];
-            chainMethods.forEach(method => {
-                if (ret[method]) {
-                    const original = ret[method];
-                    ret[method] = function (...args) {
-                        const result = original.apply(this, args);
-                        result.then = ret.then;
-                        result.exec = ret.exec;
-                        result.lean = ret.lean;
-                        return result;
-                    };
-                }
+            // Preserve the original methods
+            chainMethods.forEach((method) => {
+              if (ret[method]) {
+                originalMethods[method] = ret[method];
+              }
             });
-            return ret;
+
+            // Override the methods to wrap them with tracing functionality
+            chainMethods.forEach((method) => {
+              if (originalMethods[method]) {
+                ret[method] = function (...args: any[]) {
+                  const result = originalMethods[method].apply(this, args);
+
+                  // If it's a query, wrap its `then`, `exec`, and `lean` methods to preserve the trace
+                  if (method === 'then' || method === 'exec' || method === 'lean') {
+                    return wrapPromise(span, result);
+                  }
+
+                  // Ensure chaining continues correctly for other methods (e.g., select, sort)
+                  result.then = ret.then;
+                  result.exec = ret.exec;
+                  result.lean = ret.lean;
+                  return result;
+                };
+              }
+            });
+
           } else if (ret && typeof ret.then === 'function') {
             // generic Promise check
             ret = wrapPromise(span, ret);
@@ -180,7 +194,7 @@ class MongoosePlugin implements SwPlugin {
         span.async();
 
         return ret;
-      } catch (err) {
+      } catch (err: any) {
         span.error(err);
         span.stop();
 
