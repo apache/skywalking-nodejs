@@ -159,7 +159,6 @@ class MongoosePlugin implements SwPlugin {
                 };
               }
             });
-
           } else if (ret && typeof ret.then === 'function') {
             // generic Promise check
             ret = wrapPromise(span, ret);
