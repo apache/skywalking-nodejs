@@ -128,40 +128,44 @@ class MongoosePlugin implements SwPlugin {
         (span as any).mongooseInCall = false;
 
         if (!hasCB) {
-          if (ret && typeof ret === 'object' && ret.constructor.name === 'Query') {
-            // Mongoose Query object
-            const chainMethods = ['select', 'sort', 'skip', 'limit', 'populate'];
-
-            // Mongoose Query object
-            const originalThen = ret.then;
-            const originalExec = ret.exec;
-            const originalLean = ret.lean;
-            // Preserve the query chain methods using arrow functions to maintain context
-            ret.then = (...args: any[]) => wrapPromise(span, originalThen.apply(ret, args));
-            ret.exec = (...args: any[]) => wrapPromise(span, originalExec.apply(ret, args));
-            ret.lean = (...args: any[]) => {
-              const leanQuery = originalLean.apply(ret, args);
-              // Preserve other chain methods on the lean result
-              leanQuery.then = ret.then;
-              leanQuery.exec = ret.exec;
-              return leanQuery;
-            };
-            // Wrap other common query methods that might be chained
-            chainMethods.forEach((method) => {
-              if (ret[method]) {
-                const originalMethod = ret[method];
-                ret[method] = (...args: any[]) => {
-                  const result = originalMethod.apply(ret, args);
-                  result.then = ret.then;
-                  result.exec = ret.exec;
-                  result.lean = ret.lean;
-                  return result;
-                };
-              }
-            });
-          } else if (ret && typeof ret.then === 'function') {
+          if (ret && typeof ret.then === 'function') {
             // generic Promise check
-            ret = wrapPromise(span, ret);
+
+            if (ret.constructor.name != 'Query') {
+              ret = wrapPromise(span, ret);
+            } else {
+              // Mongoose Query object
+              const chainMethods = ['select', 'sort', 'skip', 'limit', 'populate'];
+
+              // Mongoose Query object
+              const originalThen = ret.then;
+              const originalExec = ret.exec;
+              const originalLean = ret.lean;
+
+              // Preserve the query chain methods using arrow functions to maintain context
+              ret.then = (...args: any[]) => wrapPromise(span, originalThen.apply(ret, args));
+              ret.exec = (...args: any[]) => wrapPromise(span, originalExec.apply(ret, args));
+              ret.lean = (...args: any[]) => {
+                const leanQuery = originalLean.apply(ret, args);
+                // Preserve other chain methods on the lean result
+                leanQuery.then = ret.then;
+                leanQuery.exec = ret.exec;
+                return leanQuery;
+              };
+              // Wrap other common query methods that might be chained
+              chainMethods.forEach((method) => {
+                if (ret[method]) {
+                  const originalMethod = ret[method];
+                  ret[method] = (...args: any[]) => {
+                    const result = originalMethod.apply(ret, args);
+                    result.then = ret.then;
+                    result.exec = ret.exec;
+                    result.lean = ret.lean;
+                    return result;
+                  };
+                }
+              });
+            }
           } else {
             // no callback passed in and no Promise or Cursor returned, play it safe
             span.stop();
