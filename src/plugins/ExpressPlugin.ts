@@ -38,7 +38,27 @@ class ExpressPlugin implements SwPlugin {
   }
 
   private interceptServerRequest(installer: PluginInstaller) {
-    const router = installer.require?.('express/lib/router') ?? require('express/lib/router');
+    let router;
+
+    try {
+      // Express 4.x and older versions
+      router = installer.require?.('express/lib/router') ?? require('express/lib/router');
+    } catch (error) {
+      try {
+        // Express 5+ (uses dynamic import)
+        const express = require('express');
+        router = express.Router ? express.Router() : null;
+      } catch (err) {
+        console.error('⚠️ SkyWalking: Failed to load Express router - Express may not be installed.');
+        return;
+      }
+    }
+
+    if (!router) {
+      console.warn('⚠️ SkyWalking: Unable to determine Express structure. Instrumentation is disabled.');
+      return;
+    }
+
     const _handle = router.handle;
 
     router.handle = function (req: Request, res: ServerResponse, next: any) {
@@ -51,19 +71,20 @@ class ExpressPlugin implements SwPlugin {
 
       span.component = Component.EXPRESS;
 
-      if (span.depth)
-        // if we inherited from http then just change component ID and let http do the work
+      if (span.depth) {
+        // If inherited from HTTP, just change the component ID and let HTTP handle it
         return _handle.apply(this, arguments);
+      }
 
       return HttpPlugin.wrapHttpResponse(span, req, res, () => {
-        // http plugin disabled, we use its mechanism anyway
+        // If HTTP plugin is disabled, we use this mechanism anyway
         try {
           return _handle.call(this, req, res, (err: Error) => {
             span.error(err);
             next.call(this, err);
           });
         } finally {
-          // req.protocol is only possibly available after call to _handle()
+          // req.protocol might only be available after calling _handle()
           span.tag(
             Tag.httpURL(
               ((req as any).protocol ? (req as any).protocol + '://' : '') + (req.headers.host || '') + req.url,
