@@ -38,7 +38,8 @@ class ExpressPlugin implements SwPlugin {
   }
 
   private interceptServerRequest(installer: PluginInstaller) {
-    const router = installer.require?.('express/lib/router') ?? require('express/lib/router');
+    const express = installer.require?.('express') ?? require('express');
+    const router = express.Router ?? installer.require?.('express/lib/router') ?? require('express/lib/router');
     const _handle = router.handle;
 
     router.handle = function (req: Request, res: ServerResponse, next: any) {
