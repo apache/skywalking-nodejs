@@ -118,7 +118,6 @@ class MongoosePlugin implements SwPlugin {
           arguments[arguments.length - 1] = function () {
             // in case of immediate synchronous callback from mongoose
             (span as any).mongooseInCall = false;
-
             wrappedCallback.apply(this, arguments as any);
           };
         }
