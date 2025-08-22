@@ -21,6 +21,7 @@ import * as http from 'http';
 import agent from '../../../src';
 
 process.env.SW_AGENT_LOGGING_LEVEL = 'ERROR';
+process.env.SW_AGENT_DISABLE_PLUGINS = 'MongoDBPlugin';
 
 agent.start({
   serviceName: 'client',
