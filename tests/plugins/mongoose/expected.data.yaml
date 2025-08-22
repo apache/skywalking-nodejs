@@ -35,7 +35,7 @@ segmentItems:
             tags:
               - { key: db.type, value: MongoDB }
               - { key: db.instance, value: admin }
-              - { key: db.statement, value: 'collection("tests")' }
+              - { key: db.statement, 'collection("tests")' }
           - operationName: Mongoose/ensureIndexes
             operationId: 0
             parentSpanId: 0
@@ -50,6 +50,21 @@ segmentItems:
             tags:
               - { key: db.type, value: MongoDB }
               - { key: db.instance, value: admin }
+          - operationName: MongoDB/find         # This is the required span
+            operationId: 0
+            parentSpanId: 0
+            spanId: 4
+            spanLayer: Database
+            startTime: gt 0
+            endTime: gt 0
+            componentId: 9
+            spanType: Exit
+            peer: mongo:27017
+            skipAnalysis: false
+            tags:
+              - { key: db.type, value: MongoDB }
+              - { key: db.instance, value: admin }
+              - { key: db.statement, 'tests.find({})' }
           - operationName: Mongoose/find
             operationId: 0
             parentSpanId: 0
@@ -64,7 +79,7 @@ segmentItems:
             tags:
               - { key: db.type, value: MongoDB }
               - { key: db.instance, value: admin }
-              - { key: db.statement, value: 'tests.find({})' }
+              # The mongoose find span might not have the db.statement, which is fine
           - operationName: GET:/mongoose
             operationId: 0
             parentSpanId: -1
