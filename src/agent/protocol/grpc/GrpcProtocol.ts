@@ -47,4 +47,10 @@ export default class GrpcProtocol implements Protocol {
   flush(): Promise<any> | null {
     return this.traceReportClient.flush();
   }
+
+  destroy(): void {
+    // Clean up both clients to prevent memory leaks
+    this.heartbeatClient.destroy?.();
+    this.traceReportClient.destroy?.();
+  }
 }

@@ -34,16 +34,31 @@ export default class TraceReportClient implements Client {
   private readonly reporterClient: TraceSegmentReportServiceClient;
   private readonly buffer: Segment[] = [];
   private timeout?: NodeJS.Timeout;
+  private segmentFinishedListener: (segment: Segment) => void;
 
   constructor() {
     this.reporterClient = new TraceSegmentReportServiceClient(
       config.collectorAddress,
       config.secure ? grpc.credentials.createSsl() : grpc.credentials.createInsecure(),
     );
-    emitter.on('segment-finished', (segment) => {
+
+    // Store listener reference for cleanup
+    this.segmentFinishedListener = (segment: Segment) => {
+      // Limit buffer size to prevent memory leak during network issues
+      if (this.buffer.length >= config.maxBufferSize) {
+        logger.warn(
+          `Trace buffer reached maximum size (${config.maxBufferSize}). ` +
+          `Discarding oldest segment to prevent memory leak. ` +
+          `This may indicate network connectivity issues with the collector.`
+        );
+        this.buffer.shift(); // Remove oldest segment
+      }
+
       this.buffer.push(segment);
       this.timeout?.ref();
-    });
+    };
+
+    emitter.on('segment-finished', this.segmentFinishedListener);
   }
 
   get isConnected(): boolean {
@@ -106,5 +121,23 @@ export default class TraceReportClient implements Client {
       : new Promise((resolve) => {
           this.reportFunction(resolve);
         });
+  }
+
+  destroy(): void {
+    // Clean up event listener to prevent memory leak
+    if (this.segmentFinishedListener) {
+      emitter.off('segment-finished', this.segmentFinishedListener);
+    }
+
+    // Clear timeout
+    if (this.timeout) {
+      clearTimeout(this.timeout);
+      this.timeout = undefined;
+    }
+
+    // Clear buffer
+    this.buffer.length = 0;
+
+    logger.info('TraceReportClient destroyed and resources cleaned up');
   }
 }
