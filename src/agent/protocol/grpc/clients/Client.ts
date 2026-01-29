@@ -23,4 +23,6 @@ export default interface Client {
   start(): void;
 
   flush(): Promise<any> | null;
+
+  destroy?(): void;
 }

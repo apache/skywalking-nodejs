@@ -28,4 +28,6 @@ export default interface Protocol {
   report(): this;
 
   flush(): Promise<any> | null;
+
+  destroy?(): void;
 }

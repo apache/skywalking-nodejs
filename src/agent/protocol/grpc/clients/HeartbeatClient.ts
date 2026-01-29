@@ -89,4 +89,14 @@ export default class HeartbeatClient implements Client {
     logger.warn('HeartbeatClient does not need flush().');
     return null;
   }
+
+  destroy(): void {
+    // Clear heartbeat timer to prevent memory leak
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = undefined;
+    }
+
+    logger.info('HeartbeatClient destroyed and resources cleaned up');
+  }
 }

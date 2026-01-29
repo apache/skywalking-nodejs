@@ -72,6 +72,20 @@ class Agent {
       });
     });
   }
+
+  destroy(): void {
+    if (this.protocol === null) {
+      logger.warn('Trying to destroy() SkyWalking agent which is not started.');
+      return;
+    }
+
+    logger.info('Destroying SkyWalking agent and cleaning up resources');
+
+    // Clean up protocol resources
+    this.protocol.destroy?.();
+    this.protocol = null;
+    this.started = false;
+  }
 }
 
 export default new Agent();
