@@ -48,8 +48,8 @@ export default class TraceReportClient implements Client {
       if (this.buffer.length >= config.maxBufferSize) {
         logger.warn(
           `Trace buffer reached maximum size (${config.maxBufferSize}). ` +
-          `Discarding oldest segment to prevent memory leak. ` +
-          `This may indicate network connectivity issues with the collector.`
+            `Discarding oldest segment to prevent memory leak. ` +
+            `This may indicate network connectivity issues with the collector.`,
         );
         this.buffer.shift(); // Remove oldest segment
       }
@@ -66,9 +66,30 @@ export default class TraceReportClient implements Client {
   }
 
   private reportFunction(callback?: any) {
-    emitter.emit('segments-sent'); // reset limiter in SpanContext
-
     try {
+      // Collector is unreachable. Do not call collect():
+      // gRPC would push the call onto its internal pickQueue and retain all
+      // SegmentObjectAdapter objects written via stream.write() until the
+      // deadline fires (default 10 s). With reportFunction running every 1 s,
+      // ~10 pending calls accumulate simultaneously, each holding up to
+      // maxBufferSize segment objects, causing unbounded heap growth → OOM.
+      //
+      // Do not emit 'segments-sent' either: withholding it keeps
+      // SpanContext.nActiveSegments above zero, so SpanContext returns
+      // DummyContext for new spans — natural backpressure that stops further
+      // segment production while the collector is down.
+      //
+      // isConnected calls getConnectivityState(true), which also triggers
+      // reconnection automatically when the channel is IDLE, so recovery
+      // is transparent once the collector comes back.
+      if (!this.isConnected) {
+        this.buffer.length = 0;
+        if (callback) callback();
+        return;
+      }
+
+      emitter.emit('segments-sent'); // reset limiter in SpanContext
+
       if (this.buffer.length === 0) {
         if (callback) callback();
 
