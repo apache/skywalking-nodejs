@@ -70,7 +70,7 @@ class MySQLPlugin implements SwPlugin {
         }
 
         if (typeof values === 'function') values = wrapCallback(span, values, 0);
-        else if (_values !== undefined) _values = values;
+        else if (values !== undefined) _values = values;
 
         if (typeof callback === 'function') callback = wrapCallback(span, callback, 0);
 
