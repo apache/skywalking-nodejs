@@ -21,7 +21,7 @@ import * as grpc from '@grpc/grpc-js';
 import { connectivityState } from '@grpc/grpc-js';
 
 import * as packageInfo from '../../../../../package.json';
-import { createLogger } from '../../../../logging';
+import { createLogger, throttled } from '../../../../logging';
 import Client from './Client';
 import { ManagementServiceClient } from '../../../../proto/management/Management_grpc_pb';
 import AuthInterceptor from '../AuthInterceptor';
@@ -31,6 +31,7 @@ import { KeyStringValuePair } from '../../../../proto/common/Common_pb';
 import * as os from 'os';
 
 const logger = createLogger(__filename);
+const logHeartbeatError = throttled(logger, 'error', 30000);
 
 export default class HeartbeatClient implements Client {
   private readonly managementServiceClient: ManagementServiceClient;
@@ -74,12 +75,12 @@ export default class HeartbeatClient implements Client {
     this.heartbeatTimer = setInterval(() => {
       this.managementServiceClient.reportInstanceProperties(instanceProperties, AuthInterceptor(), (error, _) => {
         if (error) {
-          logger.error('Failed to send heartbeat', error);
+          logHeartbeatError('Failed to send heartbeat', error);
         }
       });
       this.managementServiceClient.keepAlive(keepAlivePkg, AuthInterceptor(), (error, _) => {
         if (error) {
-          logger.error('Failed to send heartbeat', error);
+          logHeartbeatError('Failed to send heartbeat', error);
         }
       });
     }, 20000).unref();

@@ -5,6 +5,9 @@
   "homepage": "skywalking.apache.org",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "postinstall": "node -e \"if(require('fs').existsSync('.git')){process.exit(1)}\" || husky install",
     "prepare": "npm run generate-source",
@@ -56,8 +59,8 @@
     "eslint-plugin-header": "^3.1.1",
     "eslint-plugin-prettier": "^4.0.0",
     "express": "^4.17.1",
-    "grpc-tools": "^1.11.1",
-    "grpc_tools_node_protoc_ts": "^5.3.0",
+    "grpc-tools": "^1.13.1",
+    "grpc_tools_node_protoc_ts": "^5.3.3",
     "ioredis": "^4.27.2",
     "jest": "^26.6.3",
     "lint-staged": "^12.3.2",
@@ -75,7 +78,7 @@
     "wait-for-expect": "^3.0.2"
   },
   "dependencies": {
-    "@grpc/grpc-js": "^1.6.7",
+    "@grpc/grpc-js": "^1.14.4",
     "google-protobuf": "^3.14.0",
     "husky": "^7.0.4",
     "semver": "^7.3.2",

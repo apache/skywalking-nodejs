@@ -119,9 +119,9 @@ const _config = {
   collectorAddress: process.env.SW_AGENT_COLLECTOR_BACKEND_SERVICES || '127.0.0.1:11800',
   secure: process.env.SW_AGENT_SECURE?.toLowerCase() === 'true',
   authorization: process.env.SW_AGENT_AUTHENTICATION,
-  maxBufferSize: Number.isSafeInteger(process.env.SW_AGENT_MAX_BUFFER_SIZE)
-    ? Number.parseInt(process.env.SW_AGENT_MAX_BUFFER_SIZE as string, 10)
-    : 1000,
+  maxBufferSize: ((n) => (Number.isSafeInteger(n) && n > 0 ? n : 1000))(
+    Number.parseInt(process.env.SW_AGENT_MAX_BUFFER_SIZE ?? '', 10),
+  ),
   coldEndpoint: process.env.SW_COLD_ENDPOINT?.toLowerCase() === 'true',
   disablePlugins: process.env.SW_AGENT_DISABLE_PLUGINS || '',
   ignoreSuffix: process.env.SW_IGNORE_SUFFIX ?? '.jpg,.jpeg,.js,.css,.png,.bmp,.gif,.ico,.mp3,.mp4,.html,.svg',
@@ -137,9 +137,9 @@ const _config = {
   reDisablePlugins: RegExp(''), // temporary placeholder so Typescript doesn't throw a fit
   reIgnoreOperation: RegExp(''),
   reHttpIgnoreMethod: RegExp(''),
-  traceTimeout: Number.isSafeInteger(process.env.SW_AGENT_TRACE_TIMEOUT)
-    ? Number.parseInt(process.env.SW_AGENT_TRACE_TIMEOUT as string, 10)
-    : 10 * 1000,
+  traceTimeout: ((n) => (Number.isSafeInteger(n) && n > 0 ? n : 10 * 1000))(
+    Number.parseInt(process.env.SW_AGENT_TRACE_TIMEOUT ?? '', 10),
+  ),
 };
 
 export default _config;

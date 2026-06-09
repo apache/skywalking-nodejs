@@ -39,9 +39,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
       - name: Set Up NodeJS ${{ matrix.node-version }}
-        uses: actions/setup-node@v2-beta
+        uses: actions/setup-node@v4
         with:
-          node-version: 14
+          node-version: 22
       - name: Lint
         run: |
           npm i
@@ -65,7 +65,7 @@ jobs:
     needs: [ build-matrix ]
     strategy:
       matrix:
-        node-version: [ 14, 16, 18, 20 ]
+        node-version: [ 20, 22, 24 ]
         plugin: ${{ fromJson(needs.build-matrix.outputs.plugins) }}
     env:
       SW_NODE_VERSION: ${{ matrix.node-version }}
@@ -82,7 +82,7 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: Set Up NodeJS ${{ matrix.node-version }}
-        uses: actions/setup-node@v2-beta
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
 
