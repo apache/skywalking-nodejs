@@ -73,3 +73,48 @@ export function createLogger(name: string): LoggerLevelAware {
 
   return logger as LoggerLevelAware;
 }
+
+/**
+ * Wraps a logger method so it emits at most once per `intervalMs`, no matter how often it is called.
+ *
+ * When the SkyWalking backend is unreachable the report/heartbeat loops fail on every tick. Logging each
+ * failure with the full gRPC error (a multi-KB stack) lets the records accumulate in winston's internal
+ * stream buffer faster than the transport drains them, eventually exhausting the heap. This collapses a
+ * storm of identical failures into a single periodic line that carries the suppressed count, and reduces
+ * an Error to its `code`/`message` so no stack is retained.
+ */
+export function throttled(
+  logger: Logger,
+  level: 'error' | 'warn' | 'info',
+  intervalMs: number,
+): (message: string, error?: unknown) => void {
+  let lastLoggedAt = 0;
+  let suppressed = 0;
+
+  return (message, error) => {
+    const now = Date.now();
+
+    if (now - lastLoggedAt < intervalMs) {
+      suppressed += 1;
+      return;
+    }
+
+    const meta: Record<string, unknown> = {};
+
+    if (suppressed > 0) {
+      meta.suppressed = suppressed;
+    }
+
+    if (error != null) {
+      meta.error = error instanceof Error ? error.message : error;
+      const code = (error as { code?: unknown }).code;
+      if (code !== undefined) {
+        meta.code = code;
+      }
+    }
+
+    lastLoggedAt = now;
+    suppressed = 0;
+    logger[level](message, meta);
+  };
+}

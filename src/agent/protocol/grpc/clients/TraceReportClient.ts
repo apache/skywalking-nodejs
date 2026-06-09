@@ -20,7 +20,7 @@
 import config from '../../../../config/AgentConfig';
 import * as grpc from '@grpc/grpc-js';
 import { connectivityState } from '@grpc/grpc-js';
-import { createLogger } from '../../../../logging';
+import { createLogger, throttled } from '../../../../logging';
 import Client from './Client';
 import { TraceSegmentReportServiceClient } from '../../../../proto/language-agent/Tracing_grpc_pb';
 import AuthInterceptor from '../AuthInterceptor';
@@ -29,6 +29,8 @@ import { emitter } from '../../../../lib/EventEmitter';
 import Segment from '../../../../trace/context/Segment';
 
 const logger = createLogger(__filename);
+const logReportError = throttled(logger, 'error', 30000);
+const logBufferFull = throttled(logger, 'warn', 30000);
 
 export default class TraceReportClient implements Client {
   private readonly reporterClient: TraceSegmentReportServiceClient;
@@ -46,10 +48,8 @@ export default class TraceReportClient implements Client {
     this.segmentFinishedListener = (segment: Segment) => {
       // Limit buffer size to prevent memory leak during network issues
       if (this.buffer.length >= config.maxBufferSize) {
-        logger.warn(
-          `Trace buffer reached maximum size (${config.maxBufferSize}). ` +
-          `Discarding oldest segment to prevent memory leak. ` +
-          `This may indicate network connectivity issues with the collector.`
+        logBufferFull(
+          `Trace buffer reached maximum size (${config.maxBufferSize}); discarding oldest segments. The collector at ${config.collectorAddress} is likely unreachable.`,
         );
         this.buffer.shift(); // Remove oldest segment
       }
@@ -75,12 +75,21 @@ export default class TraceReportClient implements Client {
         return;
       }
 
+      // Collector unreachable: keep the (bounded) buffer and let gRPC reconnect with its own exponential
+      // backoff, instead of failing a stream every tick and logging an error storm that exhausts the heap.
+      // The channel keeps trying to connect because `isConnected` polls getConnectivityState(true).
+      if (!this.isConnected) {
+        if (callback) callback();
+
+        return;
+      }
+
       const stream = this.reporterClient.collect(
         AuthInterceptor(),
         { deadline: Date.now() + config.traceTimeout },
         (error, _) => {
           if (error) {
-            logger.error('Failed to report trace data', error);
+            logReportError('Failed to report trace data', error);
           }
 
           if (callback) callback();
