@@ -27,7 +27,7 @@ agent.start({
 });
 
 const server = http.createServer(async (req, res) => {
-  const r = await axios.get('http://httpbin.org/json');
+  const r = await axios.get('http://httpbin:8080/json');
   res.end(JSON.stringify(r.data));
 });
 

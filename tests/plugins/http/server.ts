@@ -27,12 +27,12 @@ agent.start({
 
 const server = http.createServer((req, res) => {
   http
-  .request('http://httpbin.org/json', (r) => {
-    let data = '';
-    r.on('data', (chunk) => (data += chunk));
-    r.on('end', () => res.end(data));
-  })
-  .end();
+    .request('http://httpbin:8080/json', (r) => {
+      let data = '';
+      r.on('data', (chunk) => (data += chunk));
+      r.on('end', () => res.end(data));
+    })
+    .end();
 });
 
 server.listen(5000, () => console.info('Listening on port 5000...'));

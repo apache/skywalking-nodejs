@@ -19,8 +19,10 @@
     "test": "DEBUG=testcontainers* jest",
     "format": "prettier --write \"src/**/*.ts\"",
     "clean": "(rm -rf src/proto || true) && (rm -rf src/proto || true) && (rm -rf lib || true)",
-    "package-src": "touch skywalking-nodejs-src-$npm_package_version.tgz && tar -zcvf skywalking-nodejs-src-$npm_package_version.tgz --exclude bin --exclude .git --exclude .idea --exclude .DS_Store --exclude .github --exclude node_modules --exclude skywalking-nodejs-src-$npm_package_version.tgz .",
-    "release-src": "npm run prepare && npm run package-src && gpg --batch --yes --armor --detach-sig skywalking-nodejs-src-$npm_package_version.tgz && shasum -a 512 skywalking-nodejs-src-$npm_package_version.tgz > skywalking-nodejs-src-$npm_package_version.tgz.sha512"
+    "package-src": "touch skywalking-nodejs-src-$npm_package_version.tgz && tar -zcvf skywalking-nodejs-src-$npm_package_version.tgz --exclude bin --exclude .git --exclude .idea --exclude .DS_Store --exclude .github --exclude .claude --exclude node_modules --exclude skywalking-nodejs-src-$npm_package_version.tgz .",
+    "release-src": "npm run prepare && npm run package-src && gpg --batch --yes ${SW_GPG_KEY:+-u $SW_GPG_KEY} --armor --detach-sig skywalking-nodejs-src-$npm_package_version.tgz && shasum -a 512 skywalking-nodejs-src-$npm_package_version.tgz > skywalking-nodejs-src-$npm_package_version.tgz.sha512",
+    "release": "bash scripts/release.sh",
+    "release:finalize": "bash scripts/release-finalize.sh"
   },
   "files": [
     "lib/**/*"
