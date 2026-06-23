@@ -2,10 +2,24 @@
 
 This documentation guides the release manager to release the SkyWalking NodeJS in the Apache Way, and also helps people to check the release for voting.
 
+## Automated release (recommended)
+
+Most of the steps below are automated by two scripts. Run them on a single-user trusted host, with your Apache GPG key (an `@apache.org` uid, already in the [KEYS](https://dist.apache.org/repos/dist/release/skywalking/KEYS) file) configured and Node >= 20:
+
+```shell
+# 1. Bump `version` in package.json to the release version and merge that PR first.
+npm run release            # GPG/preflight checks, fresh recursive clone, build + sign the source
+                           # release, verify it, push the tag, upload the RC to svn dev, print the [VOTE] email
+# 2. ... after the vote passes (open >= 72h, >= 3 binding +1, more +1 than -1) ...
+npm run release:finalize   # svn move dev -> release, publish the GitHub release, optionally publish to npm
+```
+
+The rest of this guide is the reference those scripts implement, and the fallback for running a step by hand.
+
 ## Prerequisites
 
 1. Close (if finished, or move to next milestone otherwise) all issues in the current milestone from [skywalking-nodejs](https://github.com/apache/skywalking-nodejs/milestones) and [skywalking](https://github.com/apache/skywalking/milestones), create a new milestone for the next release.
-1. Update [CHANGELOG.md](../CHANGELOG.md) and `version` in [package.json](../package.json).
+1. Update `version` in [package.json](../package.json). (CHANGELOG.md is a stub — release notes are the auto-generated [GitHub Release](https://github.com/apache/skywalking-nodejs/releases) notes.)
 
 
 ## Add your GPG public key to Apache svn
@@ -55,7 +69,7 @@ This is a call for vote to release Apache SkyWalking NodeJS version $VERSION.
 
 Release notes:
 
- * https://github.com/apache/skywalking-nodejs/blob/v$VERSION/CHANGELOG.md
+ * https://github.com/apache/skywalking-nodejs/releases/tag/v$VERSION
 
 Release Candidate:
 
@@ -95,14 +109,14 @@ Thanks.
 All PMC members and committers should check these before voting +1:
 
 1. Features test.
-1. All artifacts in staging repository are published with `.asc`, `.md5`, and `sha` files.
+1. All artifacts in staging repository are published with `.asc` and `.sha512` files.
 1. Source codes and distribution packages (`skywalking-nodejs-src-$VERSION.tgz`)
 are in `https://dist.apache.org/repos/dist/dev/skywalking/node-js/$VERSION` with `.asc`, `.sha512`.
 1. `LICENSE` and `NOTICE` are in source codes and distribution package.
 1. Check `shasum -c skywalking-nodejs-src-$VERSION.tgz.sha512`.
 1. Check `gpg --verify skywalking-nodejs-src-$VERSION.tgz.asc skywalking-nodejs-src-$VERSION.tgz`.
 1. Build distribution from source code package by following this [the build guide](#build-and-sign-the-source-code-package).
-1. Licenses check, `make license`.
+1. License-header check via license-eye (`apache/skywalking-eyes`, as run by `.github/workflows/license.yaml`); style lint via `npm run lint`.
 
 Vote result should follow these:
 
@@ -166,7 +180,7 @@ Vote result should follow these:
 
     Download Links: http://skywalking.apache.org/downloads/
 
-    Release Notes : https://github.com/apache/skywalking-nodejs/blob/v$VERSION/CHANGELOG.md
+    Release Notes : https://github.com/apache/skywalking-nodejs/releases/tag/v$VERSION
 
     Website: http://skywalking.apache.org/
 
