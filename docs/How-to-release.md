@@ -14,6 +14,8 @@ npm run release            # GPG/preflight checks, fresh recursive clone, build 
 npm run release:finalize   # svn move dev -> release, publish the GitHub release, optionally publish to npm
 ```
 
+If you intend to publish to npm in `release:finalize`, run `npm login` first (you must be a maintainer of `skywalking-backend-js`). The script verifies npm auth **up front** — before the irreversible svn move — and auto-skips the npm step if that version is already published.
+
 The rest of this guide is the reference those scripts implement, and the fallback for running a step by hand.
 
 ## Prerequisites

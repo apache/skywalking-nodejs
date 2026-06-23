@@ -102,6 +102,22 @@ confirm "Proceed?" || { echo "Aborted."; exit 1; }
 
 rm -rf "${WORK_DIR}"; mkdir -p "${WORK_DIR}"
 
+# ---- npm-publish intent + auth, decided NOW (before any irreversible step) ----
+# The npm publish is the last step (Step 5), but we decide whether you'll do it
+# and verify `npm login` HERE, so a missing login fails fast — BEFORE the svn
+# move (Step 3) and the GitHub release (Step 4), not after them.
+WILL_PUBLISH_NPM=false
+if npm view "${NPM_PACKAGE}@${RELEASE_VERSION}" version >/dev/null 2>&1; then
+    echo "npm: ${NPM_PACKAGE}@${RELEASE_VERSION} is already published — the npm step will be skipped."
+elif confirm "Will you publish ${NPM_PACKAGE}@${RELEASE_VERSION} to npm in this run? (the binding artifact is the svn tarball; npm is a convenience)"; then
+    NPM_USER=$(npm whoami 2>/dev/null || true)
+    [ -n "${NPM_USER}" ] || { err "You chose to publish to npm but are not logged in. Run 'npm login' first, then re-run."; exit 1; }
+    echo "npm user: ${NPM_USER} — will publish after the GitHub release."
+    WILL_PUBLISH_NPM=true
+else
+    echo "npm publish will be skipped this run."
+fi
+
 # ========================== Step 3: svn move dev -> release ==========================
 note "Step 3 — Promote on svn: dev (RC) -> release (official)"
 
@@ -200,13 +216,11 @@ fi
 # ========================== Step 5: npm publish (optional, IRREVERSIBLE) ==========================
 note "Step 5 — npm publish ${NPM_PACKAGE}@${RELEASE_VERSION} (optional, IRREVERSIBLE)"
 
-if npm view "${NPM_PACKAGE}@${RELEASE_VERSION}" version >/dev/null 2>&1; then
-    echo "${NPM_PACKAGE}@${RELEASE_VERSION} is already on npm — skipping publish (immutable)."
-elif confirm "Publish ${NPM_PACKAGE}@${RELEASE_VERSION} to npm now? (binding artifact is the svn tarball; npm is a convenience)"; then
-    NPM_USER=$(npm whoami 2>/dev/null || true)
-    [ -n "${NPM_USER}" ] || { err "Not logged in to npm. Run: npm login"; exit 1; }
+# Intent + npm auth were already decided/verified in the preflight above.
+if ! $WILL_PUBLISH_NPM; then
+    echo "Skipping npm publish (decided in preflight)."
+else
     echo "npm user: ${NPM_USER}"
-
     # Build + publish from a FRESH clone of the tag so the published bytes
     # match the released tag exactly (not your working tree).
     PUB_DIR="${WORK_DIR}/publish-clone"
@@ -225,8 +239,6 @@ elif confirm "Publish ${NPM_PACKAGE}@${RELEASE_VERSION} to npm now? (binding art
         echo "Skipped real npm publish."
     fi
     cd "${PROJECT_DIR}"
-else
-    echo "Skipped npm publish."
 fi
 
 # ========================== Done ==========================
