@@ -4,3 +4,10 @@ lib
 src/proto/
 *.log
 tsconfig.tsbuildinfo
+
+# Release tooling working dirs + generated source artifacts (scripts/release*.sh)
+scripts/.release-work/
+scripts/.finalize-work/
+skywalking-nodejs-src-*.tgz
+skywalking-nodejs-src-*.tgz.asc
+skywalking-nodejs-src-*.tgz.sha512
