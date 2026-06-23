@@ -30,12 +30,12 @@ const app = express();
 
 app.get('/express', (req, res) => {
   http
-  .request('http://httpbin.org/json', (r) => {
-    let data = '';
-    r.on('data', (chunk) => (data += chunk));
-    r.on('end', () => res.send(data));
-  })
-  .end();
+    .request('http://httpbin:8080/json', (r) => {
+      let data = '';
+      r.on('data', (chunk) => (data += chunk));
+      r.on('end', () => res.send(data));
+    })
+    .end();
 });
 
 app.listen(5000, () => console.info('Listening on port 5000...'));

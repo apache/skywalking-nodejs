@@ -61,11 +61,11 @@ segmentItems:
             endTime: gt 0
             componentId: 2
             spanType: Exit
-            peer: httpbin.org
+            peer: httpbin:8080
             skipAnalysis: false
             tags:
               - key: http.url
-                value: http://httpbin.org/json
+                value: http://httpbin:8080/json
               - key: http.method
                 value: GET
               - key: http.status_code

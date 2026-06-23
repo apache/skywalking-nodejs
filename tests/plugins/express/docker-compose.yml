@@ -25,6 +25,13 @@ services:
     networks:
       - traveling-light
 
+  httpbin:
+    extends:
+      file: ../common/base-compose.yml
+      service: httpbin
+    networks:
+      - traveling-light
+
   server:
     extends:
       file: ../common/base-compose.yml
@@ -42,6 +49,8 @@ services:
     depends_on:
       collector:
         condition: service_healthy
+      httpbin:
+        condition: service_started
 
   client:
     extends:

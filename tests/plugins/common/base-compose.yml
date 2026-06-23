@@ -41,5 +41,13 @@ services:
     networks:
       - traveling-light
 
+  # Local httpbin so the HTTP-family plugin tests (http/axios/express) do not depend
+  # on the flaky public httpbin.org. go-httpbin serves an identical /json (HTTP 200),
+  # listening on container port 8080.
+  httpbin:
+    image: mccutchen/go-httpbin:2.23.1
+    networks:
+      - traveling-light
+
 networks:
   traveling-light:
