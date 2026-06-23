@@ -4,15 +4,21 @@ This documentation guides the release manager to release the SkyWalking NodeJS i
 
 ## Automated release (recommended)
 
-Most of the steps below are automated by two scripts. Run them on a single-user trusted host, with your Apache GPG key (an `@apache.org` uid, already in the [KEYS](https://dist.apache.org/repos/dist/release/skywalking/KEYS) file) configured and Node >= 20:
+`master` carries the in-flight dev version (e.g. `0.9.0-dev`), like SkyWalking's `-SNAPSHOT` convention. Two scripts automate the rest. Run them on a single-user trusted host, with your Apache GPG key (an `@apache.org` uid, already in the [KEYS](https://dist.apache.org/repos/dist/release/skywalking/KEYS) file) configured and Node >= 20:
 
 ```shell
-# 1. Bump `version` in package.json to the release version and merge that PR first.
-npm run release            # GPG/preflight checks, fresh recursive clone, build + sign the source
-                           # release, verify it, push the tag, upload the RC to svn dev, print the [VOTE] email
-# 2. ... after the vote passes (open >= 72h, >= 3 binding +1, more +1 than -1) ...
+npm run release            # cut a release branch: strip -dev, commit + tag the release commit,
+                           # build + sign the source release, verify it, push the tag, add a
+                           # second commit bumping the branch to the next -dev, open the release PR,
+                           # upload the RC to svn dev, and print the [VOTE] email
+# ... after the vote passes (open >= 72h, >= 3 binding +1, more +1 than -1) ...
 npm run release:finalize   # svn move dev -> release, publish the GitHub release, optionally publish to npm
+# then merge the release PR opened by `npm run release` (master returns to -dev; the tag stays put).
 ```
+
+You do **not** bump the version by hand — `npm run release` strips the `-dev` suffix for the release commit and bumps the branch to the next dev version in the same PR (master returns to `-dev` when the PR merges).
+
+To rehearse the whole flow with **zero side effects** — a full local clone, strip, build, sign and verify, but **no** tag/branch push, **no** svn upload and **no** PR — run `npm run release -- --dry-run` (or `SW_RELEASE_DRY_RUN=1 npm run release`).
 
 If you intend to publish to npm in `release:finalize`, run `npm login` first (you must be a maintainer of `skywalking-backend-js`). The script verifies npm auth **up front** — before the irreversible svn move — and auto-skips the npm step if that version is already published.
 
@@ -21,7 +27,7 @@ The rest of this guide is the reference those scripts implement, and the fallbac
 ## Prerequisites
 
 1. Close (if finished, or move to next milestone otherwise) all issues in the current milestone from [skywalking-nodejs](https://github.com/apache/skywalking-nodejs/milestones) and [skywalking](https://github.com/apache/skywalking/milestones), create a new milestone for the next release.
-1. Update `version` in [package.json](../package.json). (CHANGELOG.md is a stub — release notes are the auto-generated [GitHub Release](https://github.com/apache/skywalking-nodejs/releases) notes.)
+1. The version is managed by `npm run release` (it strips `-dev` for the release commit and bumps `master` to the next `-dev`); you do not edit `package.json` by hand. CHANGELOG.md is a stub — release notes are the auto-generated [GitHub Release](https://github.com/apache/skywalking-nodejs/releases) notes.
 
 
 ## Add your GPG public key to Apache svn
@@ -35,14 +41,21 @@ The rest of this guide is the reference those scripts implement, and the fallbac
 
 ## Build and sign the source code package
 
+`npm run release` automates this. To do it by hand, mirror the script — strip `-dev`, build, and push the tag **only after** the build verifies (master carries `$VERSION-dev`):
+
 ```shell
-export VERSION=<the version to release>
+export VERSION=<the release version, e.g. 0.9.0>     # bare semver
 
 git clone --recurse-submodules git@github.com:apache/skywalking-nodejs && cd skywalking-nodejs
-git tag -a "v$VERSION" -m "Release Apache SkyWalking-NodeJS $VERSION"
-git push --tags
+git checkout -b "prepare-release-$VERSION"
+npm version "$VERSION" --no-git-tag-version          # strip -dev: package.json + lockfile -> $VERSION
+npm install
+git commit -am "Prepare release $VERSION"
+git tag -a "v$VERSION" -m "Release Apache SkyWalking-NodeJS $VERSION"   # tag LOCALLY first
 
-npm install && npm run release-src
+npm run release-src                                  # skywalking-nodejs-src-$VERSION.tgz{,.asc,.sha512}
+# verify the tarball + signature, THEN push the tag (and branch, for the next-dev PR):
+git push origin "v$VERSION" "prepare-release-$VERSION"
 ```
 
 ## Upload to Apache svn

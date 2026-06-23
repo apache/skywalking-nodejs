@@ -27,12 +27,14 @@
 #
 # The post-vote half lives in scripts/release-finalize.sh.
 #
-# PRECONDITION: the version bump to <v> is ALREADY merged on master
-# (package.json "version" == <v>). This script does NOT bump the version.
-# It builds the tarball from a FRESH recursive clone of master so the voted
-# bytes always match the tag, and — importantly — pushes the git tag ONLY
-# AFTER the artifacts are built, signed, and self-verified, so a build
-# failure never leaves a public, immutable release tag behind.
+# VERSIONING: master carries the in-flight dev version (e.g. 0.9.0-dev), like
+# SkyWalking's -SNAPSHOT / horizon-ui's -dev. In a FRESH recursive clone this
+# script cuts a release branch, strips the -dev suffix and commits + tags that
+# commit (the release candidate), then adds a second commit bumping back to the
+# next dev version, and opens ONE PR carrying both. The tag is pushed ONLY AFTER
+# the artifacts are built, signed and self-verified, so a build failure never
+# leaves a public, immutable release tag behind. Merge the PR after the vote
+# passes (master then returns to -dev with the release in its history).
 #
 # Run interactively on a single-user trusted host (it reads your SVN
 # password). Requires bash, but is written to work on macOS bash 3.2.
@@ -45,10 +47,19 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PROJECT_DIR=$(cd "${SCRIPT_DIR}/.." && pwd)
 REPO_URL="${SW_RELEASE_REPO_URL:-https://github.com/apache/skywalking-nodejs.git}"
 REPO_BRANCH="${SW_RELEASE_BRANCH:-master}"
+GH_REPO="${SW_RELEASE_GH_REPO:-apache/skywalking-nodejs}"
 SVN_DEV_URL="https://dist.apache.org/repos/dist/dev/skywalking/node-js"
 KEYS_URL="https://dist.apache.org/repos/dist/release/skywalking/KEYS"
 WORK_DIR="${SCRIPT_DIR}/.release-work"
 CLONE_DIR="${WORK_DIR}/skywalking-nodejs"
+
+# --dry-run / SW_RELEASE_DRY_RUN=1: run the full LOCAL pipeline (clone, strip -dev,
+# build, sign, verify) but perform ZERO remote mutations — no tag/branch push, no
+# svn upload, no PR. Lets a committer rehearse against the real repo with nothing to undo.
+DRY_RUN=false
+if [ "${1:-}" = "--dry-run" ] || [ -n "${SW_RELEASE_DRY_RUN:-}" ]; then
+    DRY_RUN=true
+fi
 
 TEST_FILE=""
 # Always clean up the throwaway GPG test file, even on Ctrl-C / early exit.
@@ -77,6 +88,8 @@ ask() {
 read_version() {
     node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('$1','utf8')).version)"
 }
+
+$DRY_RUN && note "DRY RUN — full local build + sign + verify, but NO tag/branch push, NO svn upload, NO PR"
 
 # ========================== Step 1: GPG signer ==========================
 note "Step 1 — GPG signer check"
@@ -144,13 +157,39 @@ fi
 # ========================== Step 3: Detect version ==========================
 note "Step 3 — Detect version"
 
-# skywalking-nodejs does NOT use a -dev suffix; master carries the release
-# number, bumped in a prior PR.
-RELEASE_VERSION=$(read_version "${PROJECT_DIR}/package.json")
-[ -n "$RELEASE_VERSION" ] || { err "Could not read version from package.json."; exit 1; }
-echo "Release version (from package.json): ${RELEASE_VERSION}"
-confirm "Release this version?" || RELEASE_VERSION=$(ask "Enter the release version to cut")
+# master carries the in-flight dev version (e.g. 0.9.0-dev). The release version
+# is the bare semver; the next dev version bumps the minor (patch reset to 0).
+CURRENT_VERSION=$(read_version "${PROJECT_DIR}/package.json")
+[ -n "$CURRENT_VERSION" ] || { err "Could not read version from package.json."; exit 1; }
+RELEASE_VERSION="${CURRENT_VERSION%-dev}"
+RELEASE_VERSION="${RELEASE_VERSION%-SNAPSHOT}"
+if [ "${CURRENT_VERSION}" = "${RELEASE_VERSION}" ]; then
+    err "package.json version '${CURRENT_VERSION}' has no -dev/-SNAPSHOT suffix."
+    err "master must carry the dev-suffixed version between releases; bump it first."
+    exit 1
+fi
+if ! printf '%s' "${RELEASE_VERSION}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+    err "Release version '${RELEASE_VERSION}' (from '${CURRENT_VERSION}') is not X.Y.Z."; exit 1
+fi
+MAJOR=$(printf '%s' "${RELEASE_VERSION}" | cut -d. -f1)
+MINOR=$(printf '%s' "${RELEASE_VERSION}" | cut -d. -f2)
+NEXT_DEV_VERSION="${MAJOR}.$((MINOR + 1)).0-dev"
+
+echo "Current (master): ${CURRENT_VERSION}"
+echo "Release:          ${RELEASE_VERSION}"
+echo "Next dev:         ${NEXT_DEV_VERSION}"
+if ! confirm "Are these correct?"; then
+    RELEASE_VERSION=$(ask "Enter the release version (X.Y.Z)")
+    NEXT_DEV_VERSION=$(ask "Enter the next dev version (e.g. 0.10.0-dev)")
+    printf '%s' "${RELEASE_VERSION}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' \
+        || { err "Release version must be X.Y.Z (got '${RELEASE_VERSION}')."; exit 1; }
+    printf '%s' "${NEXT_DEV_VERSION}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+-dev$' \
+        || { err "Next dev version must be X.Y.Z-dev (got '${NEXT_DEV_VERSION}')."; exit 1; }
+    [ "${NEXT_DEV_VERSION}" != "${RELEASE_VERSION}" ] \
+        || { err "Next dev version must differ from the release version."; exit 1; }
+fi
 TAG="v${RELEASE_VERSION}"
+RELEASE_BRANCH="prepare-release-${RELEASE_VERSION}"
 
 # ========================== Step 4: Consistency check ==========================
 note "Step 4 — Consistency check"
@@ -174,8 +213,8 @@ else
     note "Step 5 — License-header check SKIPPED (license-eye absent; CI enforces it)"
 fi
 
-# ========================== Step 6: Clone fresh + tag LOCALLY ==========================
-note "Step 6 — Fresh recursive clone + local tag ${TAG}"
+# ========================== Step 6: Clone fresh, strip -dev, commit + tag LOCALLY ==========================
+note "Step 6 — Fresh clone, strip -dev, commit + local tag ${TAG}"
 
 rm -rf "${WORK_DIR}"; mkdir -p "${WORK_DIR}"
 # --recurse-submodules is MANDATORY: protocol/ holds the .proto sources;
@@ -184,33 +223,50 @@ echo "Cloning ${REPO_URL} (branch ${REPO_BRANCH}) with submodules…"
 git clone --recurse-submodules --branch "${REPO_BRANCH}" "${REPO_URL}" "${CLONE_DIR}"
 
 CLONE_VERSION=$(read_version "${CLONE_DIR}/package.json")
-if [ "${CLONE_VERSION}" != "${RELEASE_VERSION}" ]; then
-    err "Fresh clone of ${REPO_BRANCH} has version ${CLONE_VERSION}, but you are releasing ${RELEASE_VERSION}."
-    err "Merge the version-bump PR (package.json -> ${RELEASE_VERSION}) into ${REPO_BRANCH} first."
+if [ "${CLONE_VERSION}" != "${CURRENT_VERSION}" ]; then
+    err "Fresh clone of ${REPO_BRANCH} has version ${CLONE_VERSION}, expected ${CURRENT_VERSION}."
+    err "Re-run after ${REPO_BRANCH} settles, or fix its package.json version."
     exit 1
 fi
 
 cd "${CLONE_DIR}"
 # Capture ls-remote success explicitly: a FAILED ls-remote must not be read
-# as "tag absent" (which would let us re-create an existing release tag).
+# as "tag/branch absent" (which would let us re-create an existing one).
 REMOTE_TAGS=$(git ls-remote --tags origin) || { err "git ls-remote origin failed; cannot verify ${TAG} is unused."; exit 1; }
 if printf '%s\n' "${REMOTE_TAGS}" | grep -q "refs/tags/${TAG}$"; then
     err "Tag ${TAG} already exists on origin. Delete it first to re-cut, or pick a new version."
     exit 1
 fi
-# Create the annotated tag LOCALLY only. It is pushed in Step 9, AFTER the
-# artifacts are built + verified — never before.
+REMOTE_HEADS=$(git ls-remote --heads origin "${RELEASE_BRANCH}") || { err "git ls-remote origin failed."; exit 1; }
+if [ -n "${REMOTE_HEADS}" ]; then
+    err "Branch ${RELEASE_BRANCH} already exists on origin. Close/delete it first to re-cut."
+    exit 1
+fi
+
+# The release commit lands via PR (master is protected). Cut a dedicated branch;
+# the tag points at the version-strip commit, and the next-dev bump is added as a
+# second commit on the SAME branch in Step 9 — so one PR carries both.
+git checkout -q -b "${RELEASE_BRANCH}"
+npm version "${RELEASE_VERSION}" --no-git-tag-version --allow-same-version >/dev/null
+# Install deps BEFORE committing so the committed (and tagged) lockfile is exactly
+# the one the tarball ships — no post-build drift. This also runs prepare->protoc.sh
+# (needs the protocol/ submodule + grpc-tools; on Apple Silicon protoc runs via Rosetta).
+npm install
+git add package.json package-lock.json
+git commit -q --no-verify -m "Prepare release ${RELEASE_VERSION}"
+# Tag the version-strip commit LOCALLY only. It is pushed in Step 9, AFTER the
+# artifacts are built + verified — never before. Use ^{commit} so RELEASE_COMMIT is
+# the COMMIT sha (an annotated tag's own object sha would 404 in the vote email).
 git tag -a "${TAG}" -m "Release Apache SkyWalking-NodeJS ${RELEASE_VERSION}"
-RELEASE_COMMIT=$(git rev-parse "${TAG}")
-echo "Local tag ${TAG} created at ${RELEASE_COMMIT} (NOT pushed yet)."
+RELEASE_COMMIT=$(git rev-parse "${TAG}^{commit}")
+echo "Branch ${RELEASE_BRANCH} + local tag ${TAG} at ${RELEASE_COMMIT} (NOT pushed yet)."
 
 # ========================== Step 7: Build + sign source release ==========================
 note "Step 7 — Build + sign source tarball (npm run release-src)"
 
-# `npm install` runs prepare->scripts/protoc.sh (grpc-tools protoc; on Apple
-# Silicon under Rosetta). release-src then runs prepare again + package-src
-# (tar) + gpg detached sig (signer pinned via SW_GPG_KEY) + sha512.
-npm install
+# Deps were installed in Step 6 (before the commit). release-src runs prepare
+# (protoc) + package-src (tar) + gpg detached sig (signer pinned via SW_GPG_KEY)
+# + sha512, from the tagged working tree.
 npm run release-src
 
 SRC_TGZ="skywalking-nodejs-src-${RELEASE_VERSION}.tgz"
@@ -235,24 +291,47 @@ gpg --verify "${SRC_TGZ}.asc" "${SRC_TGZ}"
 echo "Checksum + signature self-verify OK."
 echo "Artifacts:"; ls -lh "${WORK_DIR}/${SRC_TGZ}" "${WORK_DIR}/${SRC_TGZ}.asc" "${WORK_DIR}/${SRC_TGZ}.sha512"
 
-# ========================== Step 9: Push the tag (artifacts are good now) ==========================
-note "Step 9 — Push tag ${TAG}"
+# ========================== Step 9: Push tag + branch, next-dev bump, open PR ==========================
+note "Step 9 — Push tag ${TAG} + branch ${RELEASE_BRANCH}, open the release PR"
+
+cd "${CLONE_DIR}"
+# Add the next-dev bump as a SECOND commit on the branch so one PR carries both:
+# version strip (tagged commit 1) -> back to -dev (commit 2). The tag stays on
+# commit 1. (checkout guards against any stray working-tree drift first.)
+git checkout -q -- package.json package-lock.json 2>/dev/null || true
+npm version "${NEXT_DEV_VERSION}" --no-git-tag-version >/dev/null
+git add package.json package-lock.json
+git commit -q --no-verify -m "Prepare next release ${NEXT_DEV_VERSION}"
 
 TAG_PUSHED=false
-if confirm "Artifacts built + verified. Push tag ${TAG} to origin now? (needed before the vote)"; then
-    (cd "${CLONE_DIR}" && git push origin "${TAG}")
+if $DRY_RUN; then
+    echo "DRY RUN: prepared branch ${RELEASE_BRANCH} (2 commits) + local tag ${TAG} in ${CLONE_DIR}."
+    echo "DRY RUN: skipping push of branch + tag and the release PR."
+elif confirm "Artifacts built + verified. Push tag ${TAG} + branch ${RELEASE_BRANCH} (atomic) and open the release PR now?"; then
+    # --atomic: both refs land together or neither, avoiding a branch-without-tag
+    # half-state that the re-run guards would then trip on.
+    git push --atomic origin "${RELEASE_BRANCH}" "${TAG}"
     TAG_PUSHED=true
-    echo "Pushed ${TAG}."
+    echo "Pushed ${RELEASE_BRANCH} + ${TAG}."
+    if gh pr create --repo "${GH_REPO}" --base "${REPO_BRANCH}" --head "${RELEASE_BRANCH}" \
+        --title "Release ${RELEASE_VERSION}, bump to ${NEXT_DEV_VERSION}" \
+        --body "Release branch for ${RELEASE_VERSION} — two commits: strip -dev (tagged ${TAG}, the RC the vote runs against) and bump to ${NEXT_DEV_VERSION}. Merge AFTER the [VOTE] passes; the ${TAG} tag stays pinned to the release commit."; then
+        echo "Opened release PR: ${RELEASE_BRANCH} -> ${REPO_BRANCH}."
+    else
+        echo "Could not open the PR automatically — open it by hand (${RELEASE_BRANCH} -> ${REPO_BRANCH})."
+    fi
 else
-    echo "Tag ${TAG} NOT pushed. Push it (from ${CLONE_DIR}) before sending the vote email:"
-    echo "    git -C ${CLONE_DIR} push origin ${TAG}"
+    echo "Tag ${TAG} + branch ${RELEASE_BRANCH} NOT pushed; the prepared clone is in ${CLONE_DIR}."
+    echo "To finish by hand: git -C ${CLONE_DIR} push --atomic origin ${RELEASE_BRANCH} ${TAG}, then open the PR."
 fi
 
 # ========================== Step 10: Upload RC to svn dev ==========================
 note "Step 10 — Upload RC to ${SVN_DEV_URL}/${RELEASE_VERSION}"
 
 UPLOADED=false
-if confirm "Upload the release candidate to svn dev now?"; then
+if $DRY_RUN; then
+    echo "DRY RUN: skipping svn upload to ${SVN_DEV_URL}/${RELEASE_VERSION}."
+elif confirm "Upload the release candidate to svn dev now?"; then
     # NOTE: svn takes the password on argv (--password), so it is briefly
     # visible in `ps`. Run this only on a single-user trusted host and never
     # with `set -x`. The password is cleared from the environment below.
@@ -345,8 +424,9 @@ Thanks.
 ========================================================================
 EOF
 
-note "Done — release candidate ${RELEASE_VERSION} staged"
-echo "  Tag:             ${TAG} ($($TAG_PUSHED && echo pushed || echo 'NOT pushed — push it before voting'))"
+note "Done — $($DRY_RUN && echo 'DRY RUN for' || echo 'release candidate') ${RELEASE_VERSION}$($DRY_RUN || echo ' staged')"
+$DRY_RUN && echo "  (DRY RUN: nothing was pushed/uploaded; the prepared clone is in ${CLONE_DIR}.)"
+echo "  Tag:             ${TAG} ($($TAG_PUSHED && echo pushed || echo 'NOT pushed'))"
 echo "  Artifacts:       ${WORK_DIR}/${SRC_TGZ}{,.asc,.sha512}"
 echo "  svn dev staging: $($UPLOADED && echo "${SVN_DEV_URL}/${RELEASE_VERSION}" || echo 'NOT uploaded')"
 echo ""
@@ -355,4 +435,6 @@ echo "  1. Draft the GitHub release notes (auto-generated; CHANGELOG.md is a stu
 echo "       gh release create ${TAG} --draft --generate-notes --verify-tag \\"
 echo "         --notes-start-tag <previous tag> --title \"Apache SkyWalking NodeJS ${RELEASE_VERSION}\""
 echo "  2. Send the [VOTE] email above to dev@skywalking.apache.org (>=72h)."
-echo "  3. After the vote passes, run:  bash scripts/release-finalize.sh"
+echo "  3. After the vote passes:"
+echo "       - run:  bash scripts/release-finalize.sh"
+echo "       - merge the release PR (${RELEASE_BRANCH} -> ${REPO_BRANCH}); ${REPO_BRANCH} returns to ${NEXT_DEV_VERSION}, tag ${TAG} stays put."
