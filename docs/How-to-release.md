@@ -11,6 +11,34 @@ announce).
 do **not** edit `package.json` by hand — `npm run release` strips `-dev` for the release commit and
 bumps the branch back to the next `-dev` in the same PR.
 
+## The release scripts
+
+The whole flow is three commands (steps 1–3 below detail each phase):
+
+```shell
+npm run release -- --dry-run     # rehearse: full local build + sign + verify, NO push/svn/PR
+npm run release                  # cut the RC: tag, sign, svn-stage, open the release PR, print the [VOTE] email
+# ... [VOTE] on dev@skywalking.apache.org for >= 72h, >= 3 binding +1 ...
+npm run release:finalize         # promote svn dev -> release, publish the GitHub release, optional npm publish
+```
+
+Both scripts are **interactive** (every irreversible step asks `y/N`), must run on a single trusted
+host (they read your SVN password), and are heavily commented — read
+[`scripts/release.sh`](../scripts/release.sh) / [`scripts/release-finalize.sh`](../scripts/release-finalize.sh)
+for the details. Knobs (all optional):
+
+| Variable / flag | Effect | Default |
+| :--- | :--- | :--- |
+| `--dry-run` or `SW_RELEASE_DRY_RUN=1` | Run everything locally, perform **no** remote mutation (no tag/branch push, no svn, no PR) | off |
+| `SW_RELEASE_REPO_URL` | Git repo to clone + push | `https://github.com/apache/skywalking-nodejs.git` |
+| `SW_RELEASE_BRANCH` | Branch to cut from | `master` |
+| `SW_RELEASE_GH_REPO` | `owner/repo` for the release PR / GitHub release | `apache/skywalking-nodejs` |
+| `SW_GPG_KEY` | Pin the signing key (`release.sh` sets this from your `@apache.org` key automatically) | git/gpg default |
+| `NPM_OTP` | npm one-time password for the `release:finalize` publish | prompt |
+
+> Tip: `unset SW_RELEASE_REPO_URL SW_RELEASE_BRANCH SW_RELEASE_GH_REPO` before a real release —
+> a stray override from an earlier test would otherwise retarget the clone/push.
+
 ## Prerequisites (one-time)
 
 - **Apache GPG key** with an `@apache.org` uid, added to the SkyWalking `KEYS` file:
