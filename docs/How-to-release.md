@@ -1,31 +1,32 @@
 # Apache SkyWalking NodeJS Release Guide
 
 This guide releases SkyWalking NodeJS the Apache Way using the two release scripts, and helps
-voters check a release. The scripts — [`scripts/release.sh`](../scripts/release.sh)
-(`npm run release`) and [`scripts/release-finalize.sh`](../scripts/release-finalize.sh)
-(`npm run release:finalize`) — do the mechanical work (versioning, tagging, signing, svn staging,
-the GitHub release, npm); this guide covers the human steps around them (GPG/KEYS, the vote, the
-announce).
+voters check a release. The shell scripts [`scripts/release.sh`](../scripts/release.sh) and
+[`scripts/release-finalize.sh`](../scripts/release-finalize.sh) do the mechanical work (versioning,
+tagging, signing, svn staging, the GitHub release, npm); this guide covers the human steps around
+them (GPG/KEYS, the vote, the announce).
 
 `master` carries the in-flight dev version (e.g. `0.9.0-dev`), like SkyWalking's `-SNAPSHOT`. You
-do **not** edit `package.json` by hand — `npm run release` strips `-dev` for the release commit and
-bumps the branch back to the next `-dev` in the same PR.
+do **not** edit `package.json` by hand — `scripts/release.sh` strips `-dev` for the release commit
+and bumps the branch back to the next `-dev` in the same PR.
 
 ## The release scripts
 
 The whole flow is three commands (steps 1–3 below detail each phase):
 
 ```shell
-npm run release -- --dry-run     # rehearse: full local build + sign + verify, NO push/svn/PR
-npm run release                  # cut the RC: tag, sign, svn-stage, open the release PR, print the [VOTE] email
+bash scripts/release.sh --dry-run     # rehearse: full local build + sign + verify, NO push/svn/PR
+bash scripts/release.sh               # cut the RC: tag, sign, svn-stage, open the release PR, print the [VOTE] email
 # ... [VOTE] on dev@skywalking.apache.org for >= 72h, >= 3 binding +1 ...
-npm run release:finalize         # promote svn dev -> release, publish the GitHub release, optional npm publish
+bash scripts/release-finalize.sh      # promote svn dev -> release, publish the GitHub release, optional npm publish
 ```
 
+(They are also wired as `npm run release` / `npm run release:finalize` if you prefer npm — but note
+the dry-run flag then needs `npm run release -- --dry-run`.)
+
 Both scripts are **interactive** (every irreversible step asks `y/N`), must run on a single trusted
-host (they read your SVN password), and are heavily commented — read
-[`scripts/release.sh`](../scripts/release.sh) / [`scripts/release-finalize.sh`](../scripts/release-finalize.sh)
-for the details. Knobs (all optional):
+host (they read your SVN password), and are heavily commented — read the two files above for the
+details. Knobs (all optional):
 
 | Variable / flag | Effect | Default |
 | :--- | :--- | :--- |
@@ -34,7 +35,7 @@ for the details. Knobs (all optional):
 | `SW_RELEASE_BRANCH` | Branch to cut from | `master` |
 | `SW_RELEASE_GH_REPO` | `owner/repo` for the release PR / GitHub release | `apache/skywalking-nodejs` |
 | `SW_GPG_KEY` | Pin the signing key (`release.sh` sets this from your `@apache.org` key automatically) | git/gpg default |
-| `NPM_OTP` | npm one-time password for the `release:finalize` publish | prompt |
+| `NPM_OTP` | npm one-time password for the `release-finalize.sh` publish | prompt |
 
 > Tip: `unset SW_RELEASE_REPO_URL SW_RELEASE_BRANCH SW_RELEASE_GH_REPO` before a real release —
 > a stray override from an earlier test would otherwise retarget the clone/push.
@@ -55,14 +56,14 @@ for the details. Knobs (all optional):
 
 Run the scripts on a single-user trusted host (they read your SVN password).
 
-## 1. Cut the release candidate — `npm run release`
+## 1. Cut the release candidate — `bash scripts/release.sh`
 
 ```shell
-npm run release -- --dry-run     # rehearse first: full local build + sign + verify, NO push/svn/PR
-npm run release                  # the real cut
+bash scripts/release.sh --dry-run     # rehearse first: full local build + sign + verify, NO push/svn/PR
+bash scripts/release.sh               # the real cut
 ```
 
-`npm run release` does, each irreversible step behind a `y/N`:
+`scripts/release.sh` does, each irreversible step behind a `y/N`:
 
 1. preflight — the GPG signer is an `@apache.org` key, required tools present, Node >= 20;
 1. fresh recursive clone of `master`; cut a `prepare-release-<v>` branch; strip `-dev` and
@@ -163,11 +164,11 @@ xxx
 Thank you for voting, I’ll continue the release process.
 ```
 
-## 3. Finalize — `npm run release:finalize`
+## 3. Finalize — `bash scripts/release-finalize.sh`
 
 ```shell
 npm login                  # only if you will publish to npm (maintainer of skywalking-backend-js)
-npm run release:finalize
+bash scripts/release-finalize.sh
 ```
 
 It does, each irreversible step behind a `y/N` (npm auth is verified **up front**):
