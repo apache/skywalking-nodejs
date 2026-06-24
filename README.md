@@ -22,7 +22,7 @@ $ npm install --save skywalking-backend-js
 
 ## Set up NodeJS Agent
 
-SkyWalking NodeJS SDK requires SkyWalking backend (OAP) 8.0+ and NodeJS >= 14,
+SkyWalking NodeJS SDK requires SkyWalking backend (OAP) 8.0+ and NodeJS >= 20,
 other versions are not tested and SkyWalking NodeJS SDK may or may not work,
 please make sure to use the supported versions before reporting any issue.
 

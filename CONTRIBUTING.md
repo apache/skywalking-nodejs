@@ -1,21 +1,31 @@
 # Compiling and Building
 
-We use NodeJS 14 to build skywalking-nodejs project, if you don't have NodeJS 14 installed,
-you can choose a node version manager like [nvm](https://github.com/nvm-sh/nvm) to easily
-manage multiple node vesions, or you can start a Docker container and build this project inside
-the container.
+We build skywalking-nodejs with NodeJS 20 (the current LTS baseline; CI tests Node 20, 22, and 24).
+If you don't have a suitable NodeJS installed, use a version manager such as
+[nvm](https://github.com/nvm-sh/nvm) to manage multiple node versions, or build inside a Docker
+container:
 
 ```shell
 # Suppose you have the source codes in folder skywalking-nodejs
-docker run -it --rm -v $(pwd)/skywalking-nodejs:/workspace -w /workspace node:14 bash
+docker run -it --rm -v $(pwd)/skywalking-nodejs:/workspace -w /workspace node:20 bash
 ```
 
-Then run the following commands to build the project:
+The gRPC / protobuf definitions live in the `protocol/` git submodule, so initialize it first (or
+clone the repository with `--recurse-submodules`). Then install dependencies — the `prepare` hook
+generates the protobuf stubs into `src/proto/` — and compile:
 
 ```shell
+git submodule update --init --recursive
 npm install
 npm run build
 ```
 
-Warnings can be ignored, but if you have any error that prevents you to continue, try
-`rm -rf node_modules/` and then rerun the commands above.
+`npm run build` compiles the TypeScript sources into `lib/`. Other useful commands:
+
+```shell
+npm run lint     # ESLint: code style + Apache license headers
+npm run test     # plugin tests (require Docker)
+```
+
+Warnings can be ignored, but if an error prevents you from continuing, try `rm -rf node_modules/`
+and rerun the commands above.
