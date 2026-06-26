@@ -18,8 +18,7 @@
  */
 
 import config, { AgentConfig, finalizeConfig } from './config/AgentConfig';
-import Protocol from './agent/protocol/Protocol';
-import GrpcProtocol from './agent/protocol/grpc/GrpcProtocol';
+import ServiceManager from './agent/core/boot/ServiceManager';
 import { createLogger } from './logging';
 import PluginInstaller from './core/PluginInstaller';
 import SpanContext from './trace/context/SpanContext';
@@ -28,7 +27,6 @@ const logger = createLogger(__filename);
 
 class Agent {
   private started = false;
-  private protocol: Protocol | null = null;
 
   start(options: AgentConfig = {}): void {
     if (process.env.SW_DISABLE === 'true') {
@@ -48,42 +46,38 @@ class Agent {
 
     new PluginInstaller().install();
 
-    this.protocol = new GrpcProtocol().heartbeat().report();
+    ServiceManager.INSTANCE.boot();
     this.started = true;
   }
 
   flush(): Promise<any> | null {
-    if (this.protocol === null) {
+    if (!this.started) {
       logger.warn('Trying to flush() SkyWalking agent which is not started.');
       return null;
     }
 
-    const spanContextFlush = SpanContext.flush(); // if there are spans which haven't finished then wait for them
-    const protocol = this.protocol;
-
-    if (!spanContextFlush) return protocol.flush();
+    const spanContextFlush = SpanContext.flush();
+    if (!spanContextFlush) {
+      return ServiceManager.INSTANCE.flush();
+    }
 
     return new Promise((resolve) => {
       spanContextFlush.then(() => {
-        const protocolFlush = protocol.flush();
-
-        if (!protocolFlush) resolve(null);
-        else protocolFlush.then(() => resolve(null));
+        const serviceFlush = ServiceManager.INSTANCE.flush();
+        if (!serviceFlush) resolve(null);
+        else serviceFlush.then(() => resolve(null));
       });
     });
   }
 
   destroy(): void {
-    if (this.protocol === null) {
+    if (!this.started) {
       logger.warn('Trying to destroy() SkyWalking agent which is not started.');
       return;
     }
 
     logger.info('Destroying SkyWalking agent and cleaning up resources');
-
-    // Clean up protocol resources
-    this.protocol.destroy?.();
-    this.protocol = null;
+    ServiceManager.INSTANCE.shutdown();
     this.started = false;
   }
 }

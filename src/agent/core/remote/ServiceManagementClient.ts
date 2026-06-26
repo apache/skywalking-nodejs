@@ -18,37 +18,31 @@
  */
 
 import * as grpc from '@grpc/grpc-js';
-import { connectivityState } from '@grpc/grpc-js';
-
-import * as packageInfo from '../../../../../package.json';
-import { createLogger, throttled } from '../../../../logging';
-import Client from './Client';
-import { ManagementServiceClient } from '../../../../proto/management/Management_grpc_pb';
-import AuthInterceptor from '../AuthInterceptor';
-import { InstancePingPkg, InstanceProperties } from '../../../../proto/management/Management_pb';
-import config from '../../../../config/AgentConfig';
-import { KeyStringValuePair } from '../../../../proto/common/Common_pb';
 import * as os from 'os';
+import * as packageInfo from '../../../../package.json';
+import config from '../../../config/AgentConfig';
+import { createLogger, throttled } from '../../../logging';
+import BootService from '../boot/BootService';
+import ServiceManager from '../boot/ServiceManager';
+import { ManagementServiceClient } from '../../../proto/management/Management_grpc_pb';
+import { InstancePingPkg, InstanceProperties } from '../../../proto/management/Management_pb';
+import { KeyStringValuePair } from '../../../proto/common/Common_pb';
+import GRPCChannelManager from './GRPCChannelManager';
+import { GRPCChannelListener } from './GRPCChannelListener';
+import { GRPCChannelStatus } from './GRPCChannelStatus';
 
 const logger = createLogger(__filename);
 const logHeartbeatError = throttled(logger, 'error', 30000);
 
-export default class HeartbeatClient implements Client {
-  private readonly managementServiceClient: ManagementServiceClient;
+export default class ServiceManagementClient implements BootService, GRPCChannelListener {
+  private managementServiceClient!: ManagementServiceClient;
   private heartbeatTimer?: NodeJS.Timeout;
 
-  constructor() {
-    this.managementServiceClient = new ManagementServiceClient(
-      config.collectorAddress,
-      config.secure ? grpc.credentials.createSsl() : grpc.credentials.createInsecure(),
-    );
+  prepare(): void {
+    ServiceManager.INSTANCE.findService(GRPCChannelManager)!.addChannelListener(this);
   }
 
-  get isConnected(): boolean {
-    return this.managementServiceClient.getChannel().getConnectivityState(true) === connectivityState.READY;
-  }
-
-  start() {
+  boot(): void {
     if (this.heartbeatTimer) {
       logger.warn(`
         The heartbeat timer has already been scheduled,
@@ -73,31 +67,55 @@ export default class HeartbeatClient implements Client {
       ]);
 
     this.heartbeatTimer = setInterval(() => {
-      this.managementServiceClient.reportInstanceProperties(instanceProperties, AuthInterceptor(), (error, _) => {
+      if (!this.managementServiceClient) {
+        return;
+      }
+      this.managementServiceClient.reportInstanceProperties(instanceProperties, new grpc.Metadata(), (error) => {
         if (error) {
           logHeartbeatError('Failed to send heartbeat', error);
+          ServiceManager.INSTANCE.findService(GRPCChannelManager)!.reportError(error);
         }
       });
-      this.managementServiceClient.keepAlive(keepAlivePkg, AuthInterceptor(), (error, _) => {
+      this.managementServiceClient.keepAlive(keepAlivePkg, new grpc.Metadata(), (error) => {
         if (error) {
           logHeartbeatError('Failed to send heartbeat', error);
+          ServiceManager.INSTANCE.findService(GRPCChannelManager)!.reportError(error);
         }
       });
     }, 20000).unref();
   }
 
-  flush(): Promise<any> | null {
-    logger.warn('HeartbeatClient does not need flush().');
-    return null;
-  }
+  onComplete(): void {}
 
-  destroy(): void {
-    // Clear heartbeat timer to prevent memory leak
+  shutdown(): void {
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = undefined;
     }
+    logger.info('ServiceManagementClient destroyed and resources cleaned up');
+  }
 
-    logger.info('HeartbeatClient destroyed and resources cleaned up');
+  priority(): number {
+    return 0;
+  }
+
+  statusChanged(status: GRPCChannelStatus): void {
+    if (status === GRPCChannelStatus.CONNECTED) {
+      this.managementServiceClient = this.createManagementClient();
+    }
+  }
+
+  private createManagementClient(): ManagementServiceClient {
+    const channelManager = ServiceManager.INSTANCE.findService(GRPCChannelManager)!;
+    return new ManagementServiceClient(
+      config.collectorAddress,
+      grpc.credentials.createInsecure(),
+      channelManager.getClientOptions(),
+    );
+  }
+
+  flush(): Promise<unknown> | null {
+    logger.warn('ServiceManagementClient does not need flush().');
+    return null;
   }
 }

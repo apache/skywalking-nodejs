@@ -17,17 +17,15 @@
  *
  */
 
-/**
- * The transport protocol between the agent and the backend (OAP).
- */
-export default interface Protocol {
-  isConnected: boolean;
+/** Boot lifecycle contract (Java {@code BootService}). */
+export default interface BootService {
+  prepare(): void;
 
-  heartbeat(): this;
+  boot(): void;
 
-  report(): this;
+  onComplete(): void;
 
-  flush(): Promise<any> | null;
+  shutdown(): void;
 
-  destroy?(): void;
+  priority(): number;
 }
