@@ -206,7 +206,7 @@ else
     PREV_TAG=$(cd "${PROJECT_DIR}" && git tag --list 'v*' --sort=-version:refname | grep -vx "${TAG}" | head -1)
     if confirm "Create GitHub release ${TAG} (auto-notes since ${PREV_TAG:-<none>}) and attach the artifacts?"; then
         gh release create "${TAG}" --repo "${GH_REPO}" \
-            --title "Apache SkyWalking NodeJS ${RELEASE_VERSION}" \
+            --title "${RELEASE_VERSION}" \
             --generate-notes ${PREV_TAG:+--notes-start-tag "${PREV_TAG}"} --latest \
             "${ART_DIR}/${SRC_TGZ}" "${ART_DIR}/${SRC_TGZ}.asc" "${ART_DIR}/${SRC_TGZ}.sha512"
         echo "GitHub release created."
