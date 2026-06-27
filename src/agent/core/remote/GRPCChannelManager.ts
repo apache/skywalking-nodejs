@@ -65,11 +65,19 @@ export default class GRPCChannelManager implements BootService {
   }
 
   getChannel(): grpc.Channel {
-    return this.managedChannel!.getChannel();
+    if (!this.managedChannel) {
+      throw new Error('gRPC channel is not available');
+    }
+
+    return this.managedChannel.getChannel();
   }
 
   getClientOptions(): ClientOptions {
-    return this.managedChannel!.getClientOptions();
+    if (!this.managedChannel) {
+      throw new Error('gRPC channel is not available');
+    }
+
+    return this.managedChannel.getClientOptions();
   }
 
   isConnected(): boolean {
@@ -87,10 +95,22 @@ export default class GRPCChannelManager implements BootService {
     return Number.MAX_SAFE_INTEGER;
   }
 
-  /** Notify DISCONNECT on network errors so periodic work stops until grpc-js reconnects. */
+  /** Align local status with grpc-js connectivity; avoid permanent DISCONNECT while channel stays READY. */
   reportError(error: unknown): void {
     if (!isGrpcNetworkError(error)) {
       logger.debug('gRPC report error (ignored): %s', error);
+      return;
+    }
+
+    const managed = this.managedChannel;
+    if (!managed || this.closed) {
+      this.notify(GRPCChannelStatus.DISCONNECT);
+      return;
+    }
+
+    if (managed.isConnected(false)) {
+      logger.debug('gRPC network error but channel still connected: %s', error);
+      this.notify(GRPCChannelStatus.CONNECTED);
       return;
     }
 
@@ -128,6 +148,7 @@ export default class GRPCChannelManager implements BootService {
     this.managedChannel = null;
     managed?.shutdownNow();
     this.notify(GRPCChannelStatus.DISCONNECT);
+    this.listeners.length = 0;
   }
 
   private watchConnectivityState(): void {
