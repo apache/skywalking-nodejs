@@ -172,6 +172,11 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
       this.timeout = undefined;
     }
 
-    return this.buffer.length === 0 ? null : this.reportOnce();
+    if (this.buffer.length === 0) {
+      this.scheduleNextReport();
+      return null;
+    }
+
+    return this.reportOnce().finally(() => this.scheduleNextReport());
   }
 }
