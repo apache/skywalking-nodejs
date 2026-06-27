@@ -32,6 +32,18 @@ import TLSChannelBuilder from './TLSChannelBuilder';
 
 const logger = createLogger(__filename);
 
+function isGrpcNetworkError(error: unknown): boolean {
+  const code = (error as grpc.ServiceError | undefined)?.code;
+
+  return (
+    code === grpc.status.UNAVAILABLE ||
+    code === grpc.status.PERMISSION_DENIED ||
+    code === grpc.status.UNAUTHENTICATED ||
+    code === grpc.status.RESOURCE_EXHAUSTED ||
+    code === grpc.status.UNKNOWN
+  );
+}
+
 /**
  * Shared gRPC channel manager (Java GRPCChannelManager skeleton).
  * V1: single address; V2 reserved: multi-address failover via reportError().
@@ -40,6 +52,7 @@ export default class GRPCChannelManager implements BootService {
   private managedChannel: GRPCChannel | null = null;
   private readonly listeners: GRPCChannelListener[] = [];
   private lastStatus: GRPCChannelStatus | null = null;
+  private closed = false;
 
   /** V1: first address when comma-separated; V2: failover selection. */
   resolveAddress(): string {
@@ -74,14 +87,21 @@ export default class GRPCChannelManager implements BootService {
     return Number.MAX_SAFE_INTEGER;
   }
 
-  /** V2 hook: network errors may trigger address failover. */
+  /** Notify DISCONNECT on network errors so periodic work stops until grpc-js reconnects. */
   reportError(error: unknown): void {
-    logger.debug('gRPC report error (multi-address failover reserved for V2): %s', error);
+    if (!isGrpcNetworkError(error)) {
+      logger.debug('gRPC report error (ignored): %s', error);
+      return;
+    }
+
+    logger.debug('gRPC network error, notify DISCONNECT: %s', error);
+    this.notify(GRPCChannelStatus.DISCONNECT);
   }
 
   prepare(): void {}
 
   boot(): void {
+    this.closed = false;
     const address = this.resolveAddress();
     const [host, portText] = address.split(':');
     const port = Number.parseInt(portText, 10);
@@ -103,16 +123,29 @@ export default class GRPCChannelManager implements BootService {
   onComplete(): void {}
 
   shutdown(): void {
-    this.managedChannel?.shutdownNow();
+    this.closed = true;
+    const managed = this.managedChannel;
     this.managedChannel = null;
+    managed?.shutdownNow();
+    this.notify(GRPCChannelStatus.DISCONNECT);
   }
 
   private watchConnectivityState(): void {
-    const channel = this.getChannel();
+    const managed = this.managedChannel;
+    if (this.closed || !managed) {
+      return;
+    }
+
+    const channel = managed.getChannel();
     const currentState = channel.getConnectivityState(true);
+
     channel.watchConnectivityState(currentState, Infinity, (error) => {
+      if (this.closed || this.managedChannel !== managed) {
+        return;
+      }
+
       if (error) {
-        logger.debug('Channel connectivity watch error: %s', error.message);
+        logger.debug('Channel connectivity watch stopped: %s', error.message);
         return;
       }
 

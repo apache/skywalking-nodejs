@@ -34,9 +34,11 @@ const logReportError = throttled(logger, 'error', 30000);
 const logBufferFull = throttled(logger, 'warn', 30000);
 
 export default class TraceSegmentServiceClient implements BootService, GRPCChannelListener {
-  private reporterClient!: TraceSegmentReportServiceClient;
+  private status = GRPCChannelStatus.DISCONNECT;
+  private reporterClient?: TraceSegmentReportServiceClient;
   private readonly buffer: Segment[] = [];
   private timeout?: NodeJS.Timeout;
+  private reporting?: Promise<void>;
   private segmentFinishedListener!: (segment: Segment) => void;
 
   prepare(): void {
@@ -58,8 +60,7 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
   }
 
   boot(): void {
-    this.timeout = setTimeout(this.reportFunction.bind(this), 1000) as unknown as NodeJS.Timeout;
-    this.timeout.unref();
+    this.scheduleNextReport();
   }
 
   onComplete(): void {}
@@ -74,6 +75,8 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
       this.timeout = undefined;
     }
 
+    this.reporting = undefined;
+    this.reporterClient = undefined;
     this.buffer.length = 0;
     logger.info('TraceSegmentServiceClient destroyed and resources cleaned up');
   }
@@ -83,9 +86,8 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
   }
 
   statusChanged(status: GRPCChannelStatus): void {
-    if (status === GRPCChannelStatus.CONNECTED) {
-      this.reporterClient = this.createReporterClient();
-    }
+    this.status = status;
+    this.reporterClient = status === GRPCChannelStatus.CONNECTED ? this.createReporterClient() : undefined;
   }
 
   private createReporterClient(): TraceSegmentReportServiceClient {
@@ -97,21 +99,41 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
     );
   }
 
-  private get isConnected(): boolean {
-    return ServiceManager.INSTANCE.findService(GRPCChannelManager)!.isConnected();
+  private scheduleNextReport(): void {
+    if (this.timeout) {
+      return;
+    }
+
+    this.timeout = setTimeout(() => {
+      this.timeout = undefined;
+      void this.reportOnce().finally(() => this.scheduleNextReport());
+    }, 1000) as unknown as NodeJS.Timeout;
+    this.timeout.unref();
   }
 
-  private reportFunction(callback?: () => void) {
-    emitter.emit('segments-sent');
+  private reportOnce(): Promise<void> {
+    if (this.reporting) {
+      return this.reporting;
+    }
 
-    try {
+    this.reporting = this.doReport().finally(() => {
+      this.reporting = undefined;
+    });
+
+    return this.reporting;
+  }
+
+  private doReport(): Promise<void> {
+    return new Promise((resolve) => {
+      emitter.emit('segments-sent');
+
       if (this.buffer.length === 0) {
-        callback?.();
+        resolve();
         return;
       }
 
-      if (!this.isConnected || !this.reporterClient) {
-        callback?.();
+      if (this.status !== GRPCChannelStatus.CONNECTED || !this.reporterClient) {
+        resolve();
         return;
       }
 
@@ -123,7 +145,7 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
             logReportError('Failed to report trace data', error);
             ServiceManager.INSTANCE.findService(GRPCChannelManager)!.reportError(error);
           }
-          callback?.();
+          resolve();
         },
       );
 
@@ -141,17 +163,15 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
       }
 
       stream.end();
-    } finally {
-      this.timeout = setTimeout(this.reportFunction.bind(this), 1000) as unknown as NodeJS.Timeout;
-      this.timeout.unref();
-    }
+    });
   }
 
   flush(): Promise<unknown> | null {
-    return this.buffer.length === 0
-      ? null
-      : new Promise((resolve) => {
-          this.reportFunction(resolve);
-        });
+    if (this.timeout) {
+      clearTimeout(this.timeout);
+      this.timeout = undefined;
+    }
+
+    return this.buffer.length === 0 ? null : this.reportOnce();
   }
 }
