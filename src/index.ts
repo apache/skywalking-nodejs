@@ -40,7 +40,7 @@ class Agent {
     }
 
     Object.assign(config, normalizeDeprecatedRuntimeMetricOptions(options));
-    finalizeConfig(config);
+    finalizeConfig(config, options);
 
     logger.debug('Starting SkyWalking agent');
 

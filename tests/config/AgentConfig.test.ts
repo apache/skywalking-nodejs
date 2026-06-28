@@ -143,4 +143,28 @@ describe('AgentConfig deprecated runtime metric options (unit)', () => {
     expect(config.runtimeMetricsReporterActive).toBe(false);
     expect(ServiceManager.INSTANCE.findService(MeterSender)).toBeUndefined();
   });
+  it('maps deprecated aliases without leaving stale alias keys on normalized options', () => {
+    const normalized = normalizeDeprecatedRuntimeMetricOptions({
+      nvmMetricsReporterActive: false,
+    });
+
+    expect(normalized.runtimeMetricsReporterActive).toBe(false);
+    expect(normalized.nvmMetricsReporterActive).toBeUndefined();
+    expect(normalized.nvmJvmReporterActive).toBeUndefined();
+  });
+
+  it('re-enables runtime metrics after destroy/start with canonical option', () => {
+    agent.start({ nvmMetricsReporterActive: false });
+
+    expect(config.runtimeMetricsReporterActive).toBe(false);
+    expect((config as AgentConfig).nvmMetricsReporterActive).toBeUndefined();
+
+    agent.destroy();
+
+    agent.start({ runtimeMetricsReporterActive: true });
+
+    expect(config.runtimeMetricsReporterActive).toBe(true);
+    expect((config as AgentConfig).nvmMetricsReporterActive).toBeUndefined();
+    expect(ServiceManager.INSTANCE.findService(MeterSender)).toBeDefined();
+  });
 });
