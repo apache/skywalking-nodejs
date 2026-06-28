@@ -138,6 +138,7 @@ export default class GRPCChannelManager implements BootService {
       .build();
 
     this.watchConnectivityState();
+    this.notifyCurrentConnectivityState(true);
   }
 
   onComplete(): void {}
@@ -170,10 +171,20 @@ export default class GRPCChannelManager implements BootService {
         return;
       }
 
-      const ready = channel.getConnectivityState(false) === grpc.connectivityState.READY;
-      this.notify(ready ? GRPCChannelStatus.CONNECTED : GRPCChannelStatus.DISCONNECT);
+      this.notifyCurrentConnectivityState(false);
       this.watchConnectivityState();
     });
+  }
+
+  private notifyCurrentConnectivityState(requestConnection: boolean): void {
+    const managed = this.managedChannel;
+    if (this.closed || !managed) {
+      return;
+    }
+
+    const channel = managed.getChannel();
+    const ready = channel.getConnectivityState(requestConnection) === grpc.connectivityState.READY;
+    this.notify(ready ? GRPCChannelStatus.CONNECTED : GRPCChannelStatus.DISCONNECT);
   }
 
   private notify(status: GRPCChannelStatus): void {
