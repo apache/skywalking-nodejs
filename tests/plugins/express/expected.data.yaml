@@ -119,3 +119,59 @@ segmentItems:
             spanType: Exit
             peer: server:5000
             skipAnalysis: false
+
+meterItems:
+  - serviceName: server
+    meterSize: 6
+    meters:
+      - meterId:
+          name: instance_nodejs_process_cpu
+          tags: []
+        singleValue: gt 0
+      - meterId:
+          name: instance_nodejs_heap_used
+          tags: []
+        singleValue: gt 0
+      - meterId:
+          name: instance_nodejs_heap_total
+          tags: []
+        singleValue: gt 0
+      - meterId:
+          name: instance_nodejs_heap_limit
+          tags: []
+        singleValue: gt 0
+      - meterId:
+          name: instance_nodejs_rss
+          tags: []
+        singleValue: gt 0
+      - meterId:
+          name: instance_nodejs_external_memory
+          tags: []
+        singleValue: gt 0
+  - serviceName: client
+    meterSize: 6
+    meters:
+      - meterId:
+          name: instance_nodejs_process_cpu
+          tags: []
+        singleValue: gt 0
+      - meterId:
+          name: instance_nodejs_heap_used
+          tags: []
+        singleValue: gt 0
+      - meterId:
+          name: instance_nodejs_heap_total
+          tags: []
+        singleValue: gt 0
+      - meterId:
+          name: instance_nodejs_heap_limit
+          tags: []
+        singleValue: gt 0
+      - meterId:
+          name: instance_nodejs_rss
+          tags: []
+        singleValue: gt 0
+      - meterId:
+          name: instance_nodejs_external_memory
+          tags: []
+        singleValue: gt 0

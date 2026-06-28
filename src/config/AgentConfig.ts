@@ -43,9 +43,120 @@ export type AgentConfig = {
   reIgnoreOperation?: RegExp;
   reHttpIgnoreMethod?: RegExp;
   traceTimeout?: number;
+  runtimeMetricsReporterActive?: boolean;
+  runtimeMetricsCollectPeriod?: number;
+  runtimeMetricsReportPeriod?: number;
+  runtimeMetricsBufferSize?: number;
+  /** @deprecated use runtimeMetricsReporterActive */
+  nvmMetricsReporterActive?: boolean;
+  /** @deprecated use runtimeMetricsCollectPeriod */
+  nvmMetricsCollectPeriod?: number;
+  /** @deprecated use runtimeMetricsReportPeriod */
+  nvmMetricsReportPeriod?: number;
+  /** @deprecated use runtimeMetricsBufferSize */
+  nvmMetricsBufferSize?: number;
+  /** @deprecated use runtimeMetricsReporterActive */
+  nvmJvmReporterActive?: boolean;
+  /** @deprecated use runtimeMetricsCollectPeriod */
+  nvmJvmMetricsCollectPeriod?: number;
+  /** @deprecated use runtimeMetricsReportPeriod */
+  nvmJvmMetricsReportPeriod?: number;
+  /** @deprecated use runtimeMetricsBufferSize */
+  nvmJvmMetricsBufferSize?: number;
 };
 
-export function finalizeConfig(config: AgentConfig): void {
+export function normalizeDeprecatedRuntimeMetricOptions(options: AgentConfig): AgentConfig {
+  const normalized = { ...options };
+
+  if (normalized.runtimeMetricsReporterActive === undefined) {
+    const reporterActive = normalized.nvmMetricsReporterActive ?? normalized.nvmJvmReporterActive;
+    if (reporterActive !== undefined) {
+      normalized.runtimeMetricsReporterActive = reporterActive;
+    }
+  }
+  delete normalized.nvmMetricsReporterActive;
+  delete normalized.nvmJvmReporterActive;
+
+  if (normalized.runtimeMetricsCollectPeriod === undefined) {
+    const collectPeriod = normalized.nvmMetricsCollectPeriod ?? normalized.nvmJvmMetricsCollectPeriod;
+    if (collectPeriod !== undefined) {
+      normalized.runtimeMetricsCollectPeriod = collectPeriod;
+    }
+  }
+  delete normalized.nvmMetricsCollectPeriod;
+  delete normalized.nvmJvmMetricsCollectPeriod;
+
+  if (normalized.runtimeMetricsReportPeriod === undefined) {
+    const reportPeriod = normalized.nvmMetricsReportPeriod ?? normalized.nvmJvmMetricsReportPeriod;
+    if (reportPeriod !== undefined) {
+      normalized.runtimeMetricsReportPeriod = reportPeriod;
+    }
+  }
+  delete normalized.nvmMetricsReportPeriod;
+  delete normalized.nvmJvmMetricsReportPeriod;
+
+  if (normalized.runtimeMetricsBufferSize === undefined) {
+    const bufferSize = normalized.nvmMetricsBufferSize ?? normalized.nvmJvmMetricsBufferSize;
+    if (bufferSize !== undefined) {
+      normalized.runtimeMetricsBufferSize = bufferSize;
+    }
+  }
+  delete normalized.nvmMetricsBufferSize;
+  delete normalized.nvmJvmMetricsBufferSize;
+
+  return normalized;
+}
+
+function clearDeprecatedRuntimeMetricFields(config: AgentConfig): void {
+  delete config.nvmMetricsReporterActive;
+  delete config.nvmJvmReporterActive;
+  delete config.nvmMetricsCollectPeriod;
+  delete config.nvmJvmMetricsCollectPeriod;
+  delete config.nvmMetricsReportPeriod;
+  delete config.nvmJvmMetricsReportPeriod;
+  delete config.nvmMetricsBufferSize;
+  delete config.nvmJvmMetricsBufferSize;
+}
+
+function applyDeprecatedRuntimeMetricConfig(config: AgentConfig, options: AgentConfig = {}): void {
+  if (options.runtimeMetricsReporterActive === undefined) {
+    if (config.nvmMetricsReporterActive !== undefined) {
+      config.runtimeMetricsReporterActive = config.nvmMetricsReporterActive;
+    } else if (config.nvmJvmReporterActive !== undefined) {
+      config.runtimeMetricsReporterActive = config.nvmJvmReporterActive;
+    }
+  }
+
+  if (options.runtimeMetricsCollectPeriod === undefined) {
+    if (config.nvmMetricsCollectPeriod !== undefined) {
+      config.runtimeMetricsCollectPeriod = config.nvmMetricsCollectPeriod;
+    } else if (config.nvmJvmMetricsCollectPeriod !== undefined) {
+      config.runtimeMetricsCollectPeriod = config.nvmJvmMetricsCollectPeriod;
+    }
+  }
+
+  if (options.runtimeMetricsReportPeriod === undefined) {
+    if (config.nvmMetricsReportPeriod !== undefined) {
+      config.runtimeMetricsReportPeriod = config.nvmMetricsReportPeriod;
+    } else if (config.nvmJvmMetricsReportPeriod !== undefined) {
+      config.runtimeMetricsReportPeriod = config.nvmJvmMetricsReportPeriod;
+    }
+  }
+
+  if (options.runtimeMetricsBufferSize === undefined) {
+    if (config.nvmMetricsBufferSize !== undefined) {
+      config.runtimeMetricsBufferSize = config.nvmMetricsBufferSize;
+    } else if (config.nvmJvmMetricsBufferSize !== undefined) {
+      config.runtimeMetricsBufferSize = config.nvmJvmMetricsBufferSize;
+    }
+  }
+
+  clearDeprecatedRuntimeMetricFields(config);
+}
+
+export function finalizeConfig(config: AgentConfig, options: AgentConfig = {}): void {
+  applyDeprecatedRuntimeMetricConfig(config, options);
+
   const escapeRegExp = (s: string) => s.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, '\\$1');
 
   config.reDisablePlugins = RegExp(
@@ -139,6 +250,44 @@ const _config = {
   reHttpIgnoreMethod: RegExp(''),
   traceTimeout: ((n) => (Number.isSafeInteger(n) && n > 0 ? n : 10 * 1000))(
     Number.parseInt(process.env.SW_AGENT_TRACE_TIMEOUT ?? '', 10),
+  ),
+  runtimeMetricsReporterActive: ((): boolean => {
+    const configured =
+      process.env.SW_AGENT_NODEJS_RUNTIME_METRICS_REPORTER_ACTIVE ??
+      process.env.SW_AGENT_RUNTIME_METRICS_REPORTER_ACTIVE ??
+      process.env.SW_AGENT_NVM_METRICS_REPORTER_ACTIVE ??
+      process.env.SW_AGENT_NVM_JVM_REPORTER_ACTIVE;
+    return configured?.toLowerCase() !== 'false';
+  })(),
+  runtimeMetricsCollectPeriod: ((n) => (Number.isSafeInteger(n) && n > 0 ? n : 1000))(
+    Number.parseInt(
+      process.env.SW_AGENT_NODEJS_RUNTIME_METRICS_COLLECT_PERIOD ??
+        process.env.SW_AGENT_RUNTIME_METRICS_COLLECT_PERIOD ??
+        process.env.SW_AGENT_NVM_METRICS_COLLECT_PERIOD ??
+        process.env.SW_AGENT_NVM_JVM_METRICS_COLLECT_PERIOD ??
+        '',
+      10,
+    ),
+  ),
+  runtimeMetricsReportPeriod: ((n) => (Number.isSafeInteger(n) && n > 0 ? n : 1000))(
+    Number.parseInt(
+      process.env.SW_AGENT_NODEJS_RUNTIME_METRICS_REPORT_PERIOD ??
+        process.env.SW_AGENT_RUNTIME_METRICS_REPORT_PERIOD ??
+        process.env.SW_AGENT_NVM_METRICS_REPORT_PERIOD ??
+        process.env.SW_AGENT_NVM_JVM_METRICS_REPORT_PERIOD ??
+        '',
+      10,
+    ),
+  ),
+  runtimeMetricsBufferSize: ((n) => (Number.isSafeInteger(n) && n > 0 ? n : 600))(
+    Number.parseInt(
+      process.env.SW_AGENT_NODEJS_RUNTIME_METRICS_BUFFER_SIZE ??
+        process.env.SW_AGENT_RUNTIME_METRICS_BUFFER_SIZE ??
+        process.env.SW_AGENT_NVM_METRICS_BUFFER_SIZE ??
+        process.env.SW_AGENT_NVM_JVM_METRICS_BUFFER_SIZE ??
+        '',
+      10,
+    ),
   ),
 };
 

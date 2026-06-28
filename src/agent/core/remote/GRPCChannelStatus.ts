@@ -17,12 +17,7 @@
  *
  */
 
-export default interface Client {
-  readonly isConnected: boolean;
-
-  start(): void;
-
-  flush(): Promise<any> | null;
-
-  destroy?(): void;
+export enum GRPCChannelStatus {
+  CONNECTED = 'CONNECTED',
+  DISCONNECT = 'DISCONNECT',
 }

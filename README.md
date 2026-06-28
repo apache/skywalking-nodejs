@@ -72,9 +72,30 @@ Environment Variable | Description | Default
 | `SW_AWS_SQS_CHECK_BODY` | Incoming SQS messages check inside the body for trace ID in order to allow linking outgoing SNS messages to incoming SQS. | `false` |
 | `SW_AGENT_MAX_BUFFER_SIZE` | The maximum buffer size before sending the segment data to backend | `'1000'` |
 | `SW_AGENT_TRACE_TIMEOUT` | The timeout for trace requests to backend services | `'10000'` |
+| `SW_AGENT_NODEJS_RUNTIME_METRICS_REPORTER_ACTIVE` | Whether to report Node.js runtime metrics through MeterReportService (default: collect 1s, report 1s) | `true` |
+| `SW_AGENT_NODEJS_RUNTIME_METRICS_COLLECT_PERIOD` | Runtime metric sample interval in milliseconds | `1000` |
+| `SW_AGENT_NODEJS_RUNTIME_METRICS_REPORT_PERIOD` | Runtime metric report interval in milliseconds (aligned with Java JVM metrics upload interval) | `1000` |
+| `SW_AGENT_NODEJS_RUNTIME_METRICS_BUFFER_SIZE` | Maximum buffered runtime metric samples before dropping oldest | `600` |
+
+Legacy env names `SW_AGENT_RUNTIME_METRICS_*`, `SW_AGENT_NVM_METRICS_*` and `SW_AGENT_NVM_JVM_*` are still accepted as deprecated aliases.
 
 
 Note that the various ignore options like `SW_IGNORE_SUFFIX`, `SW_TRACE_IGNORE_PATH` and `SW_HTTP_IGNORE_METHOD` as well as endpoints which are not recorded due to exceeding `SW_AGENT_MAX_BUFFER_SIZE` all propagate their ignored status downstream to any other endpoints they may call. If that endpoint is running the Node Skywalking agent then regardless of its ignore settings it will not be recorded since its upstream parent was not recorded. This allows the elimination of entire trees of endpoints you are not interested in as well as eliminating partial traces if a span in the chain is ignored but calls out to other endpoints which are recorded as children of ROOT instead of the actual parent.
+
+## Node.js Runtime Metrics
+
+The agent reports six process-level meters (`instance_nodejs_*`) via `MeterReportService` by default (collect 1s, report 1s). Set `SW_AGENT_NODEJS_RUNTIME_METRICS_REPORTER_ACTIVE=false` to disable. Process CPU combines `process.cpuUsage()` user + system, normalized by logical CPU count (0–100%).
+
+| Node.js source | Meter name | Notes |
+| :--- | :--- | :--- |
+| `process.cpuUsage()` user + system | `instance_nodejs_process_cpu` | % |
+| `process.memoryUsage().heapUsed` | `instance_nodejs_heap_used` | bytes |
+| `process.memoryUsage().heapTotal` | `instance_nodejs_heap_total` | bytes |
+| `v8.getHeapStatistics().heap_size_limit` | `instance_nodejs_heap_limit` | bytes |
+| `process.memoryUsage().rss` | `instance_nodejs_rss` | bytes |
+| `process.memoryUsage().external` | `instance_nodejs_external_memory` | bytes |
+
+Custom business metrics are not available through a public API; use [OpenTelemetry metrics](https://skywalking.apache.org/docs/main/latest/en/setup/backend/opentelemetry-receiver/) if you need those.
 
 ## Supported Libraries
 

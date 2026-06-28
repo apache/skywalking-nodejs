@@ -21,6 +21,9 @@ import Span from '../../trace/span/Span';
 import ID from '../../trace/ID';
 import NewID from '../../trace/NewID';
 import SegmentRef from '../../trace/context/SegmentRef';
+import config from '../../config/AgentConfig';
+import { KeyStringValuePair } from '../../proto/common/Common_pb';
+import { Log, RefType, SegmentObject, SegmentReference, SpanObject } from '../../proto/language-agent/Tracing_pb';
 
 export default class Segment {
   segmentId = new ID();
@@ -47,5 +50,51 @@ export default class Segment {
     }
 
     return this;
+  }
+
+  /** Convert to gRPC SegmentObject (Java TraceSegment.transform). */
+  transform(): SegmentObject {
+    return new SegmentObject()
+      .setService(config.serviceName)
+      .setServiceinstance(config.serviceInstance)
+      .setTraceid(this.relatedTraces[0].toString())
+      .setTracesegmentid(this.segmentId.toString())
+      .setSpansList(
+        this.spans.map((span) =>
+          new SpanObject()
+            .setSpanid(span.id)
+            .setParentspanid(span.parentId)
+            .setStarttime(span.startTime)
+            .setEndtime(span.endTime)
+            .setOperationname(span.operation)
+            .setPeer(span.peer)
+            .setSpantype(span.type)
+            .setSpanlayer(span.layer)
+            .setComponentid(span.component.id)
+            .setIserror(span.errored)
+            .setLogsList(
+              span.logs.map((log) =>
+                new Log()
+                  .setTime(log.timestamp)
+                  .setDataList(
+                    log.items.map((logItem) => new KeyStringValuePair().setKey(logItem.key).setValue(logItem.val)),
+                  ),
+              ),
+            )
+            .setTagsList(span.tags.map((tag) => new KeyStringValuePair().setKey(tag.key).setValue(tag.val)))
+            .setRefsList(
+              span.refs.map((ref) =>
+                new SegmentReference()
+                  .setReftype(RefType.CROSSPROCESS)
+                  .setTraceid(ref.traceId.toString())
+                  .setParenttracesegmentid(ref.segmentId.toString())
+                  .setParentspanid(ref.spanId)
+                  .setParentservice(ref.service)
+                  .setParentserviceinstance(ref.serviceInstance)
+                  .setNetworkaddressusedatpeer(ref.clientAddress),
+              ),
+            ),
+        ),
+      );
   }
 }
