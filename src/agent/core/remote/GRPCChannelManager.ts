@@ -293,11 +293,15 @@ export default class GRPCChannelManager implements BootService {
     this.managedChannel = null;
     previous?.shutdownNow();
 
+    let built: GRPCChannel | undefined;
     try {
       // Java TLSChannelBuilder reads TLS files on every channel rebuild.
       await preloadTlsMaterials();
+      if (this.closed) {
+        return;
+      }
 
-      this.managedChannel = GRPCChannel.newBuilder(host, port, backend.tlsServerName)
+      built = GRPCChannel.newBuilder(host, port, backend.tlsServerName)
         .addManagedChannelBuilder(new StandardChannelBuilder())
         .addManagedChannelBuilder(new TLSChannelBuilder())
         .addChannelDecorator(new AgentIDDecorator())
@@ -308,6 +312,12 @@ export default class GRPCChannelManager implements BootService {
       return;
     }
 
+    if (this.closed) {
+      built.shutdownNow();
+      return;
+    }
+
+    this.managedChannel = built;
     this.selectedIdx = index;
     this.currentTarget = backend.target;
     this.reconnectCount = 0;
@@ -324,7 +334,7 @@ export default class GRPCChannelManager implements BootService {
     const generation = this.watcherGeneration;
     const channel = managed.getChannel();
     const currentState = channel.getConnectivityState(true);
-    channel.watchConnectivityState(currentState, Date.now() + 86_400_000, (error) => {
+    channel.watchConnectivityState(currentState, Infinity, (error) => {
       if (this.closed || this.managedChannel !== managed || this.watcherGeneration !== generation) {
         return;
       }

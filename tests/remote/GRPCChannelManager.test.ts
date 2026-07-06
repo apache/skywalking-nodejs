@@ -26,6 +26,16 @@ import GRPCChannelManager from '../../src/agent/core/remote/GRPCChannelManager';
 import { GRPCChannelStatus } from '../../src/agent/core/remote/GRPCChannelStatus';
 import GRPCChannel from '../../src/agent/core/remote/GRPCChannel';
 
+const mockPreloadTlsMaterials = jest.fn().mockResolvedValue(undefined);
+jest.mock('../../src/agent/core/remote/TLSChannelBuilder', () => {
+  const actual = jest.requireActual('../../src/agent/core/remote/TLSChannelBuilder');
+  return {
+    __esModule: true,
+    ...actual,
+    preloadTlsMaterials: (...args: unknown[]) => mockPreloadTlsMaterials(...args),
+  };
+});
+
 const mockShutdownNow = jest.fn();
 const mockIsConnected = jest.fn((_force?: boolean) => true);
 const mockBuild = jest.fn(() => ({
@@ -461,5 +471,38 @@ describe('GRPCChannelManager (Java DNS re-resolve parity)', () => {
     await manager.runCheck();
 
     expect(manager.resolveAddress()).toBe('oap.test:11800');
+  });
+
+  it('does not leak channel when shutdown runs during preloadTlsMaterials', async () => {
+    config.collectorAddress = '127.0.0.1:11800';
+    randomSpy.mockReturnValue(0);
+    let resolvePreload!: () => void;
+    mockPreloadTlsMaterials.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolvePreload = resolve;
+        }),
+    );
+    manager = new GRPCChannelManager();
+    const switchPromise = (manager as any).switchToServer({ target: '127.0.0.1:11800' }, 0);
+    await new Promise((r) => setImmediate(r));
+    manager.shutdown();
+    resolvePreload();
+    await switchPromise;
+    expect((manager as any).managedChannel).toBeNull();
+  });
+
+  it('uses Infinity deadline for connectivity watch', () => {
+    const watchSpy = jest.fn();
+    manager = new GRPCChannelManager();
+    (manager as any).managedChannel = {
+      getChannel: () => ({
+        getConnectivityState: jest.fn(() => grpc.connectivityState.READY),
+        watchConnectivityState: watchSpy,
+      }),
+      shutdownNow: jest.fn(),
+    };
+    (manager as any).watchConnectivityState();
+    expect(watchSpy).toHaveBeenCalledWith(grpc.connectivityState.READY, Infinity, expect.any(Function));
   });
 });

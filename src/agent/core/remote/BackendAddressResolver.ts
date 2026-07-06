@@ -82,8 +82,11 @@ export function parseStaticBackendAddresses(raw: string): string[] {
 function isValidHostPortEntry(entry: string): boolean {
   try {
     const { host, port } = splitHostPort(entry);
+    if (!/^[0-9]+$/.test(port)) {
+      return false;
+    }
     const portNum = Number.parseInt(port, 10);
-    return Boolean(host) && !Number.isNaN(portNum) && portNum > 0 && portNum <= 65535;
+    return Boolean(host) && portNum > 0 && portNum <= 65535;
   } catch {
     logger.debug('Service address [%s] format error. Expected host:port', entry);
     return false;
@@ -107,7 +110,12 @@ export function splitHostPort(entry: string): { host: string; port: string } {
   if (lastColon <= 0) {
     throw new Error(`Invalid host:port entry: ${entry}`);
   }
-  return { host: trimmed.slice(0, lastColon), port: trimmed.slice(lastColon + 1) };
+  const host = trimmed.slice(0, lastColon);
+  const port = trimmed.slice(lastColon + 1);
+  if (host.includes(':')) {
+    throw new Error(`Invalid host:port entry: ${entry}`);
+  }
+  return { host, port };
 }
 
 /** Format host:port for grpc target strings; IPv6 hosts are bracketed. */
@@ -179,11 +187,6 @@ export async function expandBackendAddresses(
   return Array.from(byTarget.values());
 }
 
-/**
- * Fallback TLS SNI when per-target tlsServerName is unavailable (legacy / static IP lists).
- * Prefer {@link BackendTarget.tlsServerName} from {@link expandBackendAddresses}.
- */
-
 /** Count distinct non-IP hostnames in collectorAddress (comma-separated). */
 export function countDistinctNonIpHostnames(raw: string): number {
   const hosts = new Set<string>();
@@ -196,20 +199,11 @@ export function countDistinctNonIpHostnames(raw: string): number {
   return hosts.size;
 }
 
-let multiHostnameTlsWarned = false;
-
-/** @deprecated Multi-hostname TLS SNI is handled per {@link BackendTarget}; kept for API compat. */
-export function warnMultiHostnameTlsConstraint(_collectorAddress: string): void {
-  // no-op: per-target tlsServerName mapping supersedes first-hostname-only SNI
-}
-
-/** @internal test hook */
-export function resetMultiHostnameTlsWarnForTest(): void {
-  multiHostnameTlsWarned = false;
-}
-
 export function deriveTlsServerNameForConnectHost(connectHost: string, collectorAddress: string): string | undefined {
   if (!isLiteralIp(connectHost)) {
+    return undefined;
+  }
+  if (countDistinctNonIpHostnames(collectorAddress) !== 1) {
     return undefined;
   }
   for (const entry of parseStaticBackendAddresses(collectorAddress)) {

@@ -76,4 +76,22 @@ describe('whenReady', () => {
     internal.authorization = 'secret-token';
     expect((config as Record<string, unknown>).authorization).toBeUndefined();
   });
+
+  it('does not emit unhandledRejection when bootstrap fails and whenReady is not awaited', async () => {
+    const rejections: unknown[] = [];
+    const handler = (reason: unknown) => rejections.push(reason);
+    process.on('unhandledRejection', handler);
+    try {
+      (PluginInstaller as jest.Mock).mockImplementation(() => ({
+        install: jest.fn().mockImplementation(() => {
+          throw new Error('boot fail');
+        }),
+      }));
+      agent.start({});
+      await new Promise((r) => setImmediate(r));
+      expect(rejections).toHaveLength(0);
+    } finally {
+      process.off('unhandledRejection', handler);
+    }
+  });
 });

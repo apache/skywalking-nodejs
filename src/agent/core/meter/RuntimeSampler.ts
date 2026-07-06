@@ -46,23 +46,27 @@ export default class RuntimeSampler {
   sample(): RuntimeSnapshot {
     const memory = process.memoryUsage();
     const heapStats = v8.getHeapStatistics();
-    const cpuUsage = process.cpuUsage(this.lastCpuUsage);
+    const cpuNow = process.cpuUsage();
+    const cpuUsage = {
+      user: cpuNow.user - this.lastCpuUsage.user,
+      system: cpuNow.system - this.lastCpuUsage.system,
+    };
     const now = process.hrtime.bigint();
     const elapsedMicros = Number(now - this.lastCpuTimestamp) / 1000;
-    this.lastCpuUsage = process.cpuUsage();
+    this.lastCpuUsage = cpuNow;
     this.lastCpuTimestamp = now;
 
     const cpuScale = elapsedMicros > 0 ? 100 / elapsedMicros / this.logicalCpuCount : 0;
     const cpuUserPercent = cpuUsage.user * cpuScale;
     const cpuSystemPercent = cpuUsage.system * cpuScale;
     const heapSpaceDetail = config.runtimeMetricsHeapSpaceDetail !== false;
-    const heapSpaceUsed = (spaceName: string): number => {
-      if (!heapSpaceDetail) {
-        return 0;
-      }
+    let oldSpaceUsed = 0;
+    let newSpaceUsed = 0;
+    if (heapSpaceDetail) {
       const heapSpaces = v8.getHeapSpaceStatistics();
-      return heapSpaces.find((entry) => entry.space_name === spaceName)?.space_used_size ?? 0;
-    };
+      oldSpaceUsed = heapSpaces.find((entry) => entry.space_name === 'old_space')?.space_used_size ?? 0;
+      newSpaceUsed = heapSpaces.find((entry) => entry.space_name === 'new_space')?.space_used_size ?? 0;
+    }
 
     return {
       collectedAt: Date.now(),
@@ -77,8 +81,8 @@ export default class RuntimeSampler {
       uptime: process.uptime(),
       peakMallocedMemory: heapStats.peak_malloced_memory,
       detachedContexts: heapStats.number_of_detached_contexts,
-      oldSpaceUsed: heapSpaceUsed('old_space'),
-      newSpaceUsed: heapSpaceUsed('new_space'),
+      oldSpaceUsed,
+      newSpaceUsed,
     };
   }
 

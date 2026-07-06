@@ -40,8 +40,6 @@ import {
   isLiteralIp,
   parseStaticBackendAddresses,
   splitHostPort,
-  resetMultiHostnameTlsWarnForTest,
-  warnMultiHostnameTlsConstraint,
 } from '../../src/agent/core/remote/BackendAddressResolver';
 
 describe('BackendAddressResolver (Java InetAddress.getAllByName parity)', () => {
@@ -186,7 +184,7 @@ describe('BackendAddressResolver (Java InetAddress.getAllByName parity)', () => 
 
   it('derives TLS server name from collector hostname when connect host is IP', () => {
     expect(deriveTlsServerNameForConnectHost('10.0.0.1', 'oap:11800')).toBe('oap');
-    expect(deriveTlsServerNameForConnectHost('10.0.0.1', 'oap:11800,backup:11800')).toBe('oap');
+    expect(deriveTlsServerNameForConnectHost('10.0.0.1', 'oap:11800,backup:11800')).toBeUndefined();
   });
 
   it('does not derive TLS server name when connect host is already a hostname', () => {
@@ -212,13 +210,5 @@ describe('BackendAddressResolver (Java InetAddress.getAllByName parity)', () => 
       { target: '10.0.1.1:11800', tlsServerName: 'oap-a' },
       { target: '10.0.1.2:11800', tlsServerName: 'oap-b' },
     ]);
-  });
-
-  it('warnMultiHostnameTlsConstraint is a no-op (per-target SNI supersedes H-2 doc constraint)', () => {
-    resetMultiHostnameTlsWarnForTest();
-    mockLoggerWarn.mockClear();
-    warnMultiHostnameTlsConstraint('oap-a:11800,oap-b:11800');
-    expect(mockLoggerWarn).not.toHaveBeenCalled();
-    resetMultiHostnameTlsWarnForTest();
   });
 });

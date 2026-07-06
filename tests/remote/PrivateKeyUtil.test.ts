@@ -50,7 +50,7 @@ describe('PrivateKeyUtil (Java PrivateKeyUtil parity)', () => {
     removeDir(dir);
   });
 
-  it('converts PKCS#1 RSA PEM to PKCS#8 PEM', () => {
+  it('returns PKCS#1 RSA PEM bytes unchanged (Node accepts PKCS#1 directly)', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sw-pkcs1-'));
     const keyPath = path.join(dir, 'client-rsa.pem');
     const pkcs1Inner = Buffer.alloc(32, 0xab);
@@ -59,10 +59,7 @@ describe('PrivateKeyUtil (Java PrivateKeyUtil parity)', () => {
     )}\n-----END RSA PRIVATE KEY-----\n`;
     fs.writeFileSync(keyPath, pkcs1Pem);
 
-    const converted = loadDecryptionKey(keyPath).toString('utf8');
-    expect(converted).toContain('-----BEGIN PRIVATE KEY-----');
-    expect(converted).toContain('-----END PRIVATE KEY-----');
-    expect(converted).not.toContain('RSA PRIVATE KEY');
+    expect(loadDecryptionKey(keyPath).toString('utf8')).toBe(pkcs1Pem);
 
     removeDir(dir);
   });

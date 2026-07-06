@@ -67,10 +67,8 @@ export default class TLSChannelBuilder implements ChannelBuilder {
           logger.error('mTLS configured but client cert or key material is unavailable; refusing channel build.');
           throw new Error('mTLS material unavailable');
         }
-        credentials = grpc.credentials.createSsl(rootCerts, privateKey, certChain);
-      } else {
-        credentials = grpc.credentials.createSsl(rootCerts, privateKey, certChain);
       }
+      credentials = grpc.credentials.createSsl(rootCerts, privateKey, certChain);
     } else if (isTlsRequiredByConfig()) {
       logger.warn(
         'TLS enabled without trusted CA file (SW_AGENT_FORCE_TLS); using system trust store (Java force_tls parity).',

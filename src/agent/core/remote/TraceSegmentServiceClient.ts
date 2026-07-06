@@ -219,7 +219,14 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
               let writeAccepted = stream.write(segment.transform());
               writesStarted = true;
               while (writeAccepted === false && stream && !this.closed) {
-                await new Promise<void>((resolveDrain) => stream!.once('drain', resolveDrain));
+                await Promise.race([
+                  new Promise<void>((resolveDrain) => stream!.once('drain', resolveDrain)),
+                  new Promise<void>((resolveDrain) => stream!.once('error', resolveDrain)),
+                  new Promise<void>((resolveDrain) => stream!.once('close', resolveDrain)),
+                ]);
+                if (this.closed) {
+                  break;
+                }
                 writeAccepted = true;
               }
             }

@@ -60,7 +60,7 @@ async function readRegularFileBytes(
       logger.warn('TLS path [%s] exceeds max size %d bytes; refusing to load', filePath, MAX_TLS_MATERIAL_BYTES);
       return null;
     }
-    if (options.requirePrivateKeyMode && (lstat.mode & 0o077) !== 0) {
+    if (options.requirePrivateKeyMode && process.platform !== 'win32' && (lstat.mode & 0o077) !== 0) {
       logger.warn(
         'Private key [%s] is group/world accessible (mode %o); refusing to load',
         filePath,
@@ -188,6 +188,7 @@ export function isCaFileAvailableFromPreload(): boolean {
 }
 
 /** @internal test hook — reset preload cache between tests. */
+/** Best-effort wipe of cached key bytes; OpenSSL SecureContext copies are not erasable from JS. */
 function zeroSensitiveBuffers(snapshot: TlsMaterialSnapshot | null): void {
   if (!snapshot) {
     return;

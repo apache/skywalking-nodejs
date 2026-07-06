@@ -67,6 +67,8 @@ class Agent {
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       bootstrapPromise = Promise.reject(err);
+      // Avoid unhandledRejection crashing the host when whenReady() is never awaited.
+      bootstrapPromise.catch(() => {});
       logger.error('SkyWalking agent bootstrap failed: %s', err);
     }
   }
