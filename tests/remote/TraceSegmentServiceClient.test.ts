@@ -67,9 +67,11 @@ jest.mock('../../src/agent/core/boot/ServiceManager', () => ({
   },
 }));
 
+const mockLoggerWarn = jest.fn();
+
 jest.mock('../../src/logging', () => ({
   createLogger: () => ({
-    warn: jest.fn(),
+    warn: mockLoggerWarn,
     info: jest.fn(),
     error: jest.fn(),
     debug: jest.fn(),
@@ -175,6 +177,30 @@ describe('TraceSegmentServiceClient', () => {
 
     const clientAny = client as unknown as { buffer: unknown[] };
     expect(clientAny.buffer.length).toBe(0);
+  });
+  it('breaks report loop on stream backpressure without awaiting drain (MeterSender parity)', async () => {
+    mockLoggerWarn.mockClear();
+    let writeCount = 0;
+    mockStream.write.mockImplementation(() => {
+      writeCount += 1;
+      return writeCount === 1;
+    });
+
+    (client as unknown as { buffer: unknown[] }).buffer.push(
+      { transform: () => ({ segment: 1 }) },
+      { transform: () => ({ segment: 2 }) },
+      { transform: () => ({ segment: 3 }) },
+    );
+
+    jest.advanceTimersByTime(1_000);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(mockStream.write).toHaveBeenCalledTimes(2);
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
+      'Trace stream backpressure; dropping remaining segments in this report tick',
+    );
+    expect(mockStream.end).toHaveBeenCalled();
   });
 
   describe('shutdown late callback safety (H2)', () => {

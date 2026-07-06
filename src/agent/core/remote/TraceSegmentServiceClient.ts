@@ -216,18 +216,11 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
                   segment.spans.length,
                 );
               }
-              let writeAccepted = stream.write(segment.transform());
+              const writeAccepted = stream.write(segment.transform());
               writesStarted = true;
-              while (writeAccepted === false && stream && !this.closed) {
-                await Promise.race([
-                  new Promise<void>((resolveDrain) => stream!.once('drain', resolveDrain)),
-                  new Promise<void>((resolveDrain) => stream!.once('error', resolveDrain)),
-                  new Promise<void>((resolveDrain) => stream!.once('close', resolveDrain)),
-                ]);
-                if (this.closed) {
-                  break;
-                }
-                writeAccepted = true;
+              if (writeAccepted === false) {
+                logger.warn('Trace stream backpressure; dropping remaining segments in this report tick');
+                break;
               }
             }
           }
