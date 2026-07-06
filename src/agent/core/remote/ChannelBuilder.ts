@@ -23,6 +23,10 @@ import * as grpc from '@grpc/grpc-js';
 export interface ChannelBuildContext {
   credentials: grpc.ChannelCredentials;
   options: grpc.ChannelOptions;
+  /** Physical connect host (may be IP after DNS re-resolve). */
+  connectHost?: string;
+  /** Explicit TLS SNI hostname (from DNS-expanded BackendTarget). */
+  tlsServerName?: string;
 }
 
 export default interface ChannelBuilder {

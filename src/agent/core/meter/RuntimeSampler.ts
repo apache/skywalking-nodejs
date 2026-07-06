@@ -19,8 +19,10 @@
 
 import os from 'os';
 import v8 from 'v8';
+import config from '../../../config/AgentConfig';
 
 export type RuntimeSnapshot = {
+  collectedAt: number;
   heapUsed: number;
   heapTotal: number;
   heapSizeLimit: number;
@@ -28,6 +30,12 @@ export type RuntimeSnapshot = {
   external: number;
   cpuUserPercent: number;
   cpuSystemPercent: number;
+  arrayBuffers: number;
+  uptime: number;
+  peakMallocedMemory: number;
+  detachedContexts: number;
+  oldSpaceUsed: number;
+  newSpaceUsed: number;
 };
 
 export default class RuntimeSampler {
@@ -47,8 +55,17 @@ export default class RuntimeSampler {
     const cpuScale = elapsedMicros > 0 ? 100 / elapsedMicros / this.logicalCpuCount : 0;
     const cpuUserPercent = cpuUsage.user * cpuScale;
     const cpuSystemPercent = cpuUsage.system * cpuScale;
+    const heapSpaceDetail = config.runtimeMetricsHeapSpaceDetail !== false;
+    const heapSpaceUsed = (spaceName: string): number => {
+      if (!heapSpaceDetail) {
+        return 0;
+      }
+      const heapSpaces = v8.getHeapSpaceStatistics();
+      return heapSpaces.find((entry) => entry.space_name === spaceName)?.space_used_size ?? 0;
+    };
 
     return {
+      collectedAt: Date.now(),
       heapUsed: memory.heapUsed,
       heapTotal: memory.heapTotal,
       heapSizeLimit: heapStats.heap_size_limit,
@@ -56,6 +73,12 @@ export default class RuntimeSampler {
       external: memory.external,
       cpuUserPercent,
       cpuSystemPercent,
+      arrayBuffers: memory.arrayBuffers ?? 0,
+      uptime: process.uptime(),
+      peakMallocedMemory: heapStats.peak_malloced_memory,
+      detachedContexts: heapStats.number_of_detached_contexts,
+      oldSpaceUsed: heapSpaceUsed('old_space'),
+      newSpaceUsed: heapSpaceUsed('new_space'),
     };
   }
 

@@ -28,8 +28,10 @@ import { ManagementServiceClient } from '../../../proto/management/Management_gr
 import { InstancePingPkg, InstanceProperties } from '../../../proto/management/Management_pb';
 import { KeyStringValuePair } from '../../../proto/common/Common_pb';
 import GRPCChannelManager from './GRPCChannelManager';
+import { grpcUpstreamDeadlineMs } from './GrpcUpstreamOptions';
 import { GRPCChannelListener } from './GRPCChannelListener';
 import { GRPCChannelStatus } from './GRPCChannelStatus';
+import CommandService from '../commands/CommandService';
 
 const logger = createLogger(__filename);
 const logHeartbeatError = throttled(logger, 'error', 30000);
@@ -74,7 +76,8 @@ export default class ServiceManagementClient implements BootService, GRPCChannel
         new KeyStringValuePair().setKey('Process No.').setValue(`${process.pid}`),
       ]);
 
-    this.heartbeatTimer = setInterval(() => this.sendHeartbeat(), 20000) as NodeJS.Timeout;
+    const heartbeatPeriodMs = (config.collectorHeartbeatPeriod ?? 20) * 1000;
+    this.heartbeatTimer = setInterval(() => this.sendHeartbeat(), heartbeatPeriodMs) as NodeJS.Timeout;
     this.heartbeatTimer.unref();
   }
 
@@ -111,7 +114,7 @@ export default class ServiceManagementClient implements BootService, GRPCChannel
       return;
     }
 
-    const options = { deadline: Date.now() + config.traceTimeout };
+    const options = { deadline: grpcUpstreamDeadlineMs() };
     const reportProperties =
       Math.abs(this.sendPropertiesCounter++) % ServiceManagementClient.PROPERTIES_REPORT_PERIOD_FACTOR === 0;
 
@@ -120,21 +123,25 @@ export default class ServiceManagementClient implements BootService, GRPCChannel
         this.instanceProperties,
         new grpc.Metadata(),
         options,
-        (error) => {
+        (error, commands) => {
           if (error) {
             logHeartbeatError('Failed to send instance properties', error);
             this.reportGrpcError(error);
+            return;
           }
+          ServiceManager.INSTANCE.findService(CommandService)?.receiveCommand(commands);
         },
       );
       return;
     }
 
-    this.managementServiceClient.keepAlive(this.keepAlivePkg, new grpc.Metadata(), options, (error) => {
+    this.managementServiceClient.keepAlive(this.keepAlivePkg, new grpc.Metadata(), options, (error, commands) => {
       if (error) {
         logHeartbeatError('Failed to send heartbeat', error);
         this.reportGrpcError(error);
+        return;
       }
+      ServiceManager.INSTANCE.findService(CommandService)?.receiveCommand(commands);
     });
   }
 
@@ -144,11 +151,12 @@ export default class ServiceManagementClient implements BootService, GRPCChannel
     }
 
     return new ManagementServiceClient(
-      config.collectorAddress,
+      this.channelManager.resolveAddress(),
       grpc.credentials.createInsecure(),
       this.channelManager.getClientOptions(),
     );
   }
+
   private reportGrpcError(error: unknown): void {
     if (this.closed) {
       return;

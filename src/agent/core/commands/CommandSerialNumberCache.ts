@@ -17,20 +17,24 @@
  *
  */
 
-import * as grpc from '@grpc/grpc-js';
-import ChannelBuilder, { ChannelBuildContext } from './ChannelBuilder';
+/** Java {@code CommandSerialNumberCache}. */
+export default class CommandSerialNumberCache {
+  private readonly maxCapacity: number;
 
-const MAX_INBOUND_MESSAGE_SIZE = 1024 * 1024 * 50;
+  private readonly queue: string[] = [];
 
-export default class StandardChannelBuilder implements ChannelBuilder {
-  build(context: ChannelBuildContext): ChannelBuildContext {
-    return {
-      ...context,
-      options: {
-        ...context.options,
-        'grpc.max_receive_message_length': MAX_INBOUND_MESSAGE_SIZE,
-        'grpc.max_send_message_length': MAX_INBOUND_MESSAGE_SIZE,
-      },
-    };
+  constructor(maxCapacity = 64) {
+    this.maxCapacity = maxCapacity;
+  }
+
+  add(serialNumber: string): void {
+    if (this.queue.length >= this.maxCapacity) {
+      this.queue.shift();
+    }
+    this.queue.push(serialNumber);
+  }
+
+  contain(serialNumber: string): boolean {
+    return this.queue.includes(serialNumber);
   }
 }

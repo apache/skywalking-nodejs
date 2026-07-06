@@ -24,6 +24,8 @@ import MeterSender from '../meter/MeterSender';
 import GRPCChannelManager from '../remote/GRPCChannelManager';
 import ServiceManagementClient from '../remote/ServiceManagementClient';
 import TraceSegmentServiceClient from '../remote/TraceSegmentServiceClient';
+import CommandService from '../commands/CommandService';
+import CommandExecutorService from '../commands/CommandExecutorService';
 
 const logger = createLogger(__filename);
 
@@ -39,6 +41,15 @@ class ServiceManager {
     return ServiceManager.instance;
   }
 
+  /** Java {@code ServiceManager#isBooted()}. */
+  isBooted(): boolean {
+    return this.booted;
+  }
+
+  /**
+   * Java {@code ServiceManager#boot()}: per-service try/catch, always marks booted at end.
+   * Instrumentation is installed before boot; failures are logged only (no rollback).
+   */
   boot(): void {
     if (this.booted) {
       return;
@@ -51,7 +62,7 @@ class ServiceManager {
       try {
         service.prepare();
       } catch (error) {
-        logger.error('ServiceManager prepare failed: %s', error);
+        logger.error('ServiceManager prepare failed for %s: %s', service.constructor.name, error);
       }
     }
 
@@ -59,7 +70,7 @@ class ServiceManager {
       try {
         service.boot();
       } catch (error) {
-        logger.error('ServiceManager boot failed: %s', error);
+        logger.error('ServiceManager boot failed for %s: %s', service.constructor.name, error);
       }
     }
 
@@ -67,7 +78,7 @@ class ServiceManager {
       try {
         service.onComplete();
       } catch (error) {
-        logger.error('ServiceManager onComplete failed: %s', error);
+        logger.error('ServiceManager onComplete failed for %s: %s', service.constructor.name, error);
       }
     }
 
@@ -113,6 +124,8 @@ class ServiceManager {
   }
 
   private loadServices(): void {
+    this.register(CommandExecutorService, new CommandExecutorService());
+    this.register(CommandService, new CommandService());
     this.register(GRPCChannelManager, new GRPCChannelManager());
     this.register(TraceSegmentServiceClient, new TraceSegmentServiceClient());
     this.register(ServiceManagementClient, new ServiceManagementClient());

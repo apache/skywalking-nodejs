@@ -36,6 +36,12 @@ export default class RuntimeMetricsCollector {
       ['instance_nodejs_heap_limit', snapshot.heapSizeLimit],
       ['instance_nodejs_rss', snapshot.rss],
       ['instance_nodejs_external_memory', snapshot.external],
+      ['instance_nodejs_array_buffers', snapshot.arrayBuffers],
+      ['instance_nodejs_uptime', snapshot.uptime],
+      ['instance_nodejs_peak_malloced_memory', snapshot.peakMallocedMemory],
+      ['instance_nodejs_detached_contexts', snapshot.detachedContexts],
+      ['instance_nodejs_old_space_used', snapshot.oldSpaceUsed],
+      ['instance_nodejs_new_space_used', snapshot.newSpaceUsed],
     ];
 
     return gauges.map(([name, value]) =>

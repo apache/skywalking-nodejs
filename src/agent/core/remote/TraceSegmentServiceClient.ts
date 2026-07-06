@@ -26,8 +26,10 @@ import { TraceSegmentReportServiceClient } from '../../../proto/language-agent/T
 import { emitter } from '../../../lib/EventEmitter';
 import Segment from '../../../trace/context/Segment';
 import GRPCChannelManager from './GRPCChannelManager';
+import { grpcUpstreamDeadlineMs } from './GrpcUpstreamOptions';
 import { GRPCChannelListener } from './GRPCChannelListener';
 import { GRPCChannelStatus } from './GRPCChannelStatus';
+import CommandService from '../commands/CommandService';
 
 const logger = createLogger(__filename);
 const logReportError = throttled(logger, 'error', 30000);
@@ -64,7 +66,6 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
       }
 
       this.buffer.push(segment);
-      this.timeout?.ref();
     };
 
     emitter.on('segment-finished', this.segmentFinishedListener);
@@ -80,6 +81,7 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
     this.closed = true;
     if (this.segmentFinishedListener) {
       emitter.off('segment-finished', this.segmentFinishedListener);
+      this.segmentFinishedListener = undefined;
     }
 
     if (this.timeout) {
@@ -109,7 +111,7 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
     }
 
     return new TraceSegmentReportServiceClient(
-      config.collectorAddress,
+      this.channelManager.resolveAddress(),
       grpc.credentials.createInsecure(),
       this.channelManager.getClientOptions(),
     );
@@ -142,7 +144,6 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
     this.reporting = this.doReport().finally(() => {
       this.reporting = undefined;
     });
-
     return this.reporting;
   }
 
@@ -165,42 +166,87 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
         return;
       }
 
+      let snapshots: Segment[] = [];
+      let settled = false;
       let stream: ReturnType<TraceSegmentReportServiceClient['collect']> | undefined;
-      try {
-        stream = this.reporterClient.collect(
-          new grpc.Metadata(),
-          { deadline: Date.now() + config.traceTimeout },
-          (error) => {
-            if (error) {
-              logReportError('Failed to report trace data', error);
-              this.reportGrpcError(error);
-            }
-            resolve();
-          },
-        );
+      let writesStarted = false;
 
-        for (const segment of this.buffer) {
-          if (segment) {
-            if (logger._isDebugEnabled) {
-              logger.debug('Sending segment ', { segment });
-            }
-            stream.write(segment.transform());
+      const settle = (error?: unknown): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        if (error != null) {
+          logReportError('Failed to report trace data', error);
+          this.reportGrpcError(error);
+          if (!this.closed && !writesStarted) {
+            this.requeueSegments(snapshots);
           }
         }
-      } catch (error) {
-        logReportError('Failed to report trace data', error);
-        this.reportGrpcError(error);
         resolve();
-      } finally {
-        this.buffer.length = 0;
+      };
+
+      void (async () => {
         try {
-          stream?.end();
+          snapshots = this.buffer.splice(0, this.buffer.length);
+
+          stream = this.reporterClient!.collect(
+            new grpc.Metadata(),
+            { deadline: grpcUpstreamDeadlineMs() },
+            (error, commands) => {
+              if (error) {
+                settle(error);
+              } else {
+                ServiceManager.INSTANCE.findService(CommandService)?.receiveCommand(commands);
+                settle();
+              }
+            },
+          );
+
+          for (const segment of snapshots) {
+            if (this.closed) {
+              break;
+            }
+            if (segment) {
+              if (logger._isDebugEnabled) {
+                logger.debug(
+                  'Sending segment traceId=%s segmentId=%s spanCount=%d',
+                  segment.relatedTraces[0]?.toString?.() ?? 'unknown',
+                  segment.segmentId.toString(),
+                  segment.spans.length,
+                );
+              }
+              let writeAccepted = stream.write(segment.transform());
+              writesStarted = true;
+              while (writeAccepted === false && stream && !this.closed) {
+                await new Promise<void>((resolveDrain) => stream!.once('drain', resolveDrain));
+                writeAccepted = true;
+              }
+            }
+          }
+
+          if (stream) {
+            stream.end();
+          }
         } catch (error) {
-          logReportError('Failed to end trace collect stream', error);
-          resolve();
+          settle(error);
         }
-      }
+      })();
     });
+  }
+
+  /** Re-queue failed segments while enforcing the same cap as segmentFinished listener. */
+  private requeueSegments(segments: Segment[]): void {
+    if (segments.length === 0) {
+      return;
+    }
+    const maxBufferSize = config.maxBufferSize;
+    for (const segment of segments) {
+      while (this.buffer.length >= maxBufferSize) {
+        this.buffer.shift();
+      }
+      this.buffer.push(segment);
+    }
   }
 
   private reportGrpcError(error: unknown): void {

@@ -91,6 +91,74 @@ jobs:
           npm i
           npm run test tests/plugins/${{ matrix.plugin }}/
 
+
+  TestRemoteE2E:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [ build-matrix ]
+    strategy:
+      matrix:
+        node-version: [ 20, 22, 24 ]
+        case: [ static-failover, dns-re-resolve ]
+    env:
+      SW_NODE_VERSION: ${{ matrix.node-version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Set Up NodeJS ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Pre-build E2E agent image
+        run: |
+          docker build -f tests/plugins/common/Dockerfile.agent \
+            --build-arg SW_NODE_VERSION=${{ matrix.node-version }} \
+            -t skywalking-nodejs-e2e-agent:${{ matrix.node-version }} .
+
+      - name: Remote E2E On Node@${{ matrix.node-version }} (${{ matrix.case }})
+        run: |
+          npm i
+          npm run test tests/remote-e2e/${{ matrix.case }}/
+
+
+  TestUnitRemote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        node-version: [ 20, 22, 24 ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Set Up NodeJS ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Remote unit tests on Node@${{ matrix.node-version }}
+        run: |
+          npm i
+          npx jest tests/remote/ tests/config/ tests/core/ tests/runtime/ --runInBand
+
   TestLib:
     runs-on: ubuntu-latest
     timeout-minutes: 30

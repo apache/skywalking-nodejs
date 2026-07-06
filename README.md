@@ -55,7 +55,15 @@ Environment Variable | Description | Default
 | `SW_AGENT_NAME` | The name of the service | `your-nodejs-service` |
 | `SW_AGENT_INSTANCE` | The name of the service instance | Randomly generated |
 | `SW_AGENT_COLLECTOR_BACKEND_SERVICES` | The backend OAP server address | `127.0.0.1:11800` |
-| `SW_AGENT_SECURE` | Whether to use secure connection to backend OAP server | `false` |
+| `SW_AGENT_SECURE` | Whether to use secure connection to backend OAP server (deprecated; use `SW_AGENT_FORCE_TLS`) | `false` |
+| `SW_AGENT_IS_RESOLVE_DNS_PERIODICALLY` | Periodically re-resolve DNS for backend hostnames (Java `collector.is_resolve_dns_periodically`) | `false` |
+| `SW_AGENT_GRPC_CHANNEL_CHECK_INTERVAL` | gRPC channel health check interval in seconds (Java `collector.grpc_channel_check_interval`) | `30` |
+| `SW_AGENT_FORCE_RECONNECTION_PERIOD` | Force reconnection every N check intervals when backend is unavailable | `1` |
+| `SW_AGENT_COLLECTOR_HEARTBEAT_PERIOD` | Heartbeat period in seconds (Java `collector.heartbeat_period`) | `20` |
+| `SW_AGENT_FORCE_TLS` | Force TLS for gRPC channel even when no CA file is configured (uses system trust store) | `false` |
+| `SW_AGENT_SSL_TRUSTED_CA_PATH` | Trusted CA file path (relative to agent package root, or absolute). Default `ca/ca.crt` (Java `agent.ssl_trusted_ca_path`) | `ca/ca.crt` |
+| `SW_AGENT_SSL_CERT_CHAIN_PATH` | Client certificate chain for mTLS, relative to agent package root (requires `SW_AGENT_SSL_KEY_PATH`) | not set |
+| `SW_AGENT_SSL_KEY_PATH` | Client private key for mTLS (requires `SW_AGENT_SSL_CERT_CHAIN_PATH`) | not set |
 | `SW_AGENT_AUTHENTICATION` | The authentication token to verify that the agent is trusted by the backend OAP, as for how to configure the backend, refer to [the yaml](https://github.com/apache/skywalking/blob/4f0f39ffccdc9b41049903cc540b8904f7c9728e/oap-server/server-bootstrap/src/main/resources/application.yml#L155-L158). | not set |
 | `SW_AGENT_LOGGING_LEVEL` | The logging level, could be one of `error`, `warn`, `info`, `debug` | `info` |
 | `SW_AGENT_DISABLE_PLUGINS` | Comma-delimited list of plugins to disable in the plugins directory (e.g. "mysql", "express") | `` |
@@ -72,19 +80,32 @@ Environment Variable | Description | Default
 | `SW_AWS_SQS_CHECK_BODY` | Incoming SQS messages check inside the body for trace ID in order to allow linking outgoing SNS messages to incoming SQS. | `false` |
 | `SW_AGENT_MAX_BUFFER_SIZE` | The maximum buffer size before sending the segment data to backend | `'1000'` |
 | `SW_AGENT_TRACE_TIMEOUT` | The timeout for trace requests to backend services | `'10000'` |
-| `SW_AGENT_NODEJS_RUNTIME_METRICS_REPORTER_ACTIVE` | Whether to report Node.js runtime metrics through MeterReportService (default: collect 1s, report 1s) | `true` |
-| `SW_AGENT_NODEJS_RUNTIME_METRICS_COLLECT_PERIOD` | Runtime metric sample interval in milliseconds | `1000` |
-| `SW_AGENT_NODEJS_RUNTIME_METRICS_REPORT_PERIOD` | Runtime metric report interval in milliseconds (aligned with Java JVM metrics upload interval) | `1000` |
-| `SW_AGENT_NODEJS_RUNTIME_METRICS_BUFFER_SIZE` | Maximum buffered runtime metric samples before dropping oldest | `600` |
+| `SW_AGENT_RUNTIME_METRICS_REPORTER_ACTIVE` | Whether to report runtime metrics through MeterReportService (default: collect 1s, report 1s) | `true` |
+| `SW_AGENT_RUNTIME_METRICS_COLLECT_PERIOD` | Runtime metric sample interval in milliseconds | `1000` |
+| `SW_AGENT_RUNTIME_METRICS_REPORT_PERIOD` | Runtime metric report interval in milliseconds (aligned with Java JVM metrics upload interval) | `1000` |
+| `SW_AGENT_RUNTIME_METRICS_BUFFER_SIZE` | Maximum buffered runtime metric samples before dropping oldest | `600` |
+| `SW_AGENT_RUNTIME_METRICS_MAX_SNAPSHOTS_PER_REPORT` | Max runtime metric snapshots sent per report tick (limits stream burst on reconnect) | `1` |
+| `SW_AGENT_RUNTIME_METRICS_HEAP_SPACE_DETAIL` | When `false`, skip `v8.getHeapSpaceStatistics()` (old/new space meters report 0) | `true` |
+| `SW_AGENT_COLLECTOR_GRPC_UPSTREAM_TIMEOUT` | Upstream gRPC call deadline in seconds (Java `collector.grpc_upstream_timeout`; used by trace/meter/heartbeat). Falls back to `SW_AGENT_TRACE_TIMEOUT` when unset | `30` |
 
-Legacy env names `SW_AGENT_RUNTIME_METRICS_*`, `SW_AGENT_NVM_METRICS_*` and `SW_AGENT_NVM_JVM_*` are still accepted as deprecated aliases.
+Legacy env names `SW_AGENT_NODEJS_RUNTIME_METRICS_*`, `SW_AGENT_NVM_METRICS_*` and `SW_AGENT_NVM_JVM_*` are still accepted as deprecated aliases.
 
 
 Note that the various ignore options like `SW_IGNORE_SUFFIX`, `SW_TRACE_IGNORE_PATH` and `SW_HTTP_IGNORE_METHOD` as well as endpoints which are not recorded due to exceeding `SW_AGENT_MAX_BUFFER_SIZE` all propagate their ignored status downstream to any other endpoints they may call. If that endpoint is running the Node Skywalking agent then regardless of its ignore settings it will not be recorded since its upstream parent was not recorded. This allows the elimination of entire trees of endpoints you are not interested in as well as eliminating partial traces if a span in the chain is ignored but calls out to other endpoints which are recorded as children of ROOT instead of the actual parent.
 
+## Remote and gRPC Highlights
+
+Major additions aligned with the Java agent gRPC architecture:
+
+- **Remote layer** — BootService/ServiceManager orchestration, GRPCChannelManager with comma-separated backends and failover (`SW_AGENT_GRPC_CHANNEL_CHECK_INTERVAL`, `SW_AGENT_FORCE_RECONNECTION_PERIOD`).
+- **TLS / mTLS** — `SW_AGENT_FORCE_TLS` and `SW_AGENT_SSL_*`; per-hostname SNI when DNS resolves to Pod IPs (Kubernetes-friendly).
+- **DNS** — hostname expansion to A/AAAA records, optional periodic re-resolve (`SW_AGENT_IS_RESOLVE_DNS_PERIODICALLY`), IPv6 `[host]:port` targets.
+
+Operational constraints and tuning: [docs/nodejs-grpc-constraints.md](docs/nodejs-grpc-constraints.md).
+
 ## Node.js Runtime Metrics
 
-The agent reports six process-level meters (`instance_nodejs_*`) via `MeterReportService` by default (collect 1s, report 1s). Set `SW_AGENT_NODEJS_RUNTIME_METRICS_REPORTER_ACTIVE=false` to disable. Process CPU combines `process.cpuUsage()` user + system, normalized by logical CPU count (0–100%).
+The agent reports twelve process-level meters (`instance_nodejs_*`) via `MeterReportService` by default (collect 1s, report 1s). Set `SW_AGENT_RUNTIME_METRICS_REPORTER_ACTIVE=false` to disable. Process CPU combines `process.cpuUsage()` user + system, normalized by logical CPU count (0–100%).
 
 | Node.js source | Meter name | Notes |
 | :--- | :--- | :--- |
@@ -94,6 +115,12 @@ The agent reports six process-level meters (`instance_nodejs_*`) via `MeterRepor
 | `v8.getHeapStatistics().heap_size_limit` | `instance_nodejs_heap_limit` | bytes |
 | `process.memoryUsage().rss` | `instance_nodejs_rss` | bytes |
 | `process.memoryUsage().external` | `instance_nodejs_external_memory` | bytes |
+| `process.memoryUsage().arrayBuffers` | `instance_nodejs_array_buffers` | bytes |
+| `process.uptime()` | `instance_nodejs_uptime` | seconds |
+| `v8.getHeapStatistics().peak_malloced_memory` | `instance_nodejs_peak_malloced_memory` | bytes |
+| `v8.getHeapStatistics().number_of_detached_contexts` | `instance_nodejs_detached_contexts` | — |
+| `v8.getHeapSpaceStatistics()` old_space | `instance_nodejs_old_space_used` | bytes (0 when `SW_AGENT_RUNTIME_METRICS_HEAP_SPACE_DETAIL=false`) |
+| `v8.getHeapSpaceStatistics()` new_space | `instance_nodejs_new_space_used` | bytes (0 when `SW_AGENT_RUNTIME_METRICS_HEAP_SPACE_DETAIL=false`) |
 
 Custom business metrics are not available through a public API; use [OpenTelemetry metrics](https://skywalking.apache.org/docs/main/latest/en/setup/backend/opentelemetry-receiver/) if you need those.
 

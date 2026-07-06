@@ -20,6 +20,22 @@
 /* eslint-env jest */
 
 import RuntimeMetricsCollector from '../../src/agent/core/meter/RuntimeMetricsCollector';
+import { RuntimeSnapshot } from '../../src/agent/core/meter/RuntimeSampler';
+
+const EXPECTED_METER_NAMES = [
+  'instance_nodejs_process_cpu',
+  'instance_nodejs_heap_used',
+  'instance_nodejs_heap_total',
+  'instance_nodejs_heap_limit',
+  'instance_nodejs_rss',
+  'instance_nodejs_external_memory',
+  'instance_nodejs_array_buffers',
+  'instance_nodejs_uptime',
+  'instance_nodejs_peak_malloced_memory',
+  'instance_nodejs_detached_contexts',
+  'instance_nodejs_old_space_used',
+  'instance_nodejs_new_space_used',
+];
 
 describe('RuntimeMetricsCollector', () => {
   let collector: RuntimeMetricsCollector;
@@ -37,21 +53,57 @@ describe('RuntimeMetricsCollector', () => {
     const meters = collector.toMeterData(snapshot);
     const names = meters.map((meter) => meter.getSinglevalue()?.getName());
 
-    expect(names).toEqual(
-      expect.arrayContaining([
-        'instance_nodejs_process_cpu',
-        'instance_nodejs_heap_used',
-        'instance_nodejs_heap_total',
-        'instance_nodejs_heap_limit',
-        'instance_nodejs_rss',
-        'instance_nodejs_external_memory',
-      ]),
-    );
-
-    expect(names).toHaveLength(6);
+    expect(names).toEqual(EXPECTED_METER_NAMES);
 
     for (const meter of meters) {
       expect(meter.getSinglevalue()?.getValue()).toBeGreaterThanOrEqual(0);
     }
+
+    expect(snapshot.uptime).toBeGreaterThanOrEqual(0);
+    expect(snapshot.oldSpaceUsed).toBeGreaterThanOrEqual(0);
+    expect(snapshot.newSpaceUsed).toBeGreaterThanOrEqual(0);
+  });
+
+  it('maps extended runtime snapshot values into meter single values', () => {
+    const snapshot: RuntimeSnapshot = {
+      collectedAt: 1_700_000_000_000,
+      heapUsed: 100,
+      heapTotal: 200,
+      heapSizeLimit: 300,
+      rss: 400,
+      external: 50,
+      cpuUserPercent: 1.2,
+      cpuSystemPercent: 0.8,
+      arrayBuffers: 16,
+      uptime: 42.5,
+      peakMallocedMemory: 2048,
+      detachedContexts: 3,
+      oldSpaceUsed: 88,
+      newSpaceUsed: 12,
+    };
+
+    const meters = collector.toMeterData(snapshot);
+    const values: Record<string, number | undefined> = {};
+    for (const meter of meters) {
+      const name = meter.getSinglevalue()?.getName();
+      if (name) {
+        values[name] = meter.getSinglevalue()?.getValue();
+      }
+    }
+
+    expect(values).toEqual({
+      instance_nodejs_process_cpu: 2,
+      instance_nodejs_heap_used: 100,
+      instance_nodejs_heap_total: 200,
+      instance_nodejs_heap_limit: 300,
+      instance_nodejs_rss: 400,
+      instance_nodejs_external_memory: 50,
+      instance_nodejs_array_buffers: 16,
+      instance_nodejs_uptime: 42.5,
+      instance_nodejs_peak_malloced_memory: 2048,
+      instance_nodejs_detached_contexts: 3,
+      instance_nodejs_old_space_used: 88,
+      instance_nodejs_new_space_used: 12,
+    });
   });
 });

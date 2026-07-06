@@ -17,13 +17,27 @@
  *
  */
 
-import config, { AgentConfig, finalizeConfig, normalizeDeprecatedRuntimeMetricOptions } from './config/AgentConfig';
+/* eslint-env node, es2020 */
+
+import agentConfig, {
+  AgentConfig,
+  finalizeConfig,
+  normalizeDeprecatedRuntimeMetricOptions,
+  publicAgentConfig,
+} from './config/AgentConfig';
 import ServiceManager from './agent/core/boot/ServiceManager';
 import { createLogger } from './logging';
 import PluginInstaller from './core/PluginInstaller';
 import SpanContext from './trace/context/SpanContext';
 
 const logger = createLogger(__filename);
+
+let bootstrapPromise: Promise<void> | null = null;
+
+/** Resolves when plugin install and ServiceManager.boot() complete. */
+export function whenReady(): Promise<void> {
+  return bootstrapPromise ?? Promise.resolve();
+}
 
 class Agent {
   private started = false;
@@ -39,26 +53,33 @@ class Agent {
       return;
     }
 
-    Object.assign(config, normalizeDeprecatedRuntimeMetricOptions(options));
-    finalizeConfig(config, options);
+    const normalizedOptions = normalizeDeprecatedRuntimeMetricOptions(options);
+    Object.assign(agentConfig, normalizedOptions);
+    finalizeConfig(agentConfig, normalizedOptions);
 
     logger.debug('Starting SkyWalking agent');
 
-    new PluginInstaller().install();
-
-    ServiceManager.INSTANCE.boot();
-    this.started = true;
+    try {
+      new PluginInstaller().install();
+      ServiceManager.INSTANCE.boot();
+      this.started = true;
+      bootstrapPromise = Promise.resolve();
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      bootstrapPromise = Promise.reject(err);
+      logger.error('SkyWalking agent bootstrap failed: %s', err);
+    }
   }
 
-  flush(): Promise<any> | null {
+  flush(): Promise<unknown | null> {
     if (!this.started) {
       logger.warn('Trying to flush() SkyWalking agent which is not started.');
-      return null;
+      return Promise.resolve(null);
     }
 
     const spanContextFlush = SpanContext.flush();
     if (!spanContextFlush) {
-      return ServiceManager.INSTANCE.flush();
+      return ServiceManager.INSTANCE.flush() ?? Promise.resolve(null);
     }
 
     return new Promise((resolve) => {
@@ -71,19 +92,18 @@ class Agent {
   }
 
   destroy(): void {
-    if (!this.started) {
-      logger.warn('Trying to destroy() SkyWalking agent which is not started.');
-      return;
+    if (this.started) {
+      logger.info('Destroying SkyWalking agent and cleaning up resources');
+      ServiceManager.INSTANCE.shutdown();
+      this.started = false;
     }
-
-    logger.info('Destroying SkyWalking agent and cleaning up resources');
-    ServiceManager.INSTANCE.shutdown();
-    this.started = false;
+    bootstrapPromise = null;
   }
 }
 
 export default new Agent();
-export { default as config } from './config/AgentConfig';
+/** Agent config without SW_AGENT_AUTHENTICATION (B-4). Internal code uses AgentConfig default export. */
+export { publicAgentConfig as config };
 export { default as ContextManager } from './trace/context/ContextManager';
 export { default as AzureHttpTriggerPlugin } from './azure/AzureHttpTriggerPlugin';
 export { default as AWSLambdaTriggerPlugin } from './aws/AWSLambdaTriggerPlugin';

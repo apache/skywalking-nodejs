@@ -17,20 +17,27 @@
  *
  */
 
-import * as grpc from '@grpc/grpc-js';
-import ChannelBuilder, { ChannelBuildContext } from './ChannelBuilder';
+/* eslint-env jest */
 
-const MAX_INBOUND_MESSAGE_SIZE = 1024 * 1024 * 50;
+describe('AgentConfig collector heartbeat period', () => {
+  const envBackup = { ...process.env };
 
-export default class StandardChannelBuilder implements ChannelBuilder {
-  build(context: ChannelBuildContext): ChannelBuildContext {
-    return {
-      ...context,
-      options: {
-        ...context.options,
-        'grpc.max_receive_message_length': MAX_INBOUND_MESSAGE_SIZE,
-        'grpc.max_send_message_length': MAX_INBOUND_MESSAGE_SIZE,
-      },
-    };
-  }
-}
+  afterEach(() => {
+    process.env = { ...envBackup };
+    jest.resetModules();
+  });
+
+  it('defaults to 20 seconds (Java HEARTBEAT_PERIOD)', () => {
+    delete process.env.SW_AGENT_COLLECTOR_HEARTBEAT_PERIOD;
+    jest.resetModules();
+    const config = require('../../src/config/AgentConfig').default;
+    expect(config.collectorHeartbeatPeriod).toBe(20);
+  });
+
+  it('reads SW_AGENT_COLLECTOR_HEARTBEAT_PERIOD in seconds', () => {
+    process.env.SW_AGENT_COLLECTOR_HEARTBEAT_PERIOD = '15';
+    jest.resetModules();
+    const config = require('../../src/config/AgentConfig').default;
+    expect(config.collectorHeartbeatPeriod).toBe(15);
+  });
+});

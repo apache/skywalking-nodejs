@@ -21,22 +21,31 @@ import * as grpc from '@grpc/grpc-js';
 import { ClientOptions, connectivityState } from '@grpc/grpc-js';
 import ChannelBuilder, { ChannelBuildContext } from './ChannelBuilder';
 import ChannelDecorator from './ChannelDecorator';
+import { formatHostPort } from './BackendAddressResolver';
 
 export default class GRPCChannel {
   private readonly originChannel: grpc.Channel;
   private readonly interceptors: grpc.Interceptor[];
 
-  private constructor(host: string, port: number, channelBuilders: ChannelBuilder[], decorators: ChannelDecorator[]) {
+  private constructor(
+    host: string,
+    port: number,
+    channelBuilders: ChannelBuilder[],
+    decorators: ChannelDecorator[],
+    tlsServerName?: string,
+  ) {
     let context: ChannelBuildContext = {
       credentials: grpc.credentials.createInsecure(),
       options: {},
+      connectHost: host,
+      tlsServerName,
     };
 
     for (const builder of channelBuilders) {
       context = builder.build(context);
     }
 
-    this.originChannel = new grpc.Channel(`${host}:${port}`, context.credentials, context.options);
+    this.originChannel = new grpc.Channel(formatHostPort(host, port), context.credentials, context.options);
     this.interceptors = decorators.map((decorator) => decorator.build());
   }
 
@@ -45,12 +54,13 @@ export default class GRPCChannel {
     port: number,
     channelBuilders: ChannelBuilder[],
     decorators: ChannelDecorator[],
+    tlsServerName?: string,
   ): GRPCChannel {
-    return new GRPCChannel(host, port, channelBuilders, decorators);
+    return new GRPCChannel(host, port, channelBuilders, decorators, tlsServerName);
   }
 
-  static newBuilder(host: string, port: number): GRPCChannelBuilder {
-    return new GRPCChannelBuilder(host, port);
+  static newBuilder(host: string, port: number, tlsServerName?: string): GRPCChannelBuilder {
+    return new GRPCChannelBuilder(host, port, tlsServerName);
   }
 
   getChannel(): grpc.Channel {
@@ -76,12 +86,14 @@ export default class GRPCChannel {
 class GRPCChannelBuilder {
   private readonly host: string;
   private readonly port: number;
+  private readonly tlsServerName?: string;
   private readonly channelBuilders: ChannelBuilder[] = [];
   private readonly decorators: ChannelDecorator[] = [];
 
-  constructor(host: string, port: number) {
+  constructor(host: string, port: number, tlsServerName?: string) {
     this.host = host;
     this.port = port;
+    this.tlsServerName = tlsServerName;
   }
 
   addManagedChannelBuilder(builder: ChannelBuilder): this {
@@ -95,6 +107,6 @@ class GRPCChannelBuilder {
   }
 
   build(): GRPCChannel {
-    return GRPCChannel.create(this.host, this.port, this.channelBuilders, this.decorators);
+    return GRPCChannel.create(this.host, this.port, this.channelBuilders, this.decorators, this.tlsServerName);
   }
 }
