@@ -84,7 +84,7 @@ Note that the various ignore options like `SW_IGNORE_SUFFIX`, `SW_TRACE_IGNORE_P
 
 ## Node.js Runtime Metrics
 
-The agent reports six process-level meters (`instance_nodejs_*`) via `MeterReportService` by default (collect 1s, report 1s). Set `SW_AGENT_NODEJS_RUNTIME_METRICS_REPORTER_ACTIVE=false` to disable. Process CPU combines `process.cpuUsage()` user + system, normalized by logical CPU count (0–100%).
+The agent reports twelve process-level meters (`instance_nodejs_*`) via `MeterReportService` by default (collect 1s, report 1s). Set `SW_AGENT_NODEJS_RUNTIME_METRICS_REPORTER_ACTIVE=false` to disable. Process CPU combines `process.cpuUsage()` user + system, normalized by logical CPU count (0–100%).
 
 | Node.js source | Meter name | Notes |
 | :--- | :--- | :--- |
@@ -94,6 +94,12 @@ The agent reports six process-level meters (`instance_nodejs_*`) via `MeterRepor
 | `v8.getHeapStatistics().heap_size_limit` | `instance_nodejs_heap_limit` | bytes |
 | `process.memoryUsage().rss` | `instance_nodejs_rss` | bytes |
 | `process.memoryUsage().external` | `instance_nodejs_external_memory` | bytes |
+| `process.memoryUsage().arrayBuffers` | `instance_nodejs_array_buffers` | bytes |
+| `process.uptime()` | `instance_nodejs_uptime` | seconds |
+| `v8.getHeapStatistics().peak_malloced_memory` | `instance_nodejs_peak_malloced_memory` | bytes |
+| `v8.getHeapStatistics().malloced_memory` | `instance_nodejs_malloced_memory` | bytes |
+| `v8.getHeapSpaceStatistics()` old_space | `instance_nodejs_old_space_used` | bytes |
+| `v8.getHeapSpaceStatistics()` new_space | `instance_nodejs_new_space_used` | bytes |
 
 Custom business metrics are not available through a public API; use [OpenTelemetry metrics](https://skywalking.apache.org/docs/main/latest/en/setup/backend/opentelemetry-receiver/) if you need those.
 

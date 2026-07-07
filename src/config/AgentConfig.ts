@@ -47,6 +47,8 @@ export type AgentConfig = {
   runtimeMetricsCollectPeriod?: number;
   runtimeMetricsReportPeriod?: number;
   runtimeMetricsBufferSize?: number;
+  runtimeMetricsMaxSnapshotsPerReport?: number;
+  runtimeMetricsHeapSpaceDetail?: boolean;
   /** @deprecated use runtimeMetricsReporterActive */
   nvmMetricsReporterActive?: boolean;
   /** @deprecated use runtimeMetricsCollectPeriod */
@@ -278,6 +280,13 @@ const _config = {
         '',
       10,
     ),
+  ),
+  runtimeMetricsHeapSpaceDetail: ((): boolean => {
+    const configured = process.env.SW_AGENT_RUNTIME_METRICS_HEAP_SPACE_DETAIL;
+    return configured?.toLowerCase() !== 'false';
+  })(),
+  runtimeMetricsMaxSnapshotsPerReport: ((n) => (Number.isSafeInteger(n) && n > 0 ? n : 1))(
+    Number.parseInt(process.env.SW_AGENT_RUNTIME_METRICS_MAX_SNAPSHOTS_PER_REPORT ?? '', 10),
   ),
   runtimeMetricsBufferSize: ((n) => (Number.isSafeInteger(n) && n > 0 ? n : 600))(
     Number.parseInt(

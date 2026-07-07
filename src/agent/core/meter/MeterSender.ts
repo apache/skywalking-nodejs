@@ -142,7 +142,8 @@ export default class MeterSender implements BootService, GRPCChannelListener {
           return;
         }
 
-        const snapshots = this.buffer.splice(0, this.buffer.length);
+        const maxSnapshots = config.runtimeMetricsMaxSnapshotsPerReport ?? 1;
+        const snapshots = this.buffer.splice(0, Math.min(this.buffer.length, maxSnapshots));
         const stream = this.reporterClient.collect(
           new grpc.Metadata(),
           { deadline: Date.now() + (config.traceTimeout || 10000) },
@@ -156,17 +157,12 @@ export default class MeterSender implements BootService, GRPCChannelListener {
         );
 
         try {
-          let metadataWritten = false;
-          const timestamp = Date.now();
           for (const snapshot of snapshots) {
             for (const meterData of this.collector.toMeterData(snapshot)) {
-              if (!metadataWritten) {
-                meterData
-                  .setService(config.serviceName)
-                  .setServiceinstance(config.serviceInstance)
-                  .setTimestamp(timestamp);
-                metadataWritten = true;
-              }
+              meterData
+                .setService(config.serviceName)
+                .setServiceinstance(config.serviceInstance)
+                .setTimestamp(snapshot.collectedAt);
               stream.write(meterData);
             }
           }
