@@ -24,6 +24,10 @@ import express from 'express';
 agent.start({
   serviceName: 'client',
   maxBufferSize: 1000,
+  // Plugin meter assertions need frequent reports within the test window.
+  runtimeMetricsCollectPeriod: 1000,
+  runtimeMetricsReportPeriod: 1000,
+  runtimeMetricsUptimeReportPeriod: 1000,
 });
 
 const app = express();
@@ -33,12 +37,12 @@ app.use('/test', testRouter);
 
 testRouter.get('/express', (req, res) => {
   http
-  .request(`http://${process.env.SERVER || 'localhost:5000'}${req.url}`, (r) => {
-    let data = '';
-    r.on('data', (chunk) => (data += chunk));
-    r.on('end', () => res.send(data));
-  })
-  .end();
+    .request(`http://${process.env.SERVER || 'localhost:5000'}${req.url}`, (r) => {
+      let data = '';
+      r.on('data', (chunk) => (data += chunk));
+      r.on('end', () => res.send(data));
+    })
+    .end();
 });
 
 app.listen(5001, () => console.info('Listening on port 5001...'));

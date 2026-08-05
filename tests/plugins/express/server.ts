@@ -25,6 +25,10 @@ import express from 'express';
 agent.start({
   serviceName: 'server',
   maxBufferSize: 1000,
+  // Plugin meter assertions need frequent reports within the test window.
+  runtimeMetricsCollectPeriod: 1000,
+  runtimeMetricsReportPeriod: 1000,
+  runtimeMetricsUptimeReportPeriod: 1000,
 });
 const app = express();
 

@@ -21,7 +21,6 @@
 
 import { GRPCChannelStatus } from '../../src/agent/core/remote/GRPCChannelStatus';
 
-const mockCollect = jest.fn();
 let pendingCollectCallback: ((error: Error | null) => void) | undefined;
 let sampleSequence = 0;
 
@@ -31,11 +30,11 @@ const mockChannelManager = {
   reportError: jest.fn(),
 };
 
-const mockMeterData = {
+const createMeterData = () => ({
   setService: jest.fn().mockReturnThis(),
   setServiceinstance: jest.fn().mockReturnThis(),
   setTimestamp: jest.fn().mockReturnThis(),
-};
+});
 
 const mockStream = {
   write: jest.fn(),
@@ -52,8 +51,6 @@ jest.mock('../../src/config/AgentConfig', () => ({
     traceTimeout: 10000,
     runtimeMetricsCollectPeriod: 1000,
     runtimeMetricsReportPeriod: 1000,
-    runtimeMetricsBufferSize: 600,
-    runtimeMetricsMaxSnapshotsPerReport: 1,
   },
 }));
 
@@ -69,7 +66,7 @@ jest.mock('../../src/proto/language-agent/Meter_grpc_pb', () => ({
 jest.mock('../../src/agent/core/meter/RuntimeMetricsCollector', () => {
   return jest.fn().mockImplementation(() => ({
     sample: jest.fn(() => mockSnapshot()),
-    toMeterData: jest.fn(() => [mockMeterData, { ...mockMeterData }]),
+    toMeterData: jest.fn(() => [createMeterData(), createMeterData()]),
     destroy: jest.fn(),
   }));
 });
@@ -102,11 +99,7 @@ describe('MeterSender', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     sampleSequence = 0;
-    mockCollect.mockClear();
     mockChannelManager.reportError.mockClear();
-    mockMeterData.setService.mockClear();
-    mockMeterData.setServiceinstance.mockClear();
-    mockMeterData.setTimestamp.mockClear();
     mockStream.write.mockReset();
     mockStream.end.mockReset();
     pendingCollectCallback = undefined;
@@ -123,38 +116,55 @@ describe('MeterSender', () => {
 
   it('clears reporter stub on DISCONNECT', () => {
     sender.statusChanged(GRPCChannelStatus.DISCONNECT);
+    expect((sender as unknown as { reporterClient?: unknown }).reporterClient).toBeUndefined();
     expect(MeterReportServiceClient).toHaveBeenCalledTimes(1);
   });
 
-  it('uses per-snapshot collectedAt timestamps', async () => {
-    const senderAny = sender as unknown as { buffer: Array<{ collectedAt: number }> };
-    senderAny.buffer.push({ collectedAt: 1_111_111 } as never, { collectedAt: 2_222_222 } as never);
-
-    const firstReport = (sender as unknown as { reportBufferedMetrics: () => Promise<void> }).reportBufferedMetrics();
-    await Promise.resolve();
-    pendingCollectCallback?.(null);
-    await firstReport;
-
-    const secondReport = (sender as unknown as { reportBufferedMetrics: () => Promise<void> }).reportBufferedMetrics();
-    await Promise.resolve();
-    pendingCollectCallback?.(null);
-    await secondReport;
-
-    const timestamps = mockMeterData.setTimestamp.mock.calls.map((call) => call[0]);
-    expect(timestamps).toEqual(expect.arrayContaining([1_111_111, 2_222_222]));
-  });
-
-  it('drains at most one snapshot per report tick by default', async () => {
-    const senderAny = sender as unknown as { buffer: Array<{ collectedAt: number }> };
-    senderAny.buffer.push({ collectedAt: 1 } as never, { collectedAt: 2 } as never, { collectedAt: 3 } as never);
+  it('uses collectedAt on the first stream element only', async () => {
+    const meterA = createMeterData();
+    const meterB = createMeterData();
+    const collector = (sender as unknown as { collector: { toMeterData: jest.Mock } }).collector;
+    collector.toMeterData.mockReturnValueOnce([meterA, meterB]);
+    (sender as unknown as { latestSnapshot?: { collectedAt: number } }).latestSnapshot = {
+      collectedAt: 1_111_111,
+    };
 
     const reportPromise = (sender as unknown as { reportBufferedMetrics: () => Promise<void> }).reportBufferedMetrics();
     await Promise.resolve();
     pendingCollectCallback?.(null);
     await reportPromise;
 
-    expect(senderAny.buffer.length).toBe(2);
+    expect(meterA.setService).toHaveBeenCalledWith('meter-service');
+    expect(meterA.setServiceinstance).toHaveBeenCalledWith('meter-instance');
+    expect(meterA.setTimestamp).toHaveBeenCalledWith(1_111_111);
+    expect(meterB.setService).not.toHaveBeenCalled();
+    expect(meterB.setServiceinstance).not.toHaveBeenCalled();
+    expect(meterB.setTimestamp).not.toHaveBeenCalled();
+    expect(mockStream.write).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports only the latest snapshot and discards older ones', async () => {
+    (sender as unknown as { latestSnapshot?: { collectedAt: number } }).latestSnapshot = {
+      collectedAt: 3,
+    };
+
+    const reportPromise = (sender as unknown as { reportBufferedMetrics: () => Promise<void> }).reportBufferedMetrics();
+    await Promise.resolve();
+    pendingCollectCallback?.(null);
+    await reportPromise;
+
+    expect((sender as unknown as { latestSnapshot?: unknown }).latestSnapshot).toBeUndefined();
     expect(mockStream.write).toHaveBeenCalled();
+  });
+
+  it('keeps overwriting with the newest sample between reports', () => {
+    const collector = (sender as unknown as { collector: { sample: jest.Mock } }).collector;
+    collector.sample.mockReturnValueOnce({ collectedAt: 10 }).mockReturnValueOnce({ collectedAt: 20 });
+
+    (sender as unknown as { collectSample: () => void }).collectSample();
+    (sender as unknown as { collectSample: () => void }).collectSample();
+
+    expect((sender as unknown as { latestSnapshot?: { collectedAt: number } }).latestSnapshot?.collectedAt).toBe(20);
   });
 
   it('skips duplicate boot timers', () => {

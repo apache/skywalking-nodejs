@@ -19,7 +19,6 @@
 
 import os from 'os';
 import v8 from 'v8';
-import config from '../../../config/AgentConfig';
 
 export type RuntimeSnapshot = {
   collectedAt: number;
@@ -59,14 +58,9 @@ export default class RuntimeSampler {
     const cpuScale = elapsedMicros > 0 ? 100 / elapsedMicros / this.logicalCpuCount : 0;
     const cpuUserPercent = cpuUsage.user * cpuScale;
     const cpuSystemPercent = cpuUsage.system * cpuScale;
-    const heapSpaceDetail = config.runtimeMetricsHeapSpaceDetail !== false;
-    let oldSpaceUsed = 0;
-    let newSpaceUsed = 0;
-    if (heapSpaceDetail) {
-      const heapSpaces = v8.getHeapSpaceStatistics();
-      oldSpaceUsed = heapSpaces.find((entry) => entry.space_name === 'old_space')?.space_used_size ?? 0;
-      newSpaceUsed = heapSpaces.find((entry) => entry.space_name === 'new_space')?.space_used_size ?? 0;
-    }
+    const heapSpaces = v8.getHeapSpaceStatistics();
+    const oldSpaceUsed = heapSpaces.find((entry) => entry.space_name === 'old_space')?.space_used_size ?? 0;
+    const newSpaceUsed = heapSpaces.find((entry) => entry.space_name === 'new_space')?.space_used_size ?? 0;
 
     return {
       collectedAt: Date.now(),

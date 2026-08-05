@@ -63,17 +63,14 @@ import { AgentConfig, normalizeDeprecatedRuntimeMetricOptions } from '../../src/
 function resetRuntimeMetricConfig(): void {
   const mutableConfig = config as AgentConfig;
   mutableConfig.runtimeMetricsReporterActive = true;
-  mutableConfig.runtimeMetricsCollectPeriod = 1000;
-  mutableConfig.runtimeMetricsReportPeriod = 1000;
-  mutableConfig.runtimeMetricsBufferSize = 600;
+  mutableConfig.runtimeMetricsCollectPeriod = 20000;
+  mutableConfig.runtimeMetricsReportPeriod = 20000;
   delete mutableConfig.nvmMetricsReporterActive;
   delete mutableConfig.nvmJvmReporterActive;
   delete mutableConfig.nvmMetricsCollectPeriod;
   delete mutableConfig.nvmJvmMetricsCollectPeriod;
   delete mutableConfig.nvmMetricsReportPeriod;
   delete mutableConfig.nvmJvmMetricsReportPeriod;
-  delete mutableConfig.nvmMetricsBufferSize;
-  delete mutableConfig.nvmJvmMetricsBufferSize;
 }
 
 describe('AgentConfig deprecated runtime metric options (unit)', () => {
@@ -87,13 +84,11 @@ describe('AgentConfig deprecated runtime metric options (unit)', () => {
       nvmMetricsReporterActive: false,
       nvmMetricsCollectPeriod: 2000,
       nvmMetricsReportPeriod: 3000,
-      nvmMetricsBufferSize: 42,
     });
 
     expect(normalized.runtimeMetricsReporterActive).toBe(false);
     expect(normalized.runtimeMetricsCollectPeriod).toBe(2000);
     expect(normalized.runtimeMetricsReportPeriod).toBe(3000);
-    expect(normalized.runtimeMetricsBufferSize).toBe(42);
   });
 
   it('maps nvmJvm deprecated aliases before merge', () => {
@@ -101,13 +96,11 @@ describe('AgentConfig deprecated runtime metric options (unit)', () => {
       nvmJvmReporterActive: false,
       nvmJvmMetricsCollectPeriod: 2222,
       nvmJvmMetricsReportPeriod: 3333,
-      nvmJvmMetricsBufferSize: 44,
     });
 
     expect(normalized.runtimeMetricsReporterActive).toBe(false);
     expect(normalized.runtimeMetricsCollectPeriod).toBe(2222);
     expect(normalized.runtimeMetricsReportPeriod).toBe(3333);
-    expect(normalized.runtimeMetricsBufferSize).toBe(44);
   });
 
   it('keeps explicit canonical options over deprecated aliases', () => {

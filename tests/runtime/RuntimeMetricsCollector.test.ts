@@ -19,6 +19,7 @@
 
 /* eslint-env jest */
 
+import config from '../../src/config/AgentConfig';
 import RuntimeMetricsCollector from '../../src/agent/core/meter/RuntimeMetricsCollector';
 import { RuntimeSnapshot } from '../../src/agent/core/meter/RuntimeSampler';
 
@@ -37,15 +38,41 @@ const EXPECTED_METER_NAMES = [
   'instance_nodejs_new_space_used',
 ];
 
+const EXPECTED_METER_NAMES_WITHOUT_UPTIME = EXPECTED_METER_NAMES.filter((name) => name !== 'instance_nodejs_uptime');
+
+function baseSnapshot(overrides: Partial<RuntimeSnapshot> = {}): RuntimeSnapshot {
+  return {
+    collectedAt: 1_700_000_000_000,
+    heapUsed: 100,
+    heapTotal: 200,
+    heapSizeLimit: 300,
+    rss: 400,
+    external: 50,
+    cpuUserPercent: 1.2,
+    cpuSystemPercent: 0.8,
+    arrayBuffers: 16,
+    uptime: 42.5,
+    peakMallocedMemory: 2048,
+    mallocedMemory: 3072,
+    oldSpaceUsed: 88,
+    newSpaceUsed: 12,
+    ...overrides,
+  };
+}
+
 describe('RuntimeMetricsCollector', () => {
   let collector: RuntimeMetricsCollector;
+  let originalUptimePeriod: number | undefined;
 
   beforeEach(() => {
     collector = new RuntimeMetricsCollector();
+    originalUptimePeriod = config.runtimeMetricsUptimeReportPeriod;
+    config.runtimeMetricsUptimeReportPeriod = 30000;
   });
 
   afterEach(() => {
     collector.destroy();
+    config.runtimeMetricsUptimeReportPeriod = originalUptimePeriod;
   });
 
   it('maps Node.js runtime data into nodejs meter fields', () => {
@@ -65,24 +92,7 @@ describe('RuntimeMetricsCollector', () => {
   });
 
   it('maps extended runtime snapshot values into meter single values', () => {
-    const snapshot: RuntimeSnapshot = {
-      collectedAt: 1_700_000_000_000,
-      heapUsed: 100,
-      heapTotal: 200,
-      heapSizeLimit: 300,
-      rss: 400,
-      external: 50,
-      cpuUserPercent: 1.2,
-      cpuSystemPercent: 0.8,
-      arrayBuffers: 16,
-      uptime: 42.5,
-      peakMallocedMemory: 2048,
-      mallocedMemory: 3072,
-      oldSpaceUsed: 88,
-      newSpaceUsed: 12,
-    };
-
-    const meters = collector.toMeterData(snapshot);
+    const meters = collector.toMeterData(baseSnapshot());
     const values: Record<string, number | undefined> = {};
     for (const meter of meters) {
       const name = meter.getSinglevalue()?.getName();
@@ -105,5 +115,16 @@ describe('RuntimeMetricsCollector', () => {
       instance_nodejs_old_space_used: 88,
       instance_nodejs_new_space_used: 12,
     });
+  });
+
+  it('includes uptime on the first report then omits until the uptime period elapses', () => {
+    const first = collector.toMeterData(baseSnapshot({ collectedAt: 1_000 }));
+    expect(first.map((m) => m.getSinglevalue()?.getName())).toEqual(EXPECTED_METER_NAMES);
+
+    const second = collector.toMeterData(baseSnapshot({ collectedAt: 1_000 + 29_999 }));
+    expect(second.map((m) => m.getSinglevalue()?.getName())).toEqual(EXPECTED_METER_NAMES_WITHOUT_UPTIME);
+
+    const third = collector.toMeterData(baseSnapshot({ collectedAt: 1_000 + 30_000 }));
+    expect(third.map((m) => m.getSinglevalue()?.getName())).toEqual(EXPECTED_METER_NAMES);
   });
 });

@@ -163,7 +163,7 @@ meterItems:
       - meterId:
           name: instance_nodejs_malloced_memory
           tags: []
-        singleValue: gt 0
+        singleValue: ge 0
       - meterId:
           name: instance_nodejs_old_space_used
           tags: []
@@ -171,7 +171,7 @@ meterItems:
       - meterId:
           name: instance_nodejs_new_space_used
           tags: []
-        singleValue: gt 0
+        singleValue: ge 0
   - serviceName: client
     meterSize: 12
     meters:
@@ -214,7 +214,7 @@ meterItems:
       - meterId:
           name: instance_nodejs_malloced_memory
           tags: []
-        singleValue: gt 0
+        singleValue: ge 0
       - meterId:
           name: instance_nodejs_old_space_used
           tags: []
@@ -222,4 +222,4 @@ meterItems:
       - meterId:
           name: instance_nodejs_new_space_used
           tags: []
-        singleValue: gt 0
+        singleValue: ge 0

@@ -111,25 +111,6 @@ describe('RuntimeSampler', () => {
     jest.restoreAllMocks();
   });
 
-  it('skips heap space statistics when heap space detail is disabled', () => {
-    const config = require('../../src/config/AgentConfig').default as {
-      runtimeMetricsHeapSpaceDetail?: boolean;
-    };
-    const original = config.runtimeMetricsHeapSpaceDetail;
-    config.runtimeMetricsHeapSpaceDetail = false;
-    const heapSpaceSpy = jest.spyOn(v8, 'getHeapSpaceStatistics');
-
-    try {
-      const snapshot = sampler.sample();
-      expect(heapSpaceSpy).not.toHaveBeenCalled();
-      expect(snapshot.oldSpaceUsed).toBe(0);
-      expect(snapshot.newSpaceUsed).toBe(0);
-    } finally {
-      config.runtimeMetricsHeapSpaceDetail = original;
-      heapSpaceSpy.mockRestore();
-    }
-  });
-
   it('defaults missing heap spaces to zero', () => {
     jest.spyOn(v8, 'getHeapSpaceStatistics').mockReturnValue([]);
 
