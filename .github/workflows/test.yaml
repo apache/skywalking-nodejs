@@ -47,7 +47,7 @@ jobs:
           npm i
           npm run lint
 
-  TestUnitRemote:
+  TestUnit:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
@@ -73,7 +73,7 @@ jobs:
       - name: Unit tests on Node@${{ matrix.node-version }}
         run: |
           npm i
-          npx jest tests/remote/ tests/config/ tests/runtime/ --runInBand
+          npx jest --testPathIgnorePatterns "/tests/plugins/" --runInBand
 
   build-matrix:
     runs-on: ubuntu-latest
