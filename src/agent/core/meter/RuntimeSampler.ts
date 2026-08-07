@@ -21,6 +21,7 @@ import os from 'os';
 import v8 from 'v8';
 
 export type RuntimeSnapshot = {
+  collectedAt: number;
   heapUsed: number;
   heapTotal: number;
   heapSizeLimit: number;
@@ -28,6 +29,12 @@ export type RuntimeSnapshot = {
   external: number;
   cpuUserPercent: number;
   cpuSystemPercent: number;
+  arrayBuffers: number;
+  uptime: number;
+  peakMallocedMemory: number;
+  mallocedMemory: number;
+  oldSpaceUsed: number;
+  newSpaceUsed: number;
 };
 
 export default class RuntimeSampler {
@@ -38,17 +45,25 @@ export default class RuntimeSampler {
   sample(): RuntimeSnapshot {
     const memory = process.memoryUsage();
     const heapStats = v8.getHeapStatistics();
-    const cpuUsage = process.cpuUsage(this.lastCpuUsage);
+    const cpuNow = process.cpuUsage();
+    const cpuUsage = {
+      user: cpuNow.user - this.lastCpuUsage.user,
+      system: cpuNow.system - this.lastCpuUsage.system,
+    };
     const now = process.hrtime.bigint();
     const elapsedMicros = Number(now - this.lastCpuTimestamp) / 1000;
-    this.lastCpuUsage = process.cpuUsage();
+    this.lastCpuUsage = cpuNow;
     this.lastCpuTimestamp = now;
 
     const cpuScale = elapsedMicros > 0 ? 100 / elapsedMicros / this.logicalCpuCount : 0;
     const cpuUserPercent = cpuUsage.user * cpuScale;
     const cpuSystemPercent = cpuUsage.system * cpuScale;
+    const heapSpaces = v8.getHeapSpaceStatistics();
+    const oldSpaceUsed = heapSpaces.find((entry) => entry.space_name === 'old_space')?.space_used_size ?? 0;
+    const newSpaceUsed = heapSpaces.find((entry) => entry.space_name === 'new_space')?.space_used_size ?? 0;
 
     return {
+      collectedAt: Date.now(),
       heapUsed: memory.heapUsed,
       heapTotal: memory.heapTotal,
       heapSizeLimit: heapStats.heap_size_limit,
@@ -56,6 +71,12 @@ export default class RuntimeSampler {
       external: memory.external,
       cpuUserPercent,
       cpuSystemPercent,
+      arrayBuffers: memory.arrayBuffers ?? 0,
+      uptime: process.uptime(),
+      peakMallocedMemory: heapStats.peak_malloced_memory,
+      mallocedMemory: heapStats.malloced_memory,
+      oldSpaceUsed,
+      newSpaceUsed,
     };
   }
 

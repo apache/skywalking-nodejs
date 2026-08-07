@@ -38,9 +38,9 @@ export default class MeterSender implements BootService, GRPCChannelListener {
   private channelManager?: GRPCChannelManager;
   private status = GRPCChannelStatus.DISCONNECT;
   private reporterClient?: MeterReportServiceClient;
-  private readonly buffer: RuntimeSnapshot[] = [];
-  private collectTimer?: NodeJS.Timeout;
-  private reportTimer?: NodeJS.Timeout;
+  /** Latest gauge snapshot only — stale samples have no value after reconnect. */
+  private latestSnapshot?: RuntimeSnapshot;
+  private timer?: NodeJS.Timeout;
   private reporting?: Promise<void>;
 
   private collector!: RuntimeMetricsCollector;
@@ -52,12 +52,12 @@ export default class MeterSender implements BootService, GRPCChannelListener {
   }
 
   boot(): void {
-    if (this.collectTimer || this.reportTimer) {
-      logger.warn('MeterSender timers already scheduled; skipping duplicate boot.');
+    if (this.timer) {
+      logger.warn('MeterSender timer already scheduled; skipping duplicate boot.');
       return;
     }
 
-    this.startTimers();
+    this.startTimer();
   }
 
   onComplete(): void {}
@@ -83,29 +83,19 @@ export default class MeterSender implements BootService, GRPCChannelListener {
     );
   }
 
-  private startTimers(): void {
-    this.collectTimer = setInterval(() => {
+  private startTimer(): void {
+    this.timer = setInterval(() => {
       if (this.closed) {
         return;
       }
       this.collectSample();
-    }, config.runtimeMetricsCollectPeriod || 1000) as NodeJS.Timeout;
-    this.collectTimer.unref();
-    this.reportTimer = setInterval(() => {
-      if (this.closed) {
-        return;
-      }
       void this.reportBufferedMetrics();
-    }, config.runtimeMetricsReportPeriod || 1000) as NodeJS.Timeout;
-    this.reportTimer.unref();
+    }, config.runtimeMetricsReportPeriod || 20000) as NodeJS.Timeout;
+    this.timer.unref();
   }
 
   private collectSample(): void {
-    const maxBufferSize = config.runtimeMetricsBufferSize || 600;
-    if (this.buffer.length >= maxBufferSize) {
-      this.buffer.shift();
-    }
-    this.buffer.push(this.collector.sample());
+    this.latestSnapshot = this.collector.sample();
   }
 
   private reportBufferedMetrics(): Promise<void> {
@@ -132,7 +122,9 @@ export default class MeterSender implements BootService, GRPCChannelListener {
           return;
         }
 
-        if (this.buffer.length === 0 || this.status !== GRPCChannelStatus.CONNECTED || !this.reporterClient) {
+        const snapshot = this.latestSnapshot;
+        this.latestSnapshot = undefined;
+        if (!snapshot || this.status !== GRPCChannelStatus.CONNECTED || !this.reporterClient) {
           resolve();
           return;
         }
@@ -142,7 +134,6 @@ export default class MeterSender implements BootService, GRPCChannelListener {
           return;
         }
 
-        const snapshots = this.buffer.splice(0, this.buffer.length);
         const stream = this.reporterClient.collect(
           new grpc.Metadata(),
           { deadline: Date.now() + (config.traceTimeout || 10000) },
@@ -157,18 +148,16 @@ export default class MeterSender implements BootService, GRPCChannelListener {
 
         try {
           let metadataWritten = false;
-          const timestamp = Date.now();
-          for (const snapshot of snapshots) {
-            for (const meterData of this.collector.toMeterData(snapshot)) {
-              if (!metadataWritten) {
-                meterData
-                  .setService(config.serviceName)
-                  .setServiceinstance(config.serviceInstance)
-                  .setTimestamp(timestamp);
-                metadataWritten = true;
-              }
-              stream.write(meterData);
+          for (const meterData of this.collector.toMeterData(snapshot)) {
+            // Meter.proto: service / instance / timestamp on the first stream element only.
+            if (!metadataWritten) {
+              meterData
+                .setService(config.serviceName)
+                .setServiceinstance(config.serviceInstance)
+                .setTimestamp(snapshot.collectedAt);
+              metadataWritten = true;
             }
+            stream.write(meterData);
           }
         } finally {
           try {
@@ -204,17 +193,13 @@ export default class MeterSender implements BootService, GRPCChannelListener {
 
   shutdown(): void {
     this.closed = true;
-    if (this.collectTimer) {
-      clearInterval(this.collectTimer);
-      this.collectTimer = undefined;
-    }
-    if (this.reportTimer) {
-      clearInterval(this.reportTimer);
-      this.reportTimer = undefined;
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = undefined;
     }
     this.reporting = undefined;
     this.reporterClient = undefined;
-    this.buffer.length = 0;
+    this.latestSnapshot = undefined;
     this.collector.destroy();
     this.channelManager = undefined;
     logger.info('MeterSender destroyed and resources cleaned up');

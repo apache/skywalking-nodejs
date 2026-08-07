@@ -47,6 +47,34 @@ jobs:
           npm i
           npm run lint
 
+  TestUnit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        node-version: [ 20, 22, 24 ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Set Up NodeJS ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Unit tests on Node@${{ matrix.node-version }}
+        run: |
+          npm i
+          npx jest --testPathIgnorePatterns "/node_modules/" "/tests/plugins/" --runInBand
+
   build-matrix:
     runs-on: ubuntu-latest
     timeout-minutes: 5

@@ -122,7 +122,7 @@ segmentItems:
 
 meterItems:
   - serviceName: server
-    meterSize: 6
+    meterSize: 12
     meters:
       - meterId:
           name: instance_nodejs_process_cpu
@@ -148,8 +148,32 @@ meterItems:
           name: instance_nodejs_external_memory
           tags: []
         singleValue: gt 0
+      - meterId:
+          name: instance_nodejs_array_buffers
+          tags: []
+        singleValue: ge 0
+      - meterId:
+          name: instance_nodejs_uptime
+          tags: []
+        singleValue: gt 0
+      - meterId:
+          name: instance_nodejs_peak_malloced_memory
+          tags: []
+        singleValue: gt 0
+      - meterId:
+          name: instance_nodejs_malloced_memory
+          tags: []
+        singleValue: ge 0
+      - meterId:
+          name: instance_nodejs_old_space_used
+          tags: []
+        singleValue: gt 0
+      - meterId:
+          name: instance_nodejs_new_space_used
+          tags: []
+        singleValue: ge 0
   - serviceName: client
-    meterSize: 6
+    meterSize: 12
     meters:
       - meterId:
           name: instance_nodejs_process_cpu
@@ -175,3 +199,27 @@ meterItems:
           name: instance_nodejs_external_memory
           tags: []
         singleValue: gt 0
+      - meterId:
+          name: instance_nodejs_array_buffers
+          tags: []
+        singleValue: ge 0
+      - meterId:
+          name: instance_nodejs_uptime
+          tags: []
+        singleValue: gt 0
+      - meterId:
+          name: instance_nodejs_peak_malloced_memory
+          tags: []
+        singleValue: gt 0
+      - meterId:
+          name: instance_nodejs_malloced_memory
+          tags: []
+        singleValue: ge 0
+      - meterId:
+          name: instance_nodejs_old_space_used
+          tags: []
+        singleValue: gt 0
+      - meterId:
+          name: instance_nodejs_new_space_used
+          tags: []
+        singleValue: ge 0
