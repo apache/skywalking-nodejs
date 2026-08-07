@@ -49,7 +49,6 @@ jest.mock('../../src/config/AgentConfig', () => ({
     serviceName: 'meter-service',
     serviceInstance: 'meter-instance',
     traceTimeout: 10000,
-    runtimeMetricsCollectPeriod: 1000,
     runtimeMetricsReportPeriod: 1000,
   },
 }));
@@ -168,10 +167,21 @@ describe('MeterSender', () => {
   });
 
   it('skips duplicate boot timers', () => {
-    const collectTimer = (sender as unknown as { collectTimer?: NodeJS.Timeout }).collectTimer;
-    const reportTimer = (sender as unknown as { reportTimer?: NodeJS.Timeout }).reportTimer;
+    const timer = (sender as unknown as { timer?: NodeJS.Timeout }).timer;
     sender.boot();
-    expect((sender as unknown as { collectTimer?: NodeJS.Timeout }).collectTimer).toBe(collectTimer);
-    expect((sender as unknown as { reportTimer?: NodeJS.Timeout }).reportTimer).toBe(reportTimer);
+    expect((sender as unknown as { timer?: NodeJS.Timeout }).timer).toBe(timer);
+  });
+
+  it('collects then reports on the same timer tick', async () => {
+    const collector = (sender as unknown as { collector: { sample: jest.Mock } }).collector;
+    collector.sample.mockReturnValueOnce({ collectedAt: 42 });
+
+    jest.advanceTimersByTime(1000);
+    await Promise.resolve();
+    pendingCollectCallback?.(null);
+    await Promise.resolve();
+
+    expect(collector.sample).toHaveBeenCalled();
+    expect(mockStream.write).toHaveBeenCalled();
   });
 });

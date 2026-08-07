@@ -17,17 +17,12 @@
  *
  */
 
-import config from '../../../config/AgentConfig';
 import { MeterData, MeterSingleValue } from '../../../proto/language-agent/Meter_pb';
 import RuntimeSampler, { RuntimeSnapshot } from './RuntimeSampler';
-
-const DEFAULT_UPTIME_REPORT_PERIOD_MS = 30000;
 
 /** Maps Node.js runtime samples into MeterReportService single-value meters (instance_nodejs_*). */
 export default class RuntimeMetricsCollector {
   private readonly sampler = new RuntimeSampler();
-  /** collectedAt of the last report that included instance_nodejs_uptime. */
-  private lastUptimeReportAt = 0;
 
   sample(): RuntimeSnapshot {
     return this.sampler.sample();
@@ -42,28 +37,16 @@ export default class RuntimeMetricsCollector {
       ['instance_nodejs_rss', snapshot.rss],
       ['instance_nodejs_external_memory', snapshot.external],
       ['instance_nodejs_array_buffers', snapshot.arrayBuffers],
+      ['instance_nodejs_uptime', snapshot.uptime],
       ['instance_nodejs_peak_malloced_memory', snapshot.peakMallocedMemory],
       ['instance_nodejs_malloced_memory', snapshot.mallocedMemory],
       ['instance_nodejs_old_space_used', snapshot.oldSpaceUsed],
       ['instance_nodejs_new_space_used', snapshot.newSpaceUsed],
     ];
 
-    if (this.shouldIncludeUptime(snapshot.collectedAt)) {
-      gauges.splice(7, 0, ['instance_nodejs_uptime', snapshot.uptime]);
-      this.lastUptimeReportAt = snapshot.collectedAt;
-    }
-
     return gauges.map(([name, value]) =>
       new MeterData().setSinglevalue(new MeterSingleValue().setName(name).setValue(value)),
     );
-  }
-
-  private shouldIncludeUptime(collectedAt: number): boolean {
-    if (this.lastUptimeReportAt === 0) {
-      return true;
-    }
-    const period = config.runtimeMetricsUptimeReportPeriod || DEFAULT_UPTIME_REPORT_PERIOD_MS;
-    return collectedAt - this.lastUptimeReportAt >= period;
   }
 
   destroy(): void {

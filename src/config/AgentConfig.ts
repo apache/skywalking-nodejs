@@ -44,20 +44,14 @@ export type AgentConfig = {
   reHttpIgnoreMethod?: RegExp;
   traceTimeout?: number;
   runtimeMetricsReporterActive?: boolean;
-  runtimeMetricsCollectPeriod?: number;
+  /** Sample + report interval for runtime meters (ms). Default 20000. */
   runtimeMetricsReportPeriod?: number;
-  /** How often to include instance_nodejs_uptime in a report (ms). Default 30000. */
-  runtimeMetricsUptimeReportPeriod?: number;
   /** @deprecated use runtimeMetricsReporterActive */
   nvmMetricsReporterActive?: boolean;
-  /** @deprecated use runtimeMetricsCollectPeriod */
-  nvmMetricsCollectPeriod?: number;
   /** @deprecated use runtimeMetricsReportPeriod */
   nvmMetricsReportPeriod?: number;
   /** @deprecated use runtimeMetricsReporterActive */
   nvmJvmReporterActive?: boolean;
-  /** @deprecated use runtimeMetricsCollectPeriod */
-  nvmJvmMetricsCollectPeriod?: number;
   /** @deprecated use runtimeMetricsReportPeriod */
   nvmJvmMetricsReportPeriod?: number;
 };
@@ -74,15 +68,6 @@ export function normalizeDeprecatedRuntimeMetricOptions(options: AgentConfig): A
   delete normalized.nvmMetricsReporterActive;
   delete normalized.nvmJvmReporterActive;
 
-  if (normalized.runtimeMetricsCollectPeriod === undefined) {
-    const collectPeriod = normalized.nvmMetricsCollectPeriod ?? normalized.nvmJvmMetricsCollectPeriod;
-    if (collectPeriod !== undefined) {
-      normalized.runtimeMetricsCollectPeriod = collectPeriod;
-    }
-  }
-  delete normalized.nvmMetricsCollectPeriod;
-  delete normalized.nvmJvmMetricsCollectPeriod;
-
   if (normalized.runtimeMetricsReportPeriod === undefined) {
     const reportPeriod = normalized.nvmMetricsReportPeriod ?? normalized.nvmJvmMetricsReportPeriod;
     if (reportPeriod !== undefined) {
@@ -98,8 +83,6 @@ export function normalizeDeprecatedRuntimeMetricOptions(options: AgentConfig): A
 function clearDeprecatedRuntimeMetricFields(config: AgentConfig): void {
   delete config.nvmMetricsReporterActive;
   delete config.nvmJvmReporterActive;
-  delete config.nvmMetricsCollectPeriod;
-  delete config.nvmJvmMetricsCollectPeriod;
   delete config.nvmMetricsReportPeriod;
   delete config.nvmJvmMetricsReportPeriod;
 }
@@ -110,14 +93,6 @@ function applyDeprecatedRuntimeMetricConfig(config: AgentConfig, options: AgentC
       config.runtimeMetricsReporterActive = config.nvmMetricsReporterActive;
     } else if (config.nvmJvmReporterActive !== undefined) {
       config.runtimeMetricsReporterActive = config.nvmJvmReporterActive;
-    }
-  }
-
-  if (options.runtimeMetricsCollectPeriod === undefined) {
-    if (config.nvmMetricsCollectPeriod !== undefined) {
-      config.runtimeMetricsCollectPeriod = config.nvmMetricsCollectPeriod;
-    } else if (config.nvmJvmMetricsCollectPeriod !== undefined) {
-      config.runtimeMetricsCollectPeriod = config.nvmJvmMetricsCollectPeriod;
     }
   }
 
@@ -237,16 +212,6 @@ const _config = {
       process.env.SW_AGENT_NVM_JVM_REPORTER_ACTIVE;
     return configured?.toLowerCase() !== 'false';
   })(),
-  runtimeMetricsCollectPeriod: ((n) => (Number.isSafeInteger(n) && n > 0 ? n : 20000))(
-    Number.parseInt(
-      process.env.SW_AGENT_NODEJS_RUNTIME_METRICS_COLLECT_PERIOD ??
-        process.env.SW_AGENT_RUNTIME_METRICS_COLLECT_PERIOD ??
-        process.env.SW_AGENT_NVM_METRICS_COLLECT_PERIOD ??
-        process.env.SW_AGENT_NVM_JVM_METRICS_COLLECT_PERIOD ??
-        '',
-      10,
-    ),
-  ),
   runtimeMetricsReportPeriod: ((n) => (Number.isSafeInteger(n) && n > 0 ? n : 20000))(
     Number.parseInt(
       process.env.SW_AGENT_NODEJS_RUNTIME_METRICS_REPORT_PERIOD ??
@@ -256,9 +221,6 @@ const _config = {
         '',
       10,
     ),
-  ),
-  runtimeMetricsUptimeReportPeriod: ((n) => (Number.isSafeInteger(n) && n > 0 ? n : 30000))(
-    Number.parseInt(process.env.SW_AGENT_NODEJS_RUNTIME_METRICS_UPTIME_REPORT_PERIOD ?? '', 10),
   ),
 };
 

@@ -73,7 +73,7 @@ jobs:
       - name: Unit tests on Node@${{ matrix.node-version }}
         run: |
           npm i
-          npx jest --testPathIgnorePatterns "/tests/plugins/" --runInBand
+          npx jest --testPathIgnorePatterns "/node_modules/" "/tests/plugins/" --runInBand
 
   build-matrix:
     runs-on: ubuntu-latest

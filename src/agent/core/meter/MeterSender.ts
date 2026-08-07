@@ -40,8 +40,7 @@ export default class MeterSender implements BootService, GRPCChannelListener {
   private reporterClient?: MeterReportServiceClient;
   /** Latest gauge snapshot only — stale samples have no value after reconnect. */
   private latestSnapshot?: RuntimeSnapshot;
-  private collectTimer?: NodeJS.Timeout;
-  private reportTimer?: NodeJS.Timeout;
+  private timer?: NodeJS.Timeout;
   private reporting?: Promise<void>;
 
   private collector!: RuntimeMetricsCollector;
@@ -53,12 +52,12 @@ export default class MeterSender implements BootService, GRPCChannelListener {
   }
 
   boot(): void {
-    if (this.collectTimer || this.reportTimer) {
-      logger.warn('MeterSender timers already scheduled; skipping duplicate boot.');
+    if (this.timer) {
+      logger.warn('MeterSender timer already scheduled; skipping duplicate boot.');
       return;
     }
 
-    this.startTimers();
+    this.startTimer();
   }
 
   onComplete(): void {}
@@ -84,21 +83,15 @@ export default class MeterSender implements BootService, GRPCChannelListener {
     );
   }
 
-  private startTimers(): void {
-    this.collectTimer = setInterval(() => {
+  private startTimer(): void {
+    this.timer = setInterval(() => {
       if (this.closed) {
         return;
       }
       this.collectSample();
-    }, config.runtimeMetricsCollectPeriod || 20000) as NodeJS.Timeout;
-    this.collectTimer.unref();
-    this.reportTimer = setInterval(() => {
-      if (this.closed) {
-        return;
-      }
       void this.reportBufferedMetrics();
     }, config.runtimeMetricsReportPeriod || 20000) as NodeJS.Timeout;
-    this.reportTimer.unref();
+    this.timer.unref();
   }
 
   private collectSample(): void {
@@ -200,13 +193,9 @@ export default class MeterSender implements BootService, GRPCChannelListener {
 
   shutdown(): void {
     this.closed = true;
-    if (this.collectTimer) {
-      clearInterval(this.collectTimer);
-      this.collectTimer = undefined;
-    }
-    if (this.reportTimer) {
-      clearInterval(this.reportTimer);
-      this.reportTimer = undefined;
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = undefined;
     }
     this.reporting = undefined;
     this.reporterClient = undefined;

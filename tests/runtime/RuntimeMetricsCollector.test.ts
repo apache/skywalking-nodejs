@@ -19,7 +19,6 @@
 
 /* eslint-env jest */
 
-import config from '../../src/config/AgentConfig';
 import RuntimeMetricsCollector from '../../src/agent/core/meter/RuntimeMetricsCollector';
 import { RuntimeSnapshot } from '../../src/agent/core/meter/RuntimeSampler';
 
@@ -37,8 +36,6 @@ const EXPECTED_METER_NAMES = [
   'instance_nodejs_old_space_used',
   'instance_nodejs_new_space_used',
 ];
-
-const EXPECTED_METER_NAMES_WITHOUT_UPTIME = EXPECTED_METER_NAMES.filter((name) => name !== 'instance_nodejs_uptime');
 
 function baseSnapshot(overrides: Partial<RuntimeSnapshot> = {}): RuntimeSnapshot {
   return {
@@ -62,17 +59,13 @@ function baseSnapshot(overrides: Partial<RuntimeSnapshot> = {}): RuntimeSnapshot
 
 describe('RuntimeMetricsCollector', () => {
   let collector: RuntimeMetricsCollector;
-  let originalUptimePeriod: number | undefined;
 
   beforeEach(() => {
     collector = new RuntimeMetricsCollector();
-    originalUptimePeriod = config.runtimeMetricsUptimeReportPeriod;
-    config.runtimeMetricsUptimeReportPeriod = 30000;
   });
 
   afterEach(() => {
     collector.destroy();
-    config.runtimeMetricsUptimeReportPeriod = originalUptimePeriod;
   });
 
   it('maps Node.js runtime data into nodejs meter fields', () => {
@@ -117,14 +110,11 @@ describe('RuntimeMetricsCollector', () => {
     });
   });
 
-  it('includes uptime on the first report then omits until the uptime period elapses', () => {
+  it('includes uptime with every report', () => {
     const first = collector.toMeterData(baseSnapshot({ collectedAt: 1_000 }));
     expect(first.map((m) => m.getSinglevalue()?.getName())).toEqual(EXPECTED_METER_NAMES);
 
-    const second = collector.toMeterData(baseSnapshot({ collectedAt: 1_000 + 29_999 }));
-    expect(second.map((m) => m.getSinglevalue()?.getName())).toEqual(EXPECTED_METER_NAMES_WITHOUT_UPTIME);
-
-    const third = collector.toMeterData(baseSnapshot({ collectedAt: 1_000 + 30_000 }));
-    expect(third.map((m) => m.getSinglevalue()?.getName())).toEqual(EXPECTED_METER_NAMES);
+    const second = collector.toMeterData(baseSnapshot({ collectedAt: 1_001 }));
+    expect(second.map((m) => m.getSinglevalue()?.getName())).toEqual(EXPECTED_METER_NAMES);
   });
 });
