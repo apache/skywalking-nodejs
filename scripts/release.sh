@@ -409,7 +409,7 @@ Keys to verify the Release Candidate :
 
 Guide to build the release from source :
 
- * https://github.com/apache/skywalking-nodejs/blob/${TAG}/CONTRIBUTING.md#compiling-and-building
+ * docs/en/contribution/build-and-test.md (in the source package)
 
 Voting will start now (${VOTE_DATE}) and will remain open for at least 72 hours.
 A release passes with at least 3 binding +1 (PMC) votes and more +1 than -1.
@@ -420,7 +420,7 @@ A release passes with at least 3 binding +1 (PMC) votes and more +1 than -1.
 
 Thanks.
 
-[1] https://github.com/apache/skywalking-nodejs/blob/master/docs/How-to-release.md#vote-check
+[1] docs/en/contribution/release.md, "Vote check" section (in the source package)
 ========================================================================
 EOF
 
