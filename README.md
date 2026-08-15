@@ -1,189 +1,81 @@
-# SkyWalking NodeJS Agent
+# Apache SkyWalking Node.js Agent
 
-<img src="http://skywalking.apache.org/assets/logo.svg" alt="Sky Walking logo" height="90px" align="right" />
+<img src="https://skywalking.apache.org/assets/logo.svg" alt="Apache SkyWalking logo" height="90px" align="right" />
 
-**SkyWalking-NodeJS**: The NodeJS Agent for Apache SkyWalking, which provides the native tracing abilities for NodeJS backend project.
-
-**SkyWalking**: an APM(application performance monitor) system, especially designed for
-microservices, cloud native and container-based (Docker, Kubernetes, Mesos) architectures.
-
-[![GitHub stars](https://img.shields.io/github/stars/apache/skywalking-nodejs.svg?style=for-the-badge&label=Stars&logo=github)](https://github.com/apache/skywalking-nodejs)
-[![Twitter Follow](https://img.shields.io/twitter/follow/asfskywalking.svg?style=for-the-badge&label=Follow&logo=twitter)](https://twitter.com/AsfSkyWalking)
-
+The Apache SkyWalking Node.js Agent reports distributed traces and Node.js runtime metrics to an
+Apache SkyWalking OAP server. It instruments supported Node.js libraries without changes to their
+source code.
 
 [![Build](https://github.com/apache/skywalking-nodejs/workflows/Build/badge.svg?branch=master)](https://github.com/apache/skywalking-nodejs/actions?query=branch%3Amaster+event%3Apush+workflow%3A%22Build%22)
-[![npm version](https://badge.fury.io/js/skywalking-backend-js.svg)](https://badge.fury.io/js/skywalking-backend-js)
+[![npm version](https://badge.fury.io/js/skywalking-backend-js.svg)](https://www.npmjs.com/package/skywalking-backend-js)
+[![GitHub stars](https://img.shields.io/github/stars/apache/skywalking-nodejs.svg?label=Stars&logo=github)](https://github.com/apache/skywalking-nodejs)
 
-## Install SkyWalking NodeJS package from npmjs
+## Requirements
+
+- Node.js 20 or later.
+- A compatible Apache SkyWalking OAP server. See the
+  [agent and OAP compatibility guide](https://skywalking.apache.org/docs/main/next/en/setup/service-agent/agent-compatibility/).
+
+## Install
 
 ```bash
-$ npm install --save skywalking-backend-js
+npm install skywalking-backend-js
 ```
 
-## Set up NodeJS Agent
+## Quick start
 
-SkyWalking NodeJS SDK requires SkyWalking backend (OAP) 8.0+ and NodeJS >= 20,
-other versions are not tested and SkyWalking NodeJS SDK may or may not work,
-please make sure to use the supported versions before reporting any issue.
+Start the agent before loading the modules that it must instrument:
 
 ```typescript
 import agent from 'skywalking-backend-js';
 
-agent.start();
-```
-
-This will use default configurations to start the SkyWalking agent above, if you want to specify your own configurations, here are two methods.
-
-- Pass those values to `agent.start` method, such as:
-
-```typescript
 agent.start({
-  serviceName: 'my-service-name',
-  serviceInstance: 'my-service-instance-name',
-  collectorAddress: 'my.collector.address:port',
+  serviceName: 'checkout-service',
+  collectorAddress: '127.0.0.1:11800',
 });
 ```
 
-Note that all options given (including empty/null values) will override the corresponding default values, e.g. `agent.start({ collectorAddress: '' })` will override the default value of `collectorAddress` to empty string, causing errors like `DNS resolution failed`.
+The same values can be set with environment variables:
 
-- Use environment variables.
-
-The supported environment variables are as follows:
-
-Environment Variable | Description | Default
-| :--- | :--- | :--- |
-| `SW_AGENT_NAME` | The name of the service | `your-nodejs-service` |
-| `SW_AGENT_INSTANCE` | The name of the service instance | Randomly generated |
-| `SW_AGENT_COLLECTOR_BACKEND_SERVICES` | The backend OAP server address | `127.0.0.1:11800` |
-| `SW_AGENT_SECURE` | Whether to use secure connection to backend OAP server | `false` |
-| `SW_AGENT_AUTHENTICATION` | The authentication token to verify that the agent is trusted by the backend OAP, as for how to configure the backend, refer to [the yaml](https://github.com/apache/skywalking/blob/4f0f39ffccdc9b41049903cc540b8904f7c9728e/oap-server/server-bootstrap/src/main/resources/application.yml#L155-L158). | not set |
-| `SW_AGENT_LOGGING_LEVEL` | The logging level, could be one of `error`, `warn`, `info`, `debug` | `info` |
-| `SW_AGENT_DISABLE_PLUGINS` | Comma-delimited list of plugins to disable in the plugins directory (e.g. "mysql", "express") | `` |
-| `SW_COLD_ENDPOINT` | Cold start detection is as follows: First span to run is considered a cold start. This span gets the tag `coldStart` set to 'true'. This span also optionally gets the text '\<cold\>' appended to the endpoint name if SW_COLD_ENDPOINT is set to 'true'. | `false` |
-| `SW_IGNORE_SUFFIX` | The suffices of endpoints that will be ignored (not traced), comma separated | `.jpg,.jpeg,.js,.css,.png,.bmp,.gif,.ico,.mp3,.mp4,.html,.svg` |
-| `SW_TRACE_IGNORE_PATH` | The paths of endpoints that will be ignored (not traced), comma separated | `` |
-| `SW_HTTP_IGNORE_METHOD` | Comma-delimited list of http methods to ignore (GET, POST, HEAD, OPTIONS, etc...) | `` |
-| `SW_SQL_TRACE_PARAMETERS` | If set to 'true' then SQL query parameters will be included | `false` |
-| `SW_SQL_PARAMETERS_MAX_LENGTH` | The maximum string length of SQL parameters to log | `512` |
-| `SW_MONGO_TRACE_PARAMETERS` | If set to 'true' then mongodb query parameters will be included | `false` |
-| `SW_MONGO_PARAMETERS_MAX_LENGTH` | The maximum string length of mongodb parameters to log | `512` |
-| `SW_AWS_LAMBDA_FLUSH` | Maximum number of float seconds allowed to pass between invocations before consecutive Lambda function calls flush automatically upon exit, 0 means always flush, -1 means never. | `2` |
-| `SW_AWS_LAMBDA_CHAIN` | Pass trace ID to AWS Lambda function in its parameters (to allow linking). Only use if both caller and callee will be instrumented. | `false` |
-| `SW_AWS_SQS_CHECK_BODY` | Incoming SQS messages check inside the body for trace ID in order to allow linking outgoing SNS messages to incoming SQS. | `false` |
-| `SW_AGENT_MAX_BUFFER_SIZE` | The maximum buffer size before sending the segment data to backend | `'1000'` |
-| `SW_AGENT_TRACE_TIMEOUT` | The timeout for trace requests to backend services | `'10000'` |
-| `SW_AGENT_NODEJS_RUNTIME_METRICS_REPORTER_ACTIVE` | Whether to report Node.js runtime metrics through MeterReportService (default period 20s) | `true` |
-| `SW_AGENT_NODEJS_RUNTIME_METRICS_REPORT_PERIOD` | Runtime metric sample + report interval in milliseconds (aligned with Java `meter.report_interval`) | `20000` |
-
-Legacy env names `SW_AGENT_RUNTIME_METRICS_*` / `SW_AGENT_NVM_*` for reporter active and report period are still accepted as deprecated aliases.
-
-
-Note that the various ignore options like `SW_IGNORE_SUFFIX`, `SW_TRACE_IGNORE_PATH` and `SW_HTTP_IGNORE_METHOD` as well as endpoints which are not recorded due to exceeding `SW_AGENT_MAX_BUFFER_SIZE` all propagate their ignored status downstream to any other endpoints they may call. If that endpoint is running the Node Skywalking agent then regardless of its ignore settings it will not be recorded since its upstream parent was not recorded. This allows the elimination of entire trees of endpoints you are not interested in as well as eliminating partial traces if a span in the chain is ignored but calls out to other endpoints which are recorded as children of ROOT instead of the actual parent.
-
-## Node.js Runtime Metrics
-
-The agent reports twelve process-level meters (`instance_nodejs_*`) via `MeterReportService` by default (sample and report every 20s). Set `SW_AGENT_NODEJS_RUNTIME_METRICS_REPORTER_ACTIVE=false` to disable. Process CPU combines `process.cpuUsage()` user + system, normalized by logical CPU count (0–100%).
-
-| Node.js source | Meter name | Notes |
-| :--- | :--- | :--- |
-| `process.cpuUsage()` user + system | `instance_nodejs_process_cpu` | % |
-| `process.memoryUsage().heapUsed` | `instance_nodejs_heap_used` | bytes |
-| `process.memoryUsage().heapTotal` | `instance_nodejs_heap_total` | bytes |
-| `v8.getHeapStatistics().heap_size_limit` | `instance_nodejs_heap_limit` | bytes |
-| `process.memoryUsage().rss` | `instance_nodejs_rss` | bytes |
-| `process.memoryUsage().external` | `instance_nodejs_external_memory` | bytes |
-| `process.memoryUsage().arrayBuffers` | `instance_nodejs_array_buffers` | bytes |
-| `process.uptime()` | `instance_nodejs_uptime` | seconds |
-| `v8.getHeapStatistics().peak_malloced_memory` | `instance_nodejs_peak_malloced_memory` | bytes |
-| `v8.getHeapStatistics().malloced_memory` | `instance_nodejs_malloced_memory` | bytes |
-| `v8.getHeapSpaceStatistics()` old_space | `instance_nodejs_old_space_used` | bytes |
-| `v8.getHeapSpaceStatistics()` new_space | `instance_nodejs_new_space_used` | bytes |
-
-Custom business metrics are not available through a public API; use [OpenTelemetry metrics](https://skywalking.apache.org/docs/main/latest/en/setup/backend/opentelemetry-receiver/) if you need those.
-
-## Supported Libraries
-
-Some built-in plugins support automatic instrumentation of NodeJS libraries, the complete list is as follows:
-
-Library | Plugin Name
-| :--- | :--- |
-| built-in `http` and `https` module | `http` / `https` |
-| [`Express`](https://expressjs.com) | `express` |
-| [`Axios`](https://github.com/axios/axios) | `axios` |
-| [`MySQL`](https://github.com/mysqljs/mysql) | `mysql` |
-| [`MySQL`](https://github.com/sidorares/node-mysql2) | `mysql2` |
-| [`PostgreSQL`](https://github.com/brianc/node-postgres) | `pg` |
-| [`pg-cursor`](https://github.com/brianc/node-postgres) | `pg-cursor` |
-| [`MongoDB`](https://github.com/mongodb/node-mongodb-native) | `mongodb` |
-| [`Mongoose`](https://github.com/Automattic/mongoose) | `mongoose` |
-| [`RabbitMQ`](https://github.com/squaremo/amqp.node) | `amqplib` |
-| [`Redis`](https://github.com/luin/ioredis) | `ioredis` |
-| [`AWS2DynamoDB`](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/DynamoDB/DocumentClient.html) | `aws-sdk` |
-| [`AWS2Lambda`](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/Lambda.html) | `aws-sdk` |
-| [`AWS2SNS`](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/SNS.html) | `aws-sdk` |
-| [`AWS2SQS`](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/SQS.html) | `aws-sdk` |
-
-### Compatible Libraries
-
-The following are packages that have been tested to some extent and are compatible because they work through the instrumentation of an underlying package:
-
-Library | Underlying Plugin Name
-| :--- | :--- |
-| [`request`](https://github.com/request/request) | `http` / `https` |
-| [`request-promise`](https://github.com/request/request-promise) | `http` / `https` |
-| [`koa`](https://github.com/koajs/koa) | `http` / `https` |
-
-## Experimental Azure Functions Support
-
-The plugin `AzureHttpTriggerPlugin` provides a wrapper function for an Azure Functions Javascript HttpTrigger endpoint. This is an http server endpoint and currently must be instrumented manually. So far all other plugins tested work within the HttpTrigger and so a trace can pass through the Function and onto other endpoints called by the function. How much sense it makes to instrument an Azure Function which already lives in the cloud and has robust monitoring incorporated is a good question, but at the least, this plugin will allow those endpoints to show up in a Skywalking trace.
-
-### Usage:
-
-```javascript
-const {default: agent, AzureHttpTriggerPlugin} = require('skywalking-backend-js');
-
-agent.start({ ... });
-
-module.exports = AzureHttpTriggerPlugin.wrap(async function (context, req) {
-
-  /* contents of http trigger function */
-
-});
+```bash
+export SW_AGENT_NAME=checkout-service
+export SW_AGENT_COLLECTOR_BACKEND_SERVICES=127.0.0.1:11800
 ```
 
-All that needs to be done is the actual trigger function needs to be wrapped with `azureHttpTriggerPlugin.wrap()`, whether that function is a default export or an explicitly named `entryPoint` or `run` or `index`.
+See [Quick start](docs/en/setup/quick-start.md) for the full setup and a way to load the agent with
+Node.js `--require`.
 
-## Experimental AWS Lambda Functions Support
+## Documentation
 
-The plugins `AWSLambdaTriggerPlugin`, `AWSLambdaGatewayAPIHTTP` and `AWSLambdaGatewayAPIREST` provide a wrapper functions for AWS Lambda Functions endpoints. `AWSLambdaTriggerPlugin` is a generic wrapper plugin which should work with any kind of Lambda trigger but also stores the least amount of information since it does not know anything about the incoming data format. For this reason, this type of trigger also can not link back to the caller, but it can create a new segment that will be propagated to all downstream children, thus starting its own trace. `AWSLambdaGatewayAPIHTTP` and `AWSLambdaGatewayAPIREST` are specific wrappers for Lambda functions triggered by the GatewayAPI HTTP or REST triggers. They have the advantage of knowing the incoming data format and can thus extract existing trace segment information from incoming requests and chain correctly from upstream to any downstream endpoints.
+The [documentation index](docs/README.md) includes:
 
-### Usage:
+- setup and all configuration values;
+- tracing and Node.js runtime metrics;
+- supported library plugins and AWS SDK v2 behavior;
+- serverless and Webpack support;
+- build, test, plugin development, and release guides.
 
-```javascript
-const {default: agent, AWSLambdaGatewayAPIHTTP} = require('skywalking-backend-js');
+## Main features
 
-agent.start({ ... });
+- Automatic trace collection for Node.js HTTP, database, messaging, and framework libraries.
+- SkyWalking trace context transfer between supported services.
+- Twelve process-level Node.js runtime meters.
+- Optional wrappers for AWS Lambda and Azure Functions.
 
-exports.handler = AWSLambdaGatewayAPIHTTP.wrap(async function (event, context, callback) {
+## Contributing
 
-  /* contents of http trigger function */
+Read [Build and test](docs/en/contribution/build-and-test.md) before sending a change. Plugin authors
+should also read [Plugin development](docs/en/contribution/plugin-development.md).
 
-});
-```
+## Contact
 
-This is similar to Azure Functions wrapping, just wrap your handler function with `AWSLambdaTriggerPlugin.wrap()` or `AWSLambdaGatewayAPIHTTP.wrap()` or `AWSLambdaGatewayAPIREST.wrap()`. One thing to note is that AWS freezes processes in between invocations of lambda functions so whether you are doing async or sync handler functions with callbacks, you should make sure everything you need to do finishes before returning control to AWS or calling the synchronous callback. These plugins take this into account and automatically flush the segment buffers before closing a trace span.
-
-## Experimental Webpack Support
-
-Webpack requires that all imports be statically defined at compile-time and so was not compatible with the dynamic search and loading done by the standard `PluginInstaller`. This has been extended to attempt static imports if the application is determined to be running out of a webpack bundle. This requires that any new plugins be manually added to `PluginInstaller.installBundled()`. Only plugins which allow a `require('module/package.json')` will work with this method as `package.json` needs to be loaded to determine the version of the plugin module present. Some modules specifically disallow import of their package.json and so can not be loaded like this.
-
-Upon compile with `webpack` it will complain about missing modules for which imports are attempted in the sw agent but which are not present. Simply add these modules to the list of modules to be ignored by webpack, for example by `resolve: {alias: {'module': false}}`.
-
-## Contact Us
-* Submit [an issue](https://github.com/apache/skywalking/issues/new) by using [Nodejs] as title prefix.
-* Mail list: **dev@skywalking.apache.org**. Mail to `dev-subscribe@skywalking.apache.org`, follow the reply to subscribe the mail list.
-* Join `skywalking` channel at [Apache Slack](http://s.apache.org/slack-invite). If the link is not working, find the latest one at [Apache INFRA WIKI](https://cwiki.apache.org/confluence/display/INFRA/Slack+Guest+Invites).
-* Twitter, [ASFSkyWalking](https://twitter.com/ASFSkyWalking)
+- Report Node.js Agent problems in the
+  [Apache SkyWalking issue tracker](https://github.com/apache/skywalking/issues/new) with `Nodejs` in
+  the issue title.
+- Join the `dev@skywalking.apache.org` mailing list by sending a message to
+  `dev-subscribe@skywalking.apache.org`.
+- Join the `skywalking` channel on [Apache Slack](https://s.apache.org/slack-invite).
 
 ## License
-Apache 2.0
+
+[Apache License 2.0](LICENSE)

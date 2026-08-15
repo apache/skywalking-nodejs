@@ -1,0 +1,56 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements. See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+catalog:
+  - name: "Node.js Agent overview"
+    path: /readme
+  - name: "Setup"
+    catalog:
+      - name: "Quick start"
+        path: /en/setup/quick-start
+      - name: "Configuration"
+        path: /en/setup/configuration
+      - name: "Start and stop the agent"
+        path: /en/setup/startup-and-shutdown
+  - name: "Features"
+    catalog:
+      - name: "Tracing"
+        path: /en/features/tracing
+      - name: "Node.js runtime metrics"
+        path: /en/features/runtime-metrics
+  - name: "Plugins"
+    catalog:
+      - name: "Supported libraries"
+        path: /en/plugins/supported-libraries
+      - name: "AWS SDK v2"
+        path: /en/plugins/aws-sdk-v2
+  - name: "Advanced use"
+    catalog:
+      - name: "Serverless"
+        path: /en/advanced/serverless
+      - name: "Webpack"
+        path: /en/advanced/webpack
+      - name: "Troubleshooting"
+        path: /en/advanced/troubleshooting
+  - name: "Development and contribution"
+    catalog:
+      - name: "Build and test"
+        path: /en/contribution/build-and-test
+      - name: "Plugin development"
+        path: /en/contribution/plugin-development
+      - name: "Release"
+        path: /en/contribution/release
+  - name: "Release notes"
+    path: https://github.com/apache/skywalking-nodejs/releases
