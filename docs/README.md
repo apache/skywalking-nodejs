@@ -1,6 +1,6 @@
 # Apache SkyWalking Node.js Agent documentation
 
-The Node.js Agent reports traces and Node.js runtime metrics to Apache SkyWalking OAP. Start with
+The Node.js Agent reports distributed traces to Apache SkyWalking OAP. Start with
 [Quick start](en/setup/quick-start.md), then use the pages below when you need more detail.
 
 ## Setup
@@ -15,7 +15,6 @@ The Node.js Agent reports traces and Node.js runtime metrics to Apache SkyWalkin
 
 - [Tracing](en/features/tracing.md) — trace creation, context transfer, ignored requests, and data
   limits.
-- [Node.js runtime metrics](en/features/runtime-metrics.md) — the 12 meters reported by the agent.
 
 ## Plugins
 

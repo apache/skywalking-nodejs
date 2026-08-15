@@ -35,8 +35,8 @@ lowercase text `true`.
 
 ## Flush pending data
 
-`agent.flush()` waits for active spans to finish and asks the trace and meter reporters to send
-their current data.
+`agent.flush()` waits for active spans to finish and asks the trace reporter to send its buffered
+segments.
 
 ```typescript
 await agent.flush();

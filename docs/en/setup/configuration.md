@@ -27,7 +27,7 @@ Node.js process. `SW_DISABLE` is checked when `start()` is called.
 | `SW_AGENT_COLLECTOR_BACKEND_SERVICES` | `collectorAddress` | `127.0.0.1:11800` | OAP gRPC address in `host:port` form. |
 | `SW_AGENT_SECURE` | `secure` | `false` | Use TLS for the OAP gRPC connection. |
 | `SW_AGENT_AUTHENTICATION` | `authorization` | Not set | Authentication token sent to OAP. |
-| `SW_AGENT_TRACE_TIMEOUT` | `traceTimeout` | `10000` | gRPC deadline in milliseconds for trace and meter reports and service management requests. Must be a positive integer. |
+| `SW_AGENT_TRACE_TIMEOUT` | `traceTimeout` | `10000` | gRPC deadline in milliseconds for trace report requests. Must be a positive integer. |
 
 For token authentication, set the same token in OAP with `SW_AUTHENTICATION`. See
 [OAP token authentication](https://skywalking.apache.org/docs/main/next/en/setup/backend/backend-token-auth/).
@@ -35,7 +35,8 @@ For token authentication, set the same token in OAP with `SW_AUTHENTICATION`. Se
 When `secure` is enabled, the agent uses the system trust store. It does not provide options for a
 custom CA, client certificate, or mutual TLS.
 
-Use one OAP address. If a comma-separated list is set, the current agent uses only the first entry.
+Set one `host:port` address. This release passes the value to gRPC as it is, so a comma-separated
+list of backend addresses is not supported.
 
 ## Agent control and logging
 
@@ -76,26 +77,6 @@ partial trace later in the call chain. See [Tracing](../features/tracing.md) for
 
 Parameter values can contain passwords, tokens, personal data, or other private data. Keep these
 options off unless the data is safe to collect.
-
-## Runtime metrics
-
-| Environment variable | `agent.start()` option | Default | Description |
-| --- | --- | --- | --- |
-| `SW_AGENT_NODEJS_RUNTIME_METRICS_REPORTER_ACTIVE` | `runtimeMetricsReporterActive` | `true` | Enable Node.js runtime meters. Set to `false` to disable them. |
-| `SW_AGENT_NODEJS_RUNTIME_METRICS_REPORT_PERIOD` | `runtimeMetricsReportPeriod` | `20000` | Sample and report period in milliseconds. Must be a positive integer. |
-
-Old runtime metric environment names are still accepted:
-
-- `SW_AGENT_RUNTIME_METRICS_REPORTER_ACTIVE`
-- `SW_AGENT_NVM_METRICS_REPORTER_ACTIVE`
-- `SW_AGENT_NVM_JVM_REPORTER_ACTIVE`
-- `SW_AGENT_RUNTIME_METRICS_REPORT_PERIOD`
-- `SW_AGENT_NVM_METRICS_REPORT_PERIOD`
-- `SW_AGENT_NVM_JVM_METRICS_REPORT_PERIOD`
-
-The old program options `nvmMetricsReporterActive`, `nvmJvmReporterActive`,
-`nvmMetricsReportPeriod`, and `nvmJvmMetricsReportPeriod` are also accepted. Use the current names
-for new deployments.
 
 ## AWS options
 

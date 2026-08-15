@@ -25,8 +25,8 @@ The collector setting must use `host:port` form:
 export SW_AGENT_COLLECTOR_BACKEND_SERVICES=oap.example.com:11800
 ```
 
-Check DNS, network access, firewall rules, and the OAP gRPC port. The current agent uses only the
-first item if the value is a comma-separated list.
+Check DNS, network access, firewall rules, and the OAP gRPC port. Use a single address; this
+release does not support a comma-separated list of backend addresses.
 
 An option passed to `agent.start()` replaces the environment value. This includes an empty string:
 
@@ -53,15 +53,6 @@ increasing the buffer only delays data loss and uses more process memory.
   other versions in your application.
 - Webpack uses a smaller static plugin set. See [Webpack](webpack.md).
 - AWS SDK for JavaScript v3 is not covered by the AWS SDK v2 plugins.
-
-## Runtime metrics do not appear
-
-1. Check that `SW_AGENT_NODEJS_RUNTIME_METRICS_REPORTER_ACTIVE` is not `false`.
-2. Wait at least one report period. The default is 20 seconds.
-3. Check that your OAP version includes the Node.js runtime meter rules and dashboard.
-4. Check the OAP connection and agent log.
-
-See [Node.js runtime metrics](../features/runtime-metrics.md) for meter names and OAP setup.
 
 ## Agent logs are hard to find
 

@@ -2,9 +2,8 @@
 
 <img src="https://skywalking.apache.org/assets/logo.svg" alt="Apache SkyWalking logo" height="90px" align="right" />
 
-The Apache SkyWalking Node.js Agent reports distributed traces and Node.js runtime metrics to an
-Apache SkyWalking OAP server. It instruments supported Node.js libraries without changes to their
-source code.
+The Apache SkyWalking Node.js Agent reports distributed traces to an Apache SkyWalking OAP server.
+It instruments supported Node.js libraries without changes to their source code.
 
 [![Build](https://github.com/apache/skywalking-nodejs/workflows/Build/badge.svg?branch=master)](https://github.com/apache/skywalking-nodejs/actions?query=branch%3Amaster+event%3Apush+workflow%3A%22Build%22)
 [![npm version](https://badge.fury.io/js/skywalking-backend-js.svg)](https://www.npmjs.com/package/skywalking-backend-js)
@@ -50,7 +49,7 @@ Node.js `--require`.
 The [documentation index](docs/README.md) includes:
 
 - setup and all configuration values;
-- tracing and Node.js runtime metrics;
+- tracing behavior and trace filtering;
 - supported library plugins and AWS SDK v2 behavior;
 - serverless and Webpack support;
 - build, test, plugin development, and release guides.
@@ -59,7 +58,6 @@ The [documentation index](docs/README.md) includes:
 
 - Automatic trace collection for Node.js HTTP, database, messaging, and framework libraries.
 - SkyWalking trace context transfer between supported services.
-- Twelve process-level Node.js runtime meters.
 - Optional wrappers for AWS Lambda and Azure Functions.
 
 ## Contributing

@@ -38,10 +38,10 @@ Most current plugins declare `*` as their module version rule. The AWS plugins d
 `*` means that the loader accepts the installed version; it does not mean that every past or future
 module version has been tested.
 
-Current CI runs plugin suites with the dependency versions in the repository lock file. CI also
-runs general unit tests on Node.js 20, 22, and 24. Check the
-[test workflow](https://github.com/apache/skywalking-nodejs/blob/master/.github/workflows/test.yaml)
-and [package lock](https://github.com/apache/skywalking-nodejs/blob/master/package-lock.json) when an
+CI runs the plugin suites on Node.js 20, 22, and 24 with the dependency versions in the repository
+lock file. Check the
+[test workflow](https://github.com/apache/skywalking-nodejs/blob/v0.9.0/.github/workflows/test.yaml)
+and [package lock](https://github.com/apache/skywalking-nodejs/blob/v0.9.0/package-lock.json) when an
 exact tested version matters.
 
 ## Libraries without a direct plugin

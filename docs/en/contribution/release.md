@@ -208,7 +208,7 @@ Hi the SkyWalking Community
 
 On behalf of the SkyWalking Team, I’m glad to announce that Apache SkyWalking NodeJS $VERSION is now released.
 
-SkyWalking NodeJS is the Node.js Agent for Apache SkyWalking. It reports distributed traces and Node.js runtime metrics.
+SkyWalking NodeJS is the Node.js Agent for Apache SkyWalking. It provides native tracing for Node.js services.
 
 Apache SkyWalking is an application performance monitoring system for distributed services.
 

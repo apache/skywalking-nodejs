@@ -68,7 +68,7 @@ Run the suite:
 npm run test tests/plugins/example-library/
 ```
 
-Also run unit tests, lint, and build as described in [Build and test](build-and-test.md).
+Also run lint and build as described in [Build and test](build-and-test.md).
 
 ## Webpack support
 

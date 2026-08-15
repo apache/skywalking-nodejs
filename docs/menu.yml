@@ -28,8 +28,6 @@ catalog:
     catalog:
       - name: "Tracing"
         path: /en/features/tracing
-      - name: "Node.js runtime metrics"
-        path: /en/features/runtime-metrics
   - name: "Plugins"
     catalog:
       - name: "Supported libraries"

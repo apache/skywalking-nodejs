@@ -41,13 +41,7 @@ Run the TypeScript lint check:
 npm run lint
 ```
 
-Run unit tests without Docker plugin suites:
-
-```bash
-npx jest --testPathIgnorePatterns '/node_modules/' '/tests/plugins/' --runInBand
-```
-
-Run all tests, including Docker plugin suites:
+Run all tests. Every suite in this release is a Docker plugin suite:
 
 ```bash
 npm run test
@@ -77,18 +71,18 @@ docker run --rm skywalking-nodejs:test
 | `src/config/` | Configuration and environment parsing |
 | `src/core/` | Plugin loader and plugin helpers |
 | `src/plugins/` | Automatic library instrumentation |
-| `src/agent/core/` | Reporting, service registration, meters, and gRPC transport |
+| `src/agent/protocol/grpc/` | Trace reporting, heartbeat, and gRPC clients |
 | `src/trace/` | Trace context, spans, segments, and component IDs |
 | `src/aws/`, `src/azure/` | Serverless wrappers and AWS helpers |
 | `tests/plugins/` | Docker-based plugin integration tests |
-| `tests/remote/`, `tests/runtime/` | Reporter and runtime meter tests |
+| `tests/build/` | Built-package test image |
 
 ## Before opening a pull request
 
 1. Add or update tests for the change.
 2. Run `npm run lint` and `npm run build`.
-3. Run the related unit or plugin tests.
+3. Run the related plugin tests.
 4. Update the user documentation when behavior or configuration changes.
 5. Keep Apache license headers on new source and configuration files.
 
-CI repeats the build, lint, unit, plugin, and built-package checks that apply to the change.
+CI repeats the build, lint, plugin, and built-package checks that apply to the change.

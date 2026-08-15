@@ -53,9 +53,9 @@ The same value limits active trace segments. When the active limit is reached, n
 ignored context until the reporter resets the limit. This ignored state is sent to supported
 downstream services.
 
-`SW_AGENT_TRACE_TIMEOUT` sets the gRPC request deadline in milliseconds. It applies to trace and
-meter reports and to service registration and heartbeat requests. Reporting errors do not stop
-application requests. The agent limits repeated connection error logs to avoid a log storm.
+`SW_AGENT_TRACE_TIMEOUT` sets the gRPC deadline in milliseconds for trace report requests.
+Reporting errors do not stop application requests. The agent limits repeated connection error logs
+to avoid a log storm.
 
 ## Database statements and parameters
 

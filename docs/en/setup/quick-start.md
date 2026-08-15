@@ -1,7 +1,6 @@
 # Quick start
 
-This guide installs the Node.js Agent and sends traces and runtime metrics to Apache SkyWalking
-OAP.
+This guide installs the Node.js Agent and sends traces to Apache SkyWalking OAP.
 
 ## Requirements
 
@@ -58,7 +57,6 @@ a general preload entry.
 1. Send a request to the application.
 2. Open the SkyWalking UI and select the value of `SW_AGENT_NAME`.
 3. Check that a trace appears.
-4. Wait at least 20 seconds and check the Node.js runtime dashboard if it is installed in OAP.
 
 If no data appears, read [Troubleshooting](../advanced/troubleshooting.md).
 
