@@ -26,7 +26,7 @@ let sampleSequence = 0;
 
 const mockChannelManager = {
   addChannelListener: jest.fn(),
-  getClientOptions: jest.fn(() => ({})),
+  createClient: jest.fn((ClientCtor: new (...args: unknown[]) => unknown) => new ClientCtor()),
   reportError: jest.fn(),
 };
 
@@ -39,6 +39,7 @@ const createMeterData = () => ({
 const mockStream = {
   write: jest.fn(),
   end: jest.fn(),
+  cancel: jest.fn(),
 };
 
 const mockSnapshot = () => ({ collectedAt: 1_000_000 + sampleSequence++ * 500, cpu: 1 });
@@ -101,6 +102,7 @@ describe('MeterSender', () => {
     mockChannelManager.reportError.mockClear();
     mockStream.write.mockReset();
     mockStream.end.mockReset();
+    mockStream.cancel.mockReset();
     pendingCollectCallback = undefined;
     sender = new MeterSender();
     sender.prepare();
@@ -130,6 +132,7 @@ describe('MeterSender', () => {
 
     const reportPromise = (sender as unknown as { reportBufferedMetrics: () => Promise<void> }).reportBufferedMetrics();
     await Promise.resolve();
+    await Promise.resolve();
     pendingCollectCallback?.(null);
     await reportPromise;
 
@@ -148,6 +151,7 @@ describe('MeterSender', () => {
     };
 
     const reportPromise = (sender as unknown as { reportBufferedMetrics: () => Promise<void> }).reportBufferedMetrics();
+    await Promise.resolve();
     await Promise.resolve();
     pendingCollectCallback?.(null);
     await reportPromise;
@@ -178,10 +182,61 @@ describe('MeterSender', () => {
 
     jest.advanceTimersByTime(1000);
     await Promise.resolve();
+    await Promise.resolve();
     pendingCollectCallback?.(null);
     await Promise.resolve();
 
     expect(collector.sample).toHaveBeenCalled();
     expect(mockStream.write).toHaveBeenCalled();
+  });
+
+  it('flush drains a new snapshot after an in-flight report', async () => {
+    (sender as unknown as { latestSnapshot?: { collectedAt: number } }).latestSnapshot = {
+      collectedAt: 1,
+    };
+    const first = (sender as unknown as { reportBufferedMetrics: () => Promise<void> }).reportBufferedMetrics();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    (sender as unknown as { latestSnapshot?: { collectedAt: number } }).latestSnapshot = {
+      collectedAt: 2,
+    };
+    const second = (sender as unknown as { flush: () => Promise<void> | null }).flush();
+
+    pendingCollectCallback?.(null);
+    await first;
+    await Promise.resolve();
+    await Promise.resolve();
+    pendingCollectCallback?.(null);
+    await second;
+
+    expect(mockStream.write.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('keeps snapshot when disconnected instead of consuming it', async () => {
+    sender.statusChanged(GRPCChannelStatus.DISCONNECT);
+    (sender as unknown as { latestSnapshot?: { collectedAt: number } }).latestSnapshot = {
+      collectedAt: 99,
+    };
+    await (sender as unknown as { reportBufferedMetrics: () => Promise<void> }).reportBufferedMetrics();
+    expect((sender as unknown as { latestSnapshot?: { collectedAt: number } }).latestSnapshot?.collectedAt).toBe(99);
+  });
+
+  it('reports meter failure once when sync end fails and callback also errors', async () => {
+    (sender as unknown as { latestSnapshot?: { collectedAt: number } }).latestSnapshot = {
+      collectedAt: 7,
+    };
+    mockStream.end.mockImplementation(() => {
+      throw new Error('end failed');
+    });
+
+    const report = (sender as unknown as { reportBufferedMetrics: () => Promise<void> }).reportBufferedMetrics();
+    await Promise.resolve();
+    await Promise.resolve();
+    pendingCollectCallback?.(new Error('callback error'));
+    await report;
+
+    expect(mockChannelManager.reportError).toHaveBeenCalledTimes(1);
+    expect(mockStream.cancel).toHaveBeenCalled();
   });
 });

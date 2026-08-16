@@ -73,7 +73,7 @@ jobs:
       - name: Unit tests on Node@${{ matrix.node-version }}
         run: |
           npm i
-          npx jest --testPathIgnorePatterns "/node_modules/" "/tests/plugins/" --runInBand
+          npx jest --testPathIgnorePatterns "/node_modules/" "/tests/plugins/" "/tests/remote-e2e/" --runInBand
 
   build-matrix:
     runs-on: ubuntu-latest
@@ -118,6 +118,37 @@ jobs:
         run: |
           npm i
           npm run test tests/plugins/${{ matrix.plugin }}/
+
+
+  TestRemoteE2E:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      matrix:
+        node-version: [ 20, 22, 24 ]
+    env:
+      SW_NODE_VERSION: ${{ matrix.node-version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Set Up NodeJS ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Remote E2E On Node@${{ matrix.node-version }} (static-failover)
+        run: |
+          npm i
+          npm run test tests/remote-e2e/static-failover/
 
   TestLib:
     runs-on: ubuntu-latest

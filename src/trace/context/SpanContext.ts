@@ -233,16 +233,43 @@ export default class SpanContext implements Context {
     ContextManager.restore(span);
   }
 
-  static flush(): Promise<any> | null {
-    // This function explicitly returns null instead of a resolved Promise in case of nothing to flush so that in this
-    // case passing control back to the event loop can be avoided. Even a resolved Promise will run other things in
-    // the event loop when it is awaited and before it continues.
+  /**
+   * Wait until unfinished segments drain (`nTotalSegments === 0`).
+   * Returns null when there is nothing to wait for (avoids yielding to the event loop).
+   * When `timeoutMs` is set, the waiter removes itself on timeout so long-lived processes
+   * that call `agent.flush()` while traffic keeps `nTotalSegments > 0` do not leak resolvers.
+   */
+  static flush(timeoutMs?: number): Promise<any> | null {
+    if (!SpanContext.nTotalSegments) {
+      return null;
+    }
 
-    return !SpanContext.nTotalSegments
-      ? null
-      : new Promise((resolve: (value: unknown) => void) => {
-          SpanContext.flushResolve.push(resolve);
-        });
+    return new Promise((resolve: (value: unknown) => void) => {
+      let settled = false;
+      let timer: NodeJS.Timeout | undefined;
+
+      const entry = (value: unknown): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        if (timer) {
+          clearTimeout(timer);
+        }
+        const idx = SpanContext.flushResolve.indexOf(entry);
+        if (idx >= 0) {
+          SpanContext.flushResolve.splice(idx, 1);
+        }
+        resolve(value);
+      };
+
+      SpanContext.flushResolve.push(entry);
+
+      if (timeoutMs != null && timeoutMs >= 0) {
+        timer = setTimeout(() => entry(null), timeoutMs);
+        timer.unref?.();
+      }
+    });
   }
 
   traceId(): string {

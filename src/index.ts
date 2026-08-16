@@ -22,6 +22,7 @@ import ServiceManager from './agent/core/boot/ServiceManager';
 import { createLogger } from './logging';
 import PluginInstaller from './core/PluginInstaller';
 import SpanContext from './trace/context/SpanContext';
+import { awaitWithTimeout, FLUSH_WAIT_MS } from './agent/core/remote/coalesceReport';
 
 const logger = createLogger(__filename);
 
@@ -56,18 +57,20 @@ class Agent {
       return null;
     }
 
-    const spanContextFlush = SpanContext.flush();
-    if (!spanContextFlush) {
-      return ServiceManager.INSTANCE.flush();
-    }
-
-    return new Promise((resolve) => {
-      spanContextFlush.then(() => {
-        const serviceFlush = ServiceManager.INSTANCE.flush();
-        if (!serviceFlush) resolve(null);
-        else serviceFlush.then(() => resolve(null));
-      });
-    });
+    // Bound waits so a stuck in-flight RPC (or SpanContext waiting on the flush
+    // request's own open span) cannot stall hosts (e.g. Lambda) for the gRPC deadline.
+    // Each phase uses FLUSH_WAIT_MS; Trace/Meter flushCoalesced shares one budget internally
+    // so the service wait is never shorter than force-pending + wait-in-flight.
+    return (async () => {
+      const spanContextFlush = SpanContext.flush(FLUSH_WAIT_MS);
+      if (spanContextFlush) {
+        await spanContextFlush;
+      }
+      const serviceFlush = ServiceManager.INSTANCE.flush();
+      if (serviceFlush) {
+        await awaitWithTimeout(serviceFlush, FLUSH_WAIT_MS);
+      }
+    })();
   }
 
   destroy(): void {

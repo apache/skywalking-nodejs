@@ -32,7 +32,8 @@ import { GRPCChannelListener } from './GRPCChannelListener';
 import { GRPCChannelStatus } from './GRPCChannelStatus';
 
 const logger = createLogger(__filename);
-const logHeartbeatError = throttled(logger, 'error', 30000);
+const logKeepAliveError = throttled(logger, 'error', 30000);
+const logPropertiesError = throttled(logger, 'error', 30000);
 
 export default class ServiceManagementClient implements BootService, GRPCChannelListener {
   private closed = false;
@@ -115,39 +116,46 @@ export default class ServiceManagementClient implements BootService, GRPCChannel
     const reportProperties =
       Math.abs(this.sendPropertiesCounter++) % ServiceManagementClient.PROPERTIES_REPORT_PERIOD_FACTOR === 0;
 
+    // Separate try/catch per RPC. Properties ticks are mutually exclusive with keepAlive
+    // (same if/else as Java PROPERTIES_REPORT_PERIOD_FACTOR / master).
     if (reportProperties) {
-      this.managementServiceClient.reportInstanceProperties(
-        this.instanceProperties,
-        new grpc.Metadata(),
-        options,
-        (error) => {
-          if (error) {
-            logHeartbeatError('Failed to send instance properties', error);
-            this.reportGrpcError(error);
-          }
-        },
-      );
+      try {
+        this.managementServiceClient.reportInstanceProperties(
+          this.instanceProperties,
+          new grpc.Metadata(),
+          options,
+          (error) => {
+            if (error) {
+              logPropertiesError('Failed to send instance properties', error);
+              this.reportGrpcError(error);
+            }
+          },
+        );
+      } catch (error) {
+        logPropertiesError('Failed to send instance properties', error);
+        this.reportGrpcError(error);
+      }
       return;
     }
 
-    this.managementServiceClient.keepAlive(this.keepAlivePkg, new grpc.Metadata(), options, (error) => {
-      if (error) {
-        logHeartbeatError('Failed to send heartbeat', error);
-        this.reportGrpcError(error);
-      }
-    });
+    try {
+      this.managementServiceClient.keepAlive(this.keepAlivePkg, new grpc.Metadata(), options, (error) => {
+        if (error) {
+          logKeepAliveError('Failed to send heartbeat', error);
+          this.reportGrpcError(error);
+        }
+      });
+    } catch (error) {
+      logKeepAliveError('Failed to send heartbeat', error);
+      this.reportGrpcError(error);
+    }
   }
 
   private createManagementClient(): ManagementServiceClient | undefined {
     if (!this.channelManager) {
       return undefined;
     }
-
-    return new ManagementServiceClient(
-      config.collectorAddress,
-      grpc.credentials.createInsecure(),
-      this.channelManager.getClientOptions(),
-    );
+    return this.channelManager.createClient(ManagementServiceClient);
   }
   private reportGrpcError(error: unknown): void {
     if (this.closed) {
@@ -155,10 +163,5 @@ export default class ServiceManagementClient implements BootService, GRPCChannel
     }
 
     this.channelManager?.reportError(error);
-  }
-
-  flush(): Promise<unknown> | null {
-    logger.warn('ServiceManagementClient does not need flush().');
-    return null;
   }
 }
