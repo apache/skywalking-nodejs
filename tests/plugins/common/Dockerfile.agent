@@ -14,13 +14,18 @@
 # limitations under the License.
 
 ARG SW_NODE_VERSION
-
 FROM node:${SW_NODE_VERSION}
 
-ARG ROOT=.
-
 WORKDIR /app
-
-ADD $ROOT /app
-
-RUN npm install request && npm install
+# Install deps before copying sources so package-lock / Dockerfile edits alone
+# bust the npm ci layer; source edits reuse the cached install.
+# Plugin e2e needs the full tree in the image (no src mount).
+# Remote-e2e uses the image-built src/ (including prepared src/proto); only test
+# scripts are bind-mounted at runtime.
+#
+# --ignore-scripts: `prepare` needs scripts/ + protos (copied next). Then rebuild
+# packages whose install scripts are required for natives/protoc in this image.
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts
+COPY . .
+RUN npm rebuild grpc-tools protobufjs && npm run prepare

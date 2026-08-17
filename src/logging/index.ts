@@ -22,14 +22,15 @@ import { Logger } from 'winston';
 
 type LoggerLevelAware = Logger & {
   _isDebugEnabled: boolean;
-  _isInfoEnabled: boolean;
 };
 
 export function createLogger(name: string): LoggerLevelAware {
-  const loggingLevel = (process.env.SW_AGENT_LOGGING_LEVEL || 'error').toLowerCase();
+  const loggingLevel = (process.env.SW_AGENT_LOGGING_LEVEL || 'warn').toLowerCase();
 
   const logger = winston.createLogger({
     level: loggingLevel,
+    // No format.splat(): user data (e.g. span operation URLs) must not be treated as
+    // printf format strings, and Error args must not expand full stacks into the buffer.
     format: winston.format.json(),
     defaultMeta: {
       file: name,
@@ -52,11 +53,9 @@ export function createLogger(name: string): LoggerLevelAware {
 
   const loggerLevel = logger.levels[logger.level];
   const _isDebugEnabled = loggerLevel >= logger.levels.debug;
-  const _isInfoEnabled = loggerLevel >= logger.levels.info;
 
   Object.assign(logger, {
     _isDebugEnabled,
-    _isInfoEnabled,
   });
 
   const nop = (): void => {

@@ -30,6 +30,17 @@ services:
       timeout: 60s
       retries: 120
 
+  # Same image/healthcheck as collector but no host port — for remote-e2e multi-collector cases.
+  collector-no-host-port:
+    image: ghcr.io/apache/skywalking-agent-test-tool/mock-collector:fa81b1b6d9caef484a65b5019efa28cac4e3d21d
+    networks:
+      - traveling-light
+    healthcheck:
+      test: [ "CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/12800" ]
+      interval: 5s
+      timeout: 60s
+      retries: 120
+
   agent:
     build:
       context: ../../../

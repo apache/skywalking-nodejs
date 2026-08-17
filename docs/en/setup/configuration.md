@@ -24,7 +24,7 @@ Node.js process. `SW_DISABLE` is checked when `start()` is called.
 | --- | --- | --- | --- |
 | `SW_AGENT_NAME` | `serviceName` | `your-nodejs-service` | Service name shown in SkyWalking. |
 | `SW_AGENT_INSTANCE` | `serviceInstance` | Host name | Service instance name shown in SkyWalking. |
-| `SW_AGENT_COLLECTOR_BACKEND_SERVICES` | `collectorAddress` | `127.0.0.1:11800` | OAP gRPC address in `host:port` form. |
+| `SW_AGENT_COLLECTOR_BACKEND_SERVICES` | `collectorAddress` | `127.0.0.1:11800` | OAP gRPC address(es). One `host:port` uses grpc-js `dns:` (all A/AAAA become endpoints; periodically re-resolved). A comma-separated list uses a static resolver with `pick_first` (literal endpoints only; no per-name DNS expansion or re-resolution). Endpoint pick order is shuffled by grpc-js (`shuffleAddressList`); the target string keeps config order so TLS authority / SNI stay on the first list entry. Under TLS, all backends must present certificates that share the needed SANs. Prefer one DNS name with multiple A/AAAA records for TLS high availability. |
 | `SW_AGENT_SECURE` | `secure` | `false` | Use TLS for the OAP gRPC connection. |
 | `SW_AGENT_AUTHENTICATION` | `authorization` | Not set | Authentication token sent to OAP. |
 | `SW_AGENT_TRACE_TIMEOUT` | `traceTimeout` | `10000` | gRPC deadline in milliseconds for trace and meter reports and service management requests. Must be a positive integer. |
@@ -35,14 +35,12 @@ For token authentication, set the same token in OAP with `SW_AUTHENTICATION`. Se
 When `secure` is enabled, the agent uses the system trust store. It does not provide options for a
 custom CA, client certificate, or mutual TLS.
 
-Use one OAP address. If a comma-separated list is set, the current agent uses only the first entry.
-
 ## Agent control and logging
 
 | Environment variable | `agent.start()` option | Default | Description |
 | --- | --- | --- | --- |
 | `SW_DISABLE` | None | Not set | Set the exact value `true` to keep the agent stopped. |
-| `SW_AGENT_LOGGING_LEVEL` | None | `error` | Agent log level: `error`, `warn`, `info`, or `debug`. |
+| `SW_AGENT_LOGGING_LEVEL` | None | `warn` | Agent log level: `error`, `warn`, `info`, or `debug`. |
 | `SW_LOGGING_TARGET` | None | See below | Set to `console` to log to the console in production. |
 | `SW_AGENT_MAX_BUFFER_SIZE` | `maxBufferSize` | `1000` | Limit for active and buffered trace segments. Must be a positive integer. |
 | `SW_AGENT_DISABLE_PLUGINS` | `disablePlugins` | Empty | Comma-separated plugin file names without the `Plugin` suffix, such as `mysql,express`. |

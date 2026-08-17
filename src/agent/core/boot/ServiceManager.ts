@@ -51,7 +51,7 @@ class ServiceManager {
       try {
         service.prepare();
       } catch (error) {
-        logger.error('ServiceManager prepare failed: %s', error);
+        logger.error(`ServiceManager prepare failed: ${error}`);
       }
     }
 
@@ -59,7 +59,7 @@ class ServiceManager {
       try {
         service.boot();
       } catch (error) {
-        logger.error('ServiceManager boot failed: %s', error);
+        logger.error(`ServiceManager boot failed: ${error}`);
       }
     }
 
@@ -67,7 +67,7 @@ class ServiceManager {
       try {
         service.onComplete();
       } catch (error) {
-        logger.error('ServiceManager onComplete failed: %s', error);
+        logger.error(`ServiceManager onComplete failed: ${error}`);
       }
     }
 
@@ -79,7 +79,7 @@ class ServiceManager {
       try {
         service.shutdown();
       } catch (error) {
-        logger.error('ServiceManager shutdown failed: %s', error);
+        logger.error(`ServiceManager shutdown failed: ${error}`);
       }
     }
     this.bootedServices.clear();

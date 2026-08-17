@@ -28,10 +28,11 @@ import Segment from '../../../trace/context/Segment';
 import GRPCChannelManager from './GRPCChannelManager';
 import { GRPCChannelListener } from './GRPCChannelListener';
 import { GRPCChannelStatus } from './GRPCChannelStatus';
+import { coalesceReport, flushCoalesced, FLUSH_WAIT_MS, ReportCoalesceState, runCollectStream } from './coalesceReport';
 
 const logger = createLogger(__filename);
-const logReportError = throttled(logger, 'error', 30000);
 const logBufferFull = throttled(logger, 'warn', 30000);
+const logDiscardedBatch = throttled(logger, 'warn', 30000);
 
 export default class TraceSegmentServiceClient implements BootService, GRPCChannelListener {
   private closed = false;
@@ -40,7 +41,9 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
   private reporterClient?: TraceSegmentReportServiceClient;
   private readonly buffer: Segment[] = [];
   private timeout?: NodeJS.Timeout;
-  private reporting?: Promise<void>;
+  private readonly reportState: ReportCoalesceState = {};
+  /** Monotonic count of segments discarded after report failure (for throttled logs). */
+  private discardedSegmentTotal = 0;
   private segmentFinishedListener?: (segment: Segment) => void;
 
   prepare(): void {
@@ -58,7 +61,7 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
 
       if (this.buffer.length >= config.maxBufferSize) {
         logBufferFull(
-          `Trace buffer reached maximum size (${config.maxBufferSize}); discarding oldest segments. The collector at ${config.collectorAddress} is likely unreachable.`,
+          `Trace buffer reached maximum size (${config.maxBufferSize}); discarding oldest segments. Configured backends [${config.collectorAddress}] are likely unreachable.`,
         );
         this.buffer.shift();
       }
@@ -87,7 +90,7 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
       this.timeout = undefined;
     }
 
-    this.reporting = undefined;
+    this.reportState.reporting = undefined;
     this.reporterClient = undefined;
     this.buffer.length = 0;
     this.channelManager = undefined;
@@ -107,12 +110,7 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
     if (!this.channelManager) {
       return undefined;
     }
-
-    return new TraceSegmentReportServiceClient(
-      config.collectorAddress,
-      grpc.credentials.createInsecure(),
-      this.channelManager.getClientOptions(),
-    );
+    return this.channelManager.createClient(TraceSegmentReportServiceClient);
   }
 
   private scheduleNextReport(): void {
@@ -131,19 +129,11 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
   }
 
   private reportOnce(): Promise<void> {
-    if (this.closed) {
-      return Promise.resolve();
-    }
-
-    if (this.reporting) {
-      return this.reporting;
-    }
-
-    this.reporting = this.doReport().finally(() => {
-      this.reporting = undefined;
-    });
-
-    return this.reporting;
+    return coalesceReport(
+      this.reportState,
+      () => this.doReport(),
+      () => this.closed,
+    );
   }
 
   private doReport(): Promise<void> {
@@ -153,7 +143,12 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
         return;
       }
 
-      emitter.emit('segments-sent');
+      try {
+        emitter.emit('segments-sent');
+      } catch (error) {
+        // Listener errors must not reject the report promise (host unhandledRejection).
+        logger.debug(`segments-sent listener failed: ${error}`);
+      }
 
       if (this.buffer.length === 0) {
         resolve();
@@ -165,41 +160,34 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
         return;
       }
 
-      let stream: ReturnType<TraceSegmentReportServiceClient['collect']> | undefined;
-      try {
-        stream = this.reporterClient.collect(
-          new grpc.Metadata(),
-          { deadline: Date.now() + config.traceTimeout },
-          (error) => {
-            if (error) {
-              logReportError('Failed to report trace data', error);
-              this.reportGrpcError(error);
+      // Take ownership. On failure discard once (never re-send): disconnect-window
+      // data is already protected by READY→IDLE → DISCONNECT (status !== CONNECTED skips splice).
+      const batch = this.buffer.splice(0, this.buffer.length);
+      const client = this.reporterClient;
+      void runCollectStream({
+        open: (onStatus) =>
+          client.collect(new grpc.Metadata(), { deadline: Date.now() + config.traceTimeout }, onStatus),
+        writeAll: (stream) => {
+          for (const segment of batch) {
+            if (segment) {
+              if (logger._isDebugEnabled) {
+                logger.debug('Sending segment ', { segment });
+              }
+              stream.write(segment.transform());
             }
-            resolve();
-          },
-        );
-
-        for (const segment of this.buffer) {
-          if (segment) {
-            if (logger._isDebugEnabled) {
-              logger.debug('Sending segment ', { segment });
-            }
-            stream.write(segment.transform());
           }
-        }
-      } catch (error) {
-        logReportError('Failed to report trace data', error);
-        this.reportGrpcError(error);
-        resolve();
-      } finally {
-        this.buffer.length = 0;
-        try {
-          stream?.end();
-        } catch (error) {
-          logReportError('Failed to end trace collect stream', error);
-          resolve();
-        }
-      }
+        },
+        onFailure: (reason, error) => {
+          this.discardedSegmentTotal += batch.length;
+          logDiscardedBatch(
+            `Discarded ${batch.length} trace segment(s) after report failure (${reason}) (total discarded: ${this.discardedSegmentTotal})`,
+            error,
+          );
+          this.reportGrpcError(error);
+        },
+        openFailureReason: 'Failed to report trace data',
+        endFailureReason: 'Failed to end trace collect stream',
+      }).then(resolve);
     });
   }
 
@@ -211,6 +199,9 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
     this.channelManager?.reportError(error);
   }
 
+  /**
+   * Best-effort: one shared FLUSH_WAIT_MS budget for forceReport of remaining buffer, then in-flight wait.
+   */
   flush(): Promise<unknown> | null {
     if (this.closed) {
       return null;
@@ -221,11 +212,12 @@ export default class TraceSegmentServiceClient implements BootService, GRPCChann
       this.timeout = undefined;
     }
 
-    if (this.buffer.length === 0) {
-      this.scheduleNextReport();
-      return null;
-    }
-
-    return this.reportOnce().finally(() => this.scheduleNextReport());
+    return flushCoalesced(
+      this.reportState,
+      () => this.doReport(),
+      () => this.closed,
+      () => this.buffer.length > 0,
+      FLUSH_WAIT_MS,
+    ).finally(() => this.scheduleNextReport());
   }
 }

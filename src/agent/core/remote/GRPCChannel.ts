@@ -18,7 +18,7 @@
  */
 
 import * as grpc from '@grpc/grpc-js';
-import { ClientOptions, connectivityState } from '@grpc/grpc-js';
+import { ClientOptions, connectivityState, ChannelOptions } from '@grpc/grpc-js';
 import ChannelBuilder, { ChannelBuildContext } from './ChannelBuilder';
 import ChannelDecorator from './ChannelDecorator';
 
@@ -26,31 +26,41 @@ export default class GRPCChannel {
   private readonly originChannel: grpc.Channel;
   private readonly interceptors: grpc.Interceptor[];
 
-  private constructor(host: string, port: number, channelBuilders: ChannelBuilder[], decorators: ChannelDecorator[]) {
+  /**
+   * Builders must spread `context.options` when they replace the options object
+   * so native channel options (keepalive / service_config) are preserved.
+   * `extraOptions` are merged exactly once into the initial context.
+   */
+  private constructor(
+    target: string,
+    channelBuilders: ChannelBuilder[],
+    decorators: ChannelDecorator[],
+    extraOptions: ChannelOptions,
+  ) {
     let context: ChannelBuildContext = {
       credentials: grpc.credentials.createInsecure(),
-      options: {},
+      options: { ...extraOptions },
     };
 
     for (const builder of channelBuilders) {
       context = builder.build(context);
     }
 
-    this.originChannel = new grpc.Channel(`${host}:${port}`, context.credentials, context.options);
+    this.originChannel = new grpc.Channel(target, context.credentials, context.options);
     this.interceptors = decorators.map((decorator) => decorator.build());
   }
 
   static create(
-    host: string,
-    port: number,
+    target: string,
     channelBuilders: ChannelBuilder[],
     decorators: ChannelDecorator[],
+    extraOptions: ChannelOptions = {},
   ): GRPCChannel {
-    return new GRPCChannel(host, port, channelBuilders, decorators);
+    return new GRPCChannel(target, channelBuilders, decorators, extraOptions);
   }
 
-  static newBuilder(host: string, port: number): GRPCChannelBuilder {
-    return new GRPCChannelBuilder(host, port);
+  static newBuilder(target: string): GRPCChannelBuilder {
+    return new GRPCChannelBuilder(target);
   }
 
   getChannel(): grpc.Channel {
@@ -68,20 +78,23 @@ export default class GRPCChannel {
     return this.originChannel.getConnectivityState(requestConnection) === connectivityState.READY;
   }
 
+  getConnectivityState(requestConnection = false): connectivityState {
+    return this.originChannel.getConnectivityState(requestConnection);
+  }
+
   shutdownNow(): void {
     this.originChannel.close();
   }
 }
 
 class GRPCChannelBuilder {
-  private readonly host: string;
-  private readonly port: number;
+  private readonly target: string;
   private readonly channelBuilders: ChannelBuilder[] = [];
   private readonly decorators: ChannelDecorator[] = [];
+  private extraOptions: ChannelOptions = {};
 
-  constructor(host: string, port: number) {
-    this.host = host;
-    this.port = port;
+  constructor(target: string) {
+    this.target = target;
   }
 
   addManagedChannelBuilder(builder: ChannelBuilder): this {
@@ -94,7 +107,12 @@ class GRPCChannelBuilder {
     return this;
   }
 
+  withChannelOptions(options: ChannelOptions): this {
+    this.extraOptions = { ...this.extraOptions, ...options };
+    return this;
+  }
+
   build(): GRPCChannel {
-    return GRPCChannel.create(this.host, this.port, this.channelBuilders, this.decorators);
+    return GRPCChannel.create(this.target, this.channelBuilders, this.decorators, this.extraOptions);
   }
 }
