@@ -59,6 +59,10 @@ function installChannelMock(): void {
 describe('GRPCChannelManager (native grpc-js multi-backend failover)', () => {
   const originalCollector = config.collectorAddress;
   const originalSecure = config.secure;
+  const originalTrustedCaPath = config.sslTrustedCaPath;
+  const originalKeyPath = config.sslKeyPath;
+  const originalCertChainPath = config.sslCertChainPath;
+  const originalTargetNameOverride = config.sslTargetNameOverride;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -74,6 +78,10 @@ describe('GRPCChannelManager (native grpc-js multi-backend failover)', () => {
   afterEach(() => {
     config.collectorAddress = originalCollector;
     config.secure = originalSecure;
+    config.sslTrustedCaPath = originalTrustedCaPath;
+    config.sslKeyPath = originalKeyPath;
+    config.sslCertChainPath = originalCertChainPath;
+    config.sslTargetNameOverride = originalTargetNameOverride;
     jest.restoreAllMocks();
   });
 

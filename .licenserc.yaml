@@ -29,11 +29,14 @@ header:
     - 'LICENSE'
     - 'NOTICE'
     - '.gitignore'
+    - '.gitattributes'
     - '.gitmodules'
     - '.prettierrc'
     - 'lib'
     - '.husky'
     - '.file-headerrc'
     - '.eslintrc.js'
+    - '**/*.crt'
+    - '**/*.pem'
 
   comment: on-failure

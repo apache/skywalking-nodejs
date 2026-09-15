@@ -40,15 +40,29 @@ An option passed to `agent.start()` replaces the environment value. This include
 agent.start({ collectorAddress: '' });
 ```
 
-For a TLS OAP endpoint, set `SW_AGENT_SECURE=true`. The agent uses the system trust store. It has no
-configuration for a custom CA or client certificate. Set `SW_AGENT_AUTHENTICATION` if OAP requires
-an agent token.
+For a TLS OAP endpoint, set `SW_AGENT_SECURE=true`. The agent uses the system trust store by
+default. Set `SW_AGENT_AUTHENTICATION` if OAP requires an agent token.
+
+For a custom CA or mTLS, configure `SW_AGENT_SSL_TRUSTED_CA_PATH`. For mTLS, also configure both
+`SW_AGENT_SSL_KEY_PATH` and `SW_AGENT_SSL_CERT_CHAIN_PATH`; all three paths are optional relative
+to the Node.js process working directory. The client key and certificate must be a matching pair.
+The agent fails channel creation when either client path is missing or unreadable, rather than
+silently falling back to one-way TLS.
+
+With Apache OAP, point the agent at the mTLS-enabled `receiver-sharing-server` gRPC listener
+(commonly port `11801`, or the port selected by `SW_RECEIVER_GRPC_PORT`). Do not assume that the
+regular OAP agent listener on port `11800` requests client certificates.
 
 Under TLS with multiple hostnames, certificate verification follows the channel authority (the first
 list entry in the configured target). Endpoint pick order may be shuffled by grpc-js, but the target
 string — and therefore authority / SNI — stays in config order. Every backend must present a
 certificate that shares the needed SANs, or failover handshakes fail. Prefer one DNS name with
 multiple A/AAAA records for TLS high availability.
+
+If the agent connects with a hostname or IP that does not appear in the OAP certificate SAN, the
+handshake fails with a hostname mismatch. Set `SW_AGENT_SSL_TARGET_NAME_OVERRIDE` to the SAN name
+that OAP does present — for example the DNS name when the agent connects via an IP literal.
+This overrides both the TLS SNI and the gRPC default authority.
 
 Channel disconnect lines are logged at `error` and recover lines at `warn` (throttled separately so a
 recover line is not swallowed by the disconnect window). For per-address grpc-js detail, set

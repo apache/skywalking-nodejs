@@ -24,6 +24,10 @@ export type AgentConfig = {
   serviceInstance?: string;
   collectorAddress?: string;
   secure?: boolean;
+  sslTrustedCaPath?: string;
+  sslKeyPath?: string;
+  sslCertChainPath?: string;
+  sslTargetNameOverride?: string;
   authorization?: string;
   maxBufferSize?: number;
   coldEndpoint?: boolean;
@@ -182,6 +186,10 @@ const _config = {
     })(),
   collectorAddress: process.env.SW_AGENT_COLLECTOR_BACKEND_SERVICES || '127.0.0.1:11800',
   secure: process.env.SW_AGENT_SECURE?.toLowerCase() === 'true',
+  sslTrustedCaPath: process.env.SW_AGENT_SSL_TRUSTED_CA_PATH || undefined,
+  sslKeyPath: process.env.SW_AGENT_SSL_KEY_PATH || undefined,
+  sslCertChainPath: process.env.SW_AGENT_SSL_CERT_CHAIN_PATH || undefined,
+  sslTargetNameOverride: process.env.SW_AGENT_SSL_TARGET_NAME_OVERRIDE || undefined,
   authorization: process.env.SW_AGENT_AUTHENTICATION,
   maxBufferSize: ((n) => (Number.isSafeInteger(n) && n > 0 ? n : 1000))(
     Number.parseInt(process.env.SW_AGENT_MAX_BUFFER_SIZE ?? '', 10),

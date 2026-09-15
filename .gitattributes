@@ -1,0 +1,11 @@
+# Keep LF in paths this PR touches. CRLF in *.sh breaks Linux CI (`$'\r': command not found`).
+*.sh text eol=lf
+.github/workflows/*.yml text eol=lf
+.github/workflows/*.yaml text eol=lf
+.gitignore text eol=lf
+.licenserc.yaml text eol=lf
+.gitattributes text eol=lf
+docs/**/*.md text eol=lf
+tests/remote-e2e/mtls/** text eol=lf
+*.crt -text
+*.pem -text
