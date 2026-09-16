@@ -26,14 +26,48 @@ Node.js process. `SW_DISABLE` is checked when `start()` is called.
 | `SW_AGENT_INSTANCE` | `serviceInstance` | Host name | Service instance name shown in SkyWalking. |
 | `SW_AGENT_COLLECTOR_BACKEND_SERVICES` | `collectorAddress` | `127.0.0.1:11800` | OAP gRPC address(es). One `host:port` uses grpc-js `dns:` (all A/AAAA become endpoints; periodically re-resolved). A comma-separated list uses a static resolver with `pick_first` (literal endpoints only; no per-name DNS expansion or re-resolution). Endpoint pick order is shuffled by grpc-js (`shuffleAddressList`); the target string keeps config order so TLS authority / SNI stay on the first list entry. Under TLS, all backends must present certificates that share the needed SANs. Prefer one DNS name with multiple A/AAAA records for TLS high availability. |
 | `SW_AGENT_SECURE` | `secure` | `false` | Use TLS for the OAP gRPC connection. |
+| `SW_AGENT_SSL_TRUSTED_CA_PATH`        | `sslTrustedCaPath`      | Not set               | Optional trusted CA certificate file for TLS server verification. Relative paths are resolved from the process working directory.                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `SW_AGENT_SSL_KEY_PATH`               | `sslKeyPath`            | Not set               | Client private key file for mTLS. Must be configured together with `sslCertChainPath` and `secure=true`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `SW_AGENT_SSL_CERT_CHAIN_PATH`        | `sslCertChainPath`      | Not set               | Client certificate chain file for mTLS. Must be configured together with `sslKeyPath` and `secure=true`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `SW_AGENT_SSL_TARGET_NAME_OVERRIDE`   | `sslTargetNameOverride` | Not set               | Override the hostname used for TLS server name indication (SNI) and certificate verification. Useful when the OAP certificate SAN does not include the literal hostname or IP the agent connects to.                                                                                                                                                                                                                                                                                                                                                                            |
 | `SW_AGENT_AUTHENTICATION` | `authorization` | Not set | Authentication token sent to OAP. |
 | `SW_AGENT_TRACE_TIMEOUT` | `traceTimeout` | `10000` | gRPC deadline in milliseconds for trace and meter reports and service management requests. Must be a positive integer. |
 
 For token authentication, set the same token in OAP with `SW_AUTHENTICATION`. See
 [OAP token authentication](https://skywalking.apache.org/docs/main/next/en/setup/backend/backend-token-auth/).
 
-When `secure` is enabled, the agent uses the system trust store. It does not provide options for a
-custom CA, client certificate, or mutual TLS.
+When `secure` is enabled, the agent uses the system trust store unless `sslTrustedCaPath` is set.
+Configure both `sslKeyPath` and `sslCertChainPath` to enable mTLS. The private key and certificate
+files are read when the gRPC channel is created. Incomplete or unreadable certificate configuration
+fails closed instead of silently downgrading to one-way TLS.
+
+If the OAP server certificate SAN does not contain the hostname or IP that the agent connects to —
+for example when the agent reaches OAP via an IP literal but the certificate is issued for a DNS
+name — set `sslTargetNameOverride` to the SAN value that the certificate does include. This is
+equivalent to grpc-js `grpc.ssl_target_name_override` and also updates `grpc.default_authority`.
+
+Relative certificate paths are resolved from the process working directory. Prefer absolute paths
+(`/etc/sw/ca.crt`) or ensure the working directory is stable (e.g. Docker containers with WORKDIR
+set). The agent accepts both PKCS#1 (`-----BEGIN RSA PRIVATE KEY-----`) and PKCS#8
+(`-----BEGIN PRIVATE KEY-----`) private key formats via Node's OpenSSL-backed `crypto` module.
+
+For Apache OAP mTLS, enable the `receiver-sharing-server` gRPC listener with its trusted client CA
+and point `collectorAddress` to that listener (commonly port `11801`, or the port selected by
+`SW_RECEIVER_GRPC_PORT`). The standard OAP mTLS setup does not use the regular agent listener on
+port `11800`.
+
+For example:
+
+```typescript
+agent.start({
+  collectorAddress: 'oap.example.com:11801',
+  secure: true,
+  sslTrustedCaPath: './certs/ca.crt',
+  sslKeyPath: './certs/client.key',
+  sslCertChainPath: './certs/client.crt',
+});
+```
+
 
 ## Agent control and logging
 

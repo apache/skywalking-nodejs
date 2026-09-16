@@ -62,6 +62,18 @@ npm run test tests/plugins/http/
 Plugin tests start a mock SkyWalking collector and target services with Docker Compose. Make sure
 Docker is running and that the test ports are free.
 
+### Real OAP mTLS remote e2e
+
+The suite under `tests/remote-e2e/mtls/` talks to a real OAP over mutual TLS. Private keys are not
+in git — generate them first (needs `openssl` and `bash`):
+
+```bash
+bash tests/remote-e2e/mtls/generate-certs.sh
+npm run test tests/remote-e2e/mtls/
+```
+
+See `tests/remote-e2e/mtls/README.md` for details. CI runs the same script before the Jest job.
+
 Test the built package in a container:
 
 ```bash
@@ -81,6 +93,7 @@ docker run --rm skywalking-nodejs:test
 | `src/trace/` | Trace context, spans, segments, and component IDs |
 | `src/aws/`, `src/azure/` | Serverless wrappers and AWS helpers |
 | `tests/plugins/` | Docker-based plugin integration tests |
+| `tests/remote-e2e/` | Real-collector / real-OAP remote e2e (incl. mTLS) |
 | `tests/remote/`, `tests/runtime/` | Reporter and runtime meter tests |
 
 ## Before opening a pull request

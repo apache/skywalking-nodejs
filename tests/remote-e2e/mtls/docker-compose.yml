@@ -1,0 +1,99 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+services:
+  oap:
+    image: ${SW_OAP_IMAGE:-ghcr.io/apache/skywalking/oap@sha256:f3fd1982c0344db2150780ea71bd51afc1f8fd7f482f73f01429a72151c857f6}
+    volumes:
+      - ./server:/skywalking/certs:ro
+    environment:
+      SW_STORAGE: banyandb
+      SW_STORAGE_BANYANDB_TARGETS: banyandb:17912
+      SW_RECEIVER_GRPC_PORT: 11811
+      SW_RECEIVER_GRPC_SSL_ENABLED: 'true'
+      SW_RECEIVER_GRPC_SSL_KEY_PATH: /skywalking/certs/server.pem
+      SW_RECEIVER_GRPC_SSL_CERT_CHAIN_PATH: /skywalking/certs/server.crt
+      SW_RECEIVER_GRPC_SSL_TRUSTED_CAS_PATH: /skywalking/certs/ca.crt
+    ports:
+      - '11811:11811'
+      - '12801:12800'
+    expose:
+      - '11811'
+    depends_on:
+      banyandb:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'bash', '-c', 'cat < /dev/null > /dev/tcp/127.0.0.1/11811']
+      interval: 5s
+      timeout: 60s
+      retries: 120
+      start_period: 90s
+    networks:
+      - mtls
+
+  banyandb:
+    image: ${SW_BANYANDB_IMAGE:-ghcr.io/apache/skywalking-banyandb:3b83e18fb0481d02e44eaa5df137fcf7b000754b}
+    command:
+      - standalone
+      - --measure-metadata-cache-wait-duration
+      - 1m
+      - --stream-metadata-cache-wait-duration
+      - 1m
+    expose:
+      - '17912'
+    healthcheck:
+      test: ['CMD', 'sh', '-c', 'nc -nz 127.0.0.1 17912']
+      interval: 5s
+      timeout: 60s
+      retries: 120
+    networks:
+      - mtls
+
+  server:
+    build:
+      context: ../../..
+      dockerfile: tests/plugins/common/Dockerfile.agent
+      args:
+        - SW_NODE_VERSION=${SW_NODE_VERSION:-22}
+    ports:
+      - '5011:5000'
+    environment:
+      SW_AGENT_NAME: nodejs-mtls-e2e
+      SW_AGENT_INSTANCE: nodejs-mtls-e2e-instance
+      SW_AGENT_COLLECTOR_BACKEND_SERVICES: oap:11811
+      SW_AGENT_SECURE: 'true'
+      SW_AGENT_SSL_TRUSTED_CA_PATH: /app/certs/ca.crt
+      SW_AGENT_SSL_KEY_PATH: /app/certs/client.pem
+      SW_AGENT_SSL_CERT_CHAIN_PATH: /app/certs/client.crt
+      SW_AGENT_RUNTIME_METRICS_REPORTER_ACTIVE: 'false'
+    volumes:
+      - ./client:/app/certs:ro
+      - .:/app/tests/remote-e2e/mtls:ro
+    entrypoint: ['bash', '-c', 'npx ts-node /app/tests/remote-e2e/mtls/server.ts']
+    depends_on:
+      oap:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'bash', '-c', 'cat < /dev/null > /dev/tcp/127.0.0.1/5000']
+      interval: 5s
+      timeout: 60s
+      retries: 120
+    networks:
+      - mtls
+
+networks:
+  mtls:
