@@ -70,10 +70,9 @@ export default class TLSChannelBuilder implements ChannelBuilder {
     const credentials = grpc.credentials.createSsl(rootCerts, privateKey, certChain);
 
     logger.debug(
-      'gRPC TLS credentials built: ca=%s key=%s cert=%s',
-      trustedCaPath ?? '(system)',
-      keyPath ?? '(none)',
-      certChainPath ?? '(none)',
+      `gRPC TLS credentials built: ca=${trustedCaPath ?? '(system)'} key=${keyPath ?? '(none)'} cert=${
+        certChainPath ?? '(none)'
+      }`,
     );
 
     const sslTargetNameOverride = config.sslTargetNameOverride?.trim();
@@ -81,7 +80,7 @@ export default class TLSChannelBuilder implements ChannelBuilder {
     if (sslTargetNameOverride) {
       extraOptions['grpc.ssl_target_name_override'] = sslTargetNameOverride;
       extraOptions['grpc.default_authority'] = sslTargetNameOverride;
-      logger.debug('gRPC TLS hostname override set to [%s]', sslTargetNameOverride);
+      logger.debug(`gRPC TLS hostname override set to [${sslTargetNameOverride}]`);
     }
 
     return {
