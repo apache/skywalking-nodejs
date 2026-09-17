@@ -20,9 +20,11 @@
 import * as dns from 'dns';
 import * as net from 'net';
 import * as grpc from '@grpc/grpc-js';
-import { createLogger } from '../../../logging';
+import { createLogger, throttled } from '../../../logging';
 
 const logger = createLogger(__filename);
+const logDnsLookupEmpty = throttled(logger, 'error', 30_000);
+const logDnsLookupFailed = throttled(logger, 'error', 30_000);
 
 const SW_STATIC_SCHEME = 'sw-static';
 
@@ -197,7 +199,7 @@ export async function expandBackendAddresses(
       if (!records.length) {
         // Same as throw/timeout: incomplete expand must not drop prior endpoints.
         hadLookupFailure = true;
-        logger.error(`DNS lookup for backend [${host}] returned no addresses`);
+        logDnsLookupEmpty(`DNS lookup for backend [${host}] returned no addresses`);
         const previous = previousByConfigured.get(entry);
         if (previous?.length) {
           byConfigured.set(entry, [...previous]);
@@ -213,7 +215,7 @@ export async function expandBackendAddresses(
       appendUnique(endpoints);
     } catch (error) {
       hadLookupFailure = true;
-      logger.error(`Failed to resolve backend [${host}]: ${error}`);
+      logDnsLookupFailed(`Failed to resolve backend [${host}]`, error);
       const previous = previousByConfigured.get(entry);
       if (previous?.length) {
         byConfigured.set(entry, [...previous]);

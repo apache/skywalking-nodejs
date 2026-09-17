@@ -135,13 +135,16 @@ function nativeChannelOptions(authorityHostname?: string): ChannelOptions {
     }),
   };
 
-  // After DNS expand, endpoints are IP literals — under TLS keep SNI/authority on the
-  // configured hostname unless the operator already set sslTargetNameOverride
-  // (TLSChannelBuilder wins then). Plaintext does not need an authority override.
+  // After DNS expand, endpoints are IP literals. Preserve HTTP/2 :authority on the
+  // configured hostname (plaintext and TLS) so virtual-host proxies still route by name.
+  // Under TLS also set SNI / ssl_target_name_override unless the operator already set
+  // sslTargetNameOverride (TLSChannelBuilder wins then).
   const override = config.sslTargetNameOverride?.trim();
-  if (config.secure && !override && authorityHostname) {
+  if (authorityHostname && !override) {
     options['grpc.default_authority'] = authorityHostname;
-    options['grpc.ssl_target_name_override'] = authorityHostname;
+    if (config.secure) {
+      options['grpc.ssl_target_name_override'] = authorityHostname;
+    }
   }
 
   return options;
@@ -532,9 +535,14 @@ export default class GRPCChannelManager implements BootService {
       return;
     }
     // Rebuild quiet window ends if the new channel leaves CONNECTING without READY
-    // (IDLE / TRANSIENT_FAILURE / SHUTDOWN) so later recover logs are not muted forever.
+    // (IDLE / TRANSIENT_FAILURE / SHUTDOWN). The intentional rebuild already set
+    // lastStatus=DISCONNECT with logs suppressed; notify(DISCONNECT) would no-op, so
+    // emit the real outage diagnostic here.
     if (this.suppressDnsRebuildStatusLog) {
       this.suppressDnsRebuildStatusLog = false;
+      if (this.lastStatus === GRPCChannelStatus.DISCONNECT) {
+        this.logDnsRebuildFailedToConnect();
+      }
     }
     // READY→IDLE is grpc-js's normal path after the active connection drops.
     if (state === grpc.connectivityState.IDLE) {
@@ -589,5 +597,16 @@ export default class GRPCChannelManager implements BootService {
     } else if (status === GRPCChannelStatus.CONNECTED && previous === GRPCChannelStatus.DISCONNECT) {
       logChannelRecovered(`gRPC channel recovered; connected to backends [${backends}]`);
     }
+  }
+
+  /** Outage log when a DNS rebuild replacement never becomes READY (status already DISCONNECT). */
+  private logDnsRebuildFailedToConnect(): void {
+    if (this.closed) {
+      return;
+    }
+    const backends = this.configuredServers.join(',') || this.grpcServers.join(',') || config.collectorAddress || '';
+    logChannelDisconnected(
+      `gRPC channel not connected to backends [${backends}] after DNS rebuild; connecting with exponential backoff`,
+    );
   }
 }
