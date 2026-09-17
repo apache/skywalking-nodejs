@@ -150,6 +150,38 @@ jobs:
           npm i
           npm run test tests/remote-e2e/static-failover/
 
+  TestRemoteE2EDnsPeriodic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [ 20, 22, 24 ]
+    env:
+      SW_NODE_VERSION: ${{ matrix.node-version }}
+      SW_OAP_IMAGE: ghcr.io/apache/skywalking/oap@sha256:f3fd1982c0344db2150780ea71bd51afc1f8fd7f482f73f01429a72151c857f6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Set Up NodeJS ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Remote E2E On Node@${{ matrix.node-version }} (dns-periodic real OAP)
+        run: |
+          npm i
+          npm run test tests/remote-e2e/dns-periodic/
+
   TestRemoteE2EMTLS:
     runs-on: ubuntu-latest
     timeout-minutes: 30

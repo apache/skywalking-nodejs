@@ -29,9 +29,24 @@ export SW_AGENT_COLLECTOR_BACKEND_SERVICES=oap.example.com:11800
 Check DNS, network access, firewall rules, and the OAP gRPC port.
 
 One `host:port` uses the grpc-js `dns:` resolver (all A/AAAA records become endpoints and are
-re-resolved periodically). A comma-separated list uses a static resolver with `pick_first`: each
-name is a literal endpoint only — no DNS expansion or re-resolution per name, so discovery is weaker
-than a single DNS name (for example a headless Kubernetes service).
+re-resolved on demand by grpc-js when the channel needs fresh addresses — not on a fixed agent timer). A comma-separated list uses a static resolver with `pick_first`: by
+default each name is a literal endpoint only — no DNS expansion or re-resolution per name, so
+discovery is weaker than a single DNS name (for example a headless Kubernetes service).
+
+To expand and periodically refresh multiple DNS names, set
+`SW_AGENT_IS_RESOLVE_DNS_PERIODICALLY=true` (or `isResolveDnsPeriodically: true` in `agent.start()`).
+`SW_AGENT_COLLECTOR_IS_RESOLVE_DNS_PERIODICALLY` is accepted as a Java-aligned alias.
+The agent resolves each hostname to all A/AAAA records (each lookup times out after 5s),
+dials the resulting IP list via
+`sw-static` (including when expansion yields a single IP), and re-resolves every 30 seconds
+(override with `SW_AGENT_DNS_RE_RESOLVE_INTERVAL_SECONDS`, or the Java-aligned
+`SW_AGENT_COLLECTOR_GRPC_CHANNEL_CHECK_INTERVAL`). Failed names keep their last-known endpoints
+so a partial DNS outage does not shrink the dial set; the gRPC channel is rebuilt when the
+merged address set changes, and open is retried on later ticks if no channel was installed yet.
+Timer ticks that arrive while a resolve is still running are skipped (no overlapping resolve).
+Under TLS, when endpoints are IP literals, the agent uses the first configured
+hostname in the list as SNI / authority unless `SW_AGENT_SSL_TARGET_NAME_OVERRIDE` is set. All backends must
+still present certificates that share the needed SANs.
 
 An option passed to `agent.start()` replaces the environment value. This includes an empty string:
 
@@ -53,8 +68,10 @@ With Apache OAP, point the agent at the mTLS-enabled `receiver-sharing-server` g
 (commonly port `11801`, or the port selected by `SW_RECEIVER_GRPC_PORT`). Do not assume that the
 regular OAP agent listener on port `11800` requests client certificates.
 
-Under TLS with multiple hostnames, certificate verification follows the channel authority (the first
-list entry in the configured target). Endpoint pick order may be shuffled by grpc-js, but the target
+Under TLS with multiple backends, certificate verification follows the channel authority.
+With periodic multi-name DNS expand, that is the first **hostname** in the configured list
+(not an IP literal earlier in the list). Without DNS expand, authority follows the first list
+entry in the configured target. Endpoint pick order may be shuffled by grpc-js, but the target
 string — and therefore authority / SNI — stays in config order. Every backend must present a
 certificate that shares the needed SANs, or failover handshakes fail. Prefer one DNS name with
 multiple A/AAAA records for TLS high availability.

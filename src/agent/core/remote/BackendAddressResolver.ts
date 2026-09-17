@@ -17,14 +17,84 @@
  *
  */
 
+import * as dns from 'dns';
+import * as net from 'net';
 import * as grpc from '@grpc/grpc-js';
-import { createLogger } from '../../../logging';
+import { createLogger, throttled } from '../../../logging';
 
 const logger = createLogger(__filename);
+const logDnsLookupEmpty = throttled(logger, 'error', 30_000);
+const logDnsLookupFailed = throttled(logger, 'error', 30_000);
 
 const SW_STATIC_SCHEME = 'sw-static';
 
 let swStaticResolverRegistered = false;
+
+/** Lookup returning all A/AAAA records (injectable for tests). */
+export type DnsLookupAll = (hostname: string) => Promise<ReadonlyArray<{ address: string; family: number }>>;
+
+const defaultDnsLookupAll: DnsLookupAll = (hostname) => dns.promises.lookup(hostname, { all: true, verbatim: true });
+
+/** Per-hostname DNS lookup deadline (ms). Hung lookups fail open to the next name / tick. */
+export const DNS_LOOKUP_TIMEOUT_MS = 5_000;
+
+/**
+ * In-flight getaddrinfo cannot be cancelled after the wait timeout. Deduplicate by
+ * (lookup, hostname) so periodic ticks reuse the same pending query instead of
+ * stacking libc/thread-pool work under slow DNS.
+ */
+const inflightLookups = new WeakMap<
+  DnsLookupAll,
+  Map<string, Promise<ReadonlyArray<{ address: string; family: number }>>>
+>();
+
+function inflightMapFor(
+  lookup: DnsLookupAll,
+): Map<string, Promise<ReadonlyArray<{ address: string; family: number }>>> {
+  let map = inflightLookups.get(lookup);
+  if (!map) {
+    map = new Map();
+    inflightLookups.set(lookup, map);
+  }
+  return map;
+}
+
+async function lookupWithTimeout(
+  hostname: string,
+  lookup: DnsLookupAll,
+  timeoutMs: number = DNS_LOOKUP_TIMEOUT_MS,
+): Promise<ReadonlyArray<{ address: string; family: number }>> {
+  const inflight = inflightMapFor(lookup);
+  let lookupPromise = inflight.get(hostname);
+  if (!lookupPromise) {
+    lookupPromise = lookup(hostname);
+    inflight.set(hostname, lookupPromise);
+    // Keep a rejection handler so a late failure after timeout does not surface as
+    // an unhandledRejection; drop the map entry once the underlying query settles.
+    void lookupPromise
+      .finally(() => {
+        if (inflight.get(hostname) === lookupPromise) {
+          inflight.delete(hostname);
+        }
+      })
+      .catch(() => undefined);
+  }
+
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      lookupPromise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`DNS lookup timed out after ${timeoutMs}ms`)), timeoutMs);
+        timer.unref?.();
+      }),
+    ]);
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
+  }
+}
 
 /**
  * Parse one host:port via grpc.experimental.splitHostPort.
@@ -60,15 +130,185 @@ export function parseStaticBackendAddresses(raw: string): string[] {
   return result;
 }
 
+/** True when host is an IPv4/IPv6 literal (optional brackets for v6). */
+export function isIpLiteral(host: string): boolean {
+  const trimmed = host.trim();
+  if (!trimmed) {
+    return false;
+  }
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    return net.isIP(trimmed.slice(1, -1)) !== 0;
+  }
+  return net.isIP(trimmed) !== 0;
+}
+
+function formatHostPort(host: string, port: number): string {
+  const normalized = host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
+  return `${normalized}:${port}`;
+}
+
+/**
+ * Whether multi-backend DNS expand + periodic re-resolve should run.
+ * Single-address targets use grpc-js dns:; all-IP lists need no lookup.
+ */
+export function shouldExpandBackendDns(addresses: string[]): boolean {
+  if (addresses.length <= 1) {
+    return false;
+  }
+  for (const entry of addresses) {
+    const parsed = grpc.experimental.splitHostPort(entry);
+    if (parsed?.host && !isIpLiteral(parsed.host)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Expand hostnames to all A/AAAA addresses (IPs kept as-is). Failed names are
+ * logged and skipped; returns [] addresses when nothing resolved.
+ * `hadLookupFailure` is true when at least one hostname threw/timed out or
+ * returned no A/AAAA.
+ *
+ * Pass `previousByConfigured` so a failed name keeps its last successful
+ * endpoints — callers can dial a stable merged set instead of shrinking on
+ * partial DNS outages (and still pick up IP changes from names that resolved).
+ */
+export type ExpandBackendResult = {
+  addresses: string[];
+  hadLookupFailure: boolean;
+  /** Per configured host:port → endpoints after this expand (includes kept previous). */
+  byConfigured: Map<string, string[]>;
+};
+
+export type ExpandBackendOptions = {
+  lookup?: DnsLookupAll;
+  previousByConfigured?: ReadonlyMap<string, readonly string[]>;
+};
+
+export async function expandBackendAddresses(
+  addresses: string[],
+  lookupOrOptions: DnsLookupAll | ExpandBackendOptions = defaultDnsLookupAll,
+): Promise<ExpandBackendResult> {
+  let lookup: DnsLookupAll = defaultDnsLookupAll;
+  let previousByConfigured: ReadonlyMap<string, readonly string[]> = new Map();
+  if (typeof lookupOrOptions === 'function') {
+    lookup = lookupOrOptions;
+  } else {
+    lookup = lookupOrOptions.lookup ?? defaultDnsLookupAll;
+    previousByConfigured = lookupOrOptions.previousByConfigured ?? new Map();
+  }
+
+  const byConfigured = new Map<string, string[]>();
+  const expanded: string[] = [];
+  const seen = new Set<string>();
+  let hadLookupFailure = false;
+
+  const appendUnique = (endpoints: readonly string[]) => {
+    for (const endpoint of endpoints) {
+      if (!seen.has(endpoint)) {
+        seen.add(endpoint);
+        expanded.push(endpoint);
+      }
+    }
+  };
+
+  for (const entry of addresses) {
+    const parsed = grpc.experimental.splitHostPort(entry);
+    if (!parsed?.host || parsed.port == null) {
+      continue;
+    }
+    const { host, port } = parsed;
+
+    if (isIpLiteral(host)) {
+      const normalized = formatHostPort(host.startsWith('[') ? host.slice(1, -1) : host, port);
+      byConfigured.set(entry, [normalized]);
+      appendUnique([normalized]);
+      continue;
+    }
+
+    try {
+      const records = await lookupWithTimeout(host, lookup);
+      if (!records.length) {
+        // Same as throw/timeout: incomplete expand must not drop prior endpoints.
+        hadLookupFailure = true;
+        logDnsLookupEmpty(`DNS lookup for backend [${host}] returned no addresses`);
+        const previous = previousByConfigured.get(entry);
+        if (previous?.length) {
+          byConfigured.set(entry, [...previous]);
+          appendUnique(previous);
+        }
+        continue;
+      }
+      const endpoints: string[] = [];
+      for (const record of records) {
+        endpoints.push(formatHostPort(record.address, port));
+      }
+      byConfigured.set(entry, endpoints);
+      appendUnique(endpoints);
+    } catch (error) {
+      hadLookupFailure = true;
+      logDnsLookupFailed(`Failed to resolve backend [${host}]`, error);
+      const previous = previousByConfigured.get(entry);
+      if (previous?.length) {
+        byConfigured.set(entry, [...previous]);
+        appendUnique(previous);
+      }
+    }
+  }
+
+  return { addresses: expanded, hadLookupFailure, byConfigured };
+}
+
+/** True when both lists contain the same host:port values (order-independent). */
+export function sameAddressSet(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  for (let i = 0; i < sortedA.length; i++) {
+    if (sortedA[i] !== sortedB[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * First non-IP hostname in the configured list — used after expanding backends to IP
+ * literals (e.g. `10.0.0.1:11800,oap-b.svc:11800`).
+ *
+ * `authority` keeps host:port for HTTP/2 `:authority` (proxies may match on port).
+ * `serverName` is hostname-only for TLS SNI / ssl_target_name_override.
+ */
+export type DnsAuthority = {
+  authority: string;
+  serverName: string;
+};
+
+export function firstHostnameAuthority(addresses: string[]): DnsAuthority | undefined {
+  for (const entry of addresses) {
+    const parsed = grpc.experimental.splitHostPort(entry);
+    if (parsed?.host && parsed.port != null && !isIpLiteral(parsed.host)) {
+      return {
+        authority: formatHostPort(parsed.host, parsed.port),
+        serverName: parsed.host,
+      };
+    }
+  }
+  return undefined;
+}
+
 /**
  * Build a grpc-js channel target.
- * - One address: plain host:port (default dns: resolver — multi-IP + periodic re-resolve + natural TLS authority).
- * - Multiple: sw-static:/// list for pick_first across explicit backends (literal endpoints only;
- *   no DNS expansion / re-resolution of each name — weaker discovery than a single dns: target).
+ * - One address: plain host:port (default dns: resolver — multi-IP + periodic re-resolve + natural TLS authority),
+ *   unless forceStatic is set (DNS-expanded IP lists always use sw-static, even for a single IP).
+ * - Multiple: sw-static:/// list for pick_first across explicit backends.
  */
-export function buildNativeGrpcTarget(addresses: string[]): string {
+export function buildNativeGrpcTarget(addresses: string[], options: { forceStatic?: boolean } = {}): string {
   // Caller (openChannel) already requires a non-empty list.
-  if (addresses.length === 1) {
+  if (addresses.length === 1 && !options.forceStatic) {
     return addresses[0]!;
   }
   ensureSwStaticResolverRegistered();
@@ -90,6 +330,7 @@ function ensureSwStaticResolverRegistered(): void {
     private readonly endpoints: grpc.experimental.Endpoint[];
     private readonly error: { code: number; details: string; metadata: grpc.Metadata } | null;
     private hasReturnedResult = false;
+    private destroyed = false;
 
     constructor(
       target: grpc.experimental.GrpcUri,
@@ -130,11 +371,17 @@ function ensureSwStaticResolverRegistered(): void {
     }
 
     updateResolution(): void {
-      if (this.hasReturnedResult) {
+      // Channel.close() calls destroy() then may still invoke updateResolution; ignore both.
+      if (this.destroyed || this.hasReturnedResult) {
         return;
       }
       this.hasReturnedResult = true;
       process.nextTick(() => {
+        // Drop results scheduled before destroy — otherwise grpc-js reconnects after close
+        // (boot→immediate shutdown race) while the manager has already dropped the channel.
+        if (this.destroyed) {
+          return;
+        }
         if (this.error) {
           this.listener(statusOrFromError(this.error), {}, null, '');
         } else {
@@ -144,7 +391,7 @@ function ensureSwStaticResolverRegistered(): void {
     }
 
     destroy(): void {
-      this.hasReturnedResult = false;
+      this.destroyed = true;
     }
 
     static getDefaultAuthority(target: grpc.experimental.GrpcUri): string {

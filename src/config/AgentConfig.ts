@@ -23,6 +23,13 @@ export type AgentConfig = {
   serviceName?: string;
   serviceInstance?: string;
   collectorAddress?: string;
+  /**
+   * When true and multiple backends include hostnames, expand A/AAAA and
+   * periodically re-resolve; rebuild when the address set changes, or retry
+   * open when no channel is installed yet (e.g. after a failed initial expand).
+   * Single-address targets keep grpc-js dns: re-resolution and ignore this flag.
+   */
+  isResolveDnsPeriodically?: boolean;
   secure?: boolean;
   sslTrustedCaPath?: string;
   sslKeyPath?: string;
@@ -185,6 +192,11 @@ const _config = {
       return os.hostname();
     })(),
   collectorAddress: process.env.SW_AGENT_COLLECTOR_BACKEND_SERVICES || '127.0.0.1:11800',
+  isResolveDnsPeriodically: ((): boolean => {
+    const configured =
+      process.env.SW_AGENT_IS_RESOLVE_DNS_PERIODICALLY ?? process.env.SW_AGENT_COLLECTOR_IS_RESOLVE_DNS_PERIODICALLY;
+    return configured?.toLowerCase() === 'true';
+  })(),
   secure: process.env.SW_AGENT_SECURE?.toLowerCase() === 'true',
   sslTrustedCaPath: process.env.SW_AGENT_SSL_TRUSTED_CA_PATH || undefined,
   sslKeyPath: process.env.SW_AGENT_SSL_KEY_PATH || undefined,
