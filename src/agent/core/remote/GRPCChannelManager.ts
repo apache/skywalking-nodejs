@@ -25,6 +25,7 @@ import AgentIDDecorator from './AgentIDDecorator';
 import AuthenticationDecorator from './AuthenticationDecorator';
 import {
   buildNativeGrpcTarget,
+  DnsAuthority,
   expandBackendAddresses,
   firstHostnameAuthority,
   parseStaticBackendAddresses,
@@ -99,7 +100,7 @@ function isGrpcNetworkError(error: unknown): boolean {
   );
 }
 
-function nativeChannelOptions(authorityHostname?: string): ChannelOptions {
+function nativeChannelOptions(dnsAuthority?: DnsAuthority): ChannelOptions {
   // No gRPC keepalive: stock OAP (grpc-java) rejects frequent idle pings with GOAWAY
   // ENHANCE_YOUR_CALM. Agent traffic (trace/heartbeat/metrics) provides liveness.
   //
@@ -135,20 +136,19 @@ function nativeChannelOptions(authorityHostname?: string): ChannelOptions {
     }),
   };
 
-  // After DNS expand, endpoints are IP literals. Preserve HTTP/2 :authority on the
-  // configured hostname (plaintext and TLS) so virtual-host proxies still route by name.
-  // Under TLS also set SNI / ssl_target_name_override unless the operator already set
-  // sslTargetNameOverride (TLSChannelBuilder wins then). A TLS-only override must not
-  // skip plaintext default_authority — TLSChannelBuilder ignores it when secure=false.
+  // After DNS expand, endpoints are IP literals. Preserve HTTP/2 :authority as host:port
+  // (plaintext and TLS) so virtual-host proxies that match on port still route correctly.
+  // TLS SNI uses hostname-only. Operator sslTargetNameOverride (TLSChannelBuilder) wins
+  // for both when set under secure=true; a TLS-only override must not skip plaintext authority.
   const override = config.sslTargetNameOverride?.trim();
-  if (authorityHostname) {
+  if (dnsAuthority) {
     if (config.secure) {
       if (!override) {
-        options['grpc.default_authority'] = authorityHostname;
-        options['grpc.ssl_target_name_override'] = authorityHostname;
+        options['grpc.default_authority'] = dnsAuthority.authority;
+        options['grpc.ssl_target_name_override'] = dnsAuthority.serverName;
       }
     } else {
-      options['grpc.default_authority'] = authorityHostname;
+      options['grpc.default_authority'] = dnsAuthority.authority;
     }
   }
 
@@ -182,8 +182,8 @@ export default class GRPCChannelManager implements BootService {
    * next tick even if the resolved address set is unchanged.
    */
   private dnsOpenNeedsRetry = false;
-  /** Hostname authority when dialing expanded IPs under TLS. */
-  private dnsAuthorityHostname: string | undefined;
+  /** HTTP/2 authority + TLS SNI when dialing DNS-expanded IP endpoints. */
+  private dnsAuthority: DnsAuthority | undefined;
   /** True while dialing addresses produced by expandBackendAddresses (always sw-static). */
   private dialingExpandedAddresses = false;
   /** Skip status transition logs for intentional DISCONNECT→CONNECTED during DNS rebuild. */
@@ -272,7 +272,7 @@ export default class GRPCChannelManager implements BootService {
     this.closed = false;
     this.lastConnectivityState = null;
     this.stopDnsRefreshTimer();
-    this.dnsAuthorityHostname = undefined;
+    this.dnsAuthority = undefined;
     this.dnsRefreshInFlight = false;
     this.dnsOpenNeedsRetry = false;
     this.dialingExpandedAddresses = false;
@@ -296,7 +296,7 @@ export default class GRPCChannelManager implements BootService {
     this.grpcServers = [...parsed];
 
     if (config.isResolveDnsPeriodically && shouldExpandBackendDns(parsed)) {
-      this.dnsAuthorityHostname = firstHostnameAuthority(parsed);
+      this.dnsAuthority = firstHostnameAuthority(parsed);
       // Start the timer immediately so a hung initial lookup cannot block later retries.
       this.startDnsRefreshTimer();
       void this.refreshResolvedBackends(true).catch((error) => {
@@ -321,7 +321,7 @@ export default class GRPCChannelManager implements BootService {
     this.configuredServers = [];
     this.grpcServers = [];
     this.lastResolvedByConfigured = new Map();
-    this.dnsAuthorityHostname = undefined;
+    this.dnsAuthority = undefined;
     this.dialingExpandedAddresses = false;
     this.dnsOpenNeedsRetry = false;
     this.suppressDnsRebuildStatusLog = false;
@@ -443,7 +443,7 @@ export default class GRPCChannelManager implements BootService {
     let built: GRPCChannel;
     try {
       built = GRPCChannel.newBuilder(target)
-        .withChannelOptions(nativeChannelOptions(this.dnsAuthorityHostname))
+        .withChannelOptions(nativeChannelOptions(this.dnsAuthority))
         .addManagedChannelBuilder(new StandardChannelBuilder())
         .addManagedChannelBuilder(new TLSChannelBuilder())
         .addChannelDecorator(new AgentIDDecorator())

@@ -89,9 +89,15 @@ describe('BackendAddressResolver (comma-separated static backends)', () => {
     expect(sameAddressSet(['a:1'], ['a:1', 'b:1'])).toBe(false);
   });
 
-  it('firstHostnameAuthority returns the first non-IP host in the list', () => {
-    expect(firstHostnameAuthority(['oap-a.svc:11800', 'oap-b.svc:11800'])).toBe('oap-a.svc');
-    expect(firstHostnameAuthority(['10.0.0.1:11800', 'oap-b.svc:11800'])).toBe('oap-b.svc');
+  it('firstHostnameAuthority returns host:port authority and hostname-only SNI name', () => {
+    expect(firstHostnameAuthority(['oap-a.svc:11800', 'oap-b.svc:11800'])).toEqual({
+      authority: 'oap-a.svc:11800',
+      serverName: 'oap-a.svc',
+    });
+    expect(firstHostnameAuthority(['10.0.0.1:11800', 'oap-b.svc:11800'])).toEqual({
+      authority: 'oap-b.svc:11800',
+      serverName: 'oap-b.svc',
+    });
     expect(firstHostnameAuthority(['10.0.0.1:11800', '10.0.0.2:11800'])).toBeUndefined();
   });
 

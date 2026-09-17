@@ -259,7 +259,7 @@ describe('GRPCChannelManager (native grpc-js multi-backend failover)', () => {
     expect(mockNewBuilder).toHaveBeenCalled();
     expect(mockNewBuilder.mock.calls[0][0]).toBe('sw-static:///10.0.0.1:11800,10.0.0.2:11800');
     const options = mockWithChannelOptions.mock.calls[0][0];
-    expect(options['grpc.default_authority']).toBe('oap-a.svc');
+    expect(options['grpc.default_authority']).toBe('oap-a.svc:11800');
     expect(options['grpc.ssl_target_name_override']).toBe('oap-a.svc');
     manager.shutdown();
   });
@@ -275,7 +275,7 @@ describe('GRPCChannelManager (native grpc-js multi-backend failover)', () => {
     manager.boot();
     await flushAsyncWork();
     const options = mockWithChannelOptions.mock.calls[0][0];
-    expect(options['grpc.default_authority']).toBe('oap-a.svc');
+    expect(options['grpc.default_authority']).toBe('oap-a.svc:11800');
     expect(options['grpc.ssl_target_name_override']).toBeUndefined();
     manager.shutdown();
   });
@@ -292,7 +292,7 @@ describe('GRPCChannelManager (native grpc-js multi-backend failover)', () => {
     manager.boot();
     await flushAsyncWork();
     const options = mockWithChannelOptions.mock.calls[0][0];
-    expect(options['grpc.default_authority']).toBe('oap-a.svc');
+    expect(options['grpc.default_authority']).toBe('oap-a.svc:11800');
     expect(options['grpc.ssl_target_name_override']).toBeUndefined();
     manager.shutdown();
   });
@@ -526,7 +526,7 @@ describe('GRPCChannelManager (native grpc-js multi-backend failover)', () => {
     manager.boot();
     await flushAsyncWork();
     const options = mockWithChannelOptions.mock.calls[0][0];
-    expect(options['grpc.default_authority']).toBe('oap-b.svc');
+    expect(options['grpc.default_authority']).toBe('oap-b.svc:11800');
     expect(options['grpc.ssl_target_name_override']).toBe('oap-b.svc');
     manager.shutdown();
   });

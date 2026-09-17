@@ -243,14 +243,25 @@ export function sameAddressSet(a: string[], b: string[]): boolean {
 }
 
 /**
- * First non-IP hostname in the configured list — used as TLS authority after
- * expanding backends to IP literals (e.g. `10.0.0.1:11800,oap-b.svc:11800`).
+ * First non-IP hostname in the configured list — used after expanding backends to IP
+ * literals (e.g. `10.0.0.1:11800,oap-b.svc:11800`).
+ *
+ * `authority` keeps host:port for HTTP/2 `:authority` (proxies may match on port).
+ * `serverName` is hostname-only for TLS SNI / ssl_target_name_override.
  */
-export function firstHostnameAuthority(addresses: string[]): string | undefined {
+export type DnsAuthority = {
+  authority: string;
+  serverName: string;
+};
+
+export function firstHostnameAuthority(addresses: string[]): DnsAuthority | undefined {
   for (const entry of addresses) {
     const parsed = grpc.experimental.splitHostPort(entry);
-    if (parsed?.host && !isIpLiteral(parsed.host)) {
-      return parsed.host;
+    if (parsed?.host && parsed.port != null && !isIpLiteral(parsed.host)) {
+      return {
+        authority: formatHostPort(parsed.host, parsed.port),
+        serverName: parsed.host,
+      };
     }
   }
   return undefined;
