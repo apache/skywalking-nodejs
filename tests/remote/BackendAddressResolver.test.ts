@@ -19,6 +19,8 @@
 
 /* eslint-env jest */
 
+import * as net from 'net';
+import * as grpc from '@grpc/grpc-js';
 import {
   buildNativeGrpcTarget,
   expandBackendAddresses,
@@ -68,6 +70,28 @@ describe('BackendAddressResolver (comma-separated static backends)', () => {
 
   it('buildNativeGrpcTarget can force sw-static for a single expanded IP', () => {
     expect(buildNativeGrpcTarget(['10.0.0.1:11800'], { forceStatic: true })).toBe('sw-static:///10.0.0.1:11800');
+  });
+
+  it('sw-static does not reconnect after channel close before resolver nextTick', async () => {
+    let accepts = 0;
+    const server = net.createServer((socket) => {
+      accepts += 1;
+      socket.end();
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = (server.address() as net.AddressInfo).port;
+    const target = buildNativeGrpcTarget([`127.0.0.1:${port}`, `127.0.0.1:${port}`]);
+
+    const channel = new grpc.Channel(target, grpc.credentials.createInsecure(), {});
+    // Kick resolution, then close before the resolver's process.nextTick delivers endpoints.
+    channel.getConnectivityState(true);
+    channel.close();
+    expect(channel.getConnectivityState(false)).toBe(grpc.connectivityState.SHUTDOWN);
+
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    expect(accepts).toBe(0);
+    expect(channel.getConnectivityState(false)).toBe(grpc.connectivityState.SHUTDOWN);
+    await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
   });
 
   it('detects IP literals', () => {

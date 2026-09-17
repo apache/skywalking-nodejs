@@ -297,6 +297,7 @@ function ensureSwStaticResolverRegistered(): void {
     private readonly endpoints: grpc.experimental.Endpoint[];
     private readonly error: { code: number; details: string; metadata: grpc.Metadata } | null;
     private hasReturnedResult = false;
+    private destroyed = false;
 
     constructor(
       target: grpc.experimental.GrpcUri,
@@ -337,11 +338,17 @@ function ensureSwStaticResolverRegistered(): void {
     }
 
     updateResolution(): void {
-      if (this.hasReturnedResult) {
+      // Channel.close() calls destroy() then may still invoke updateResolution; ignore both.
+      if (this.destroyed || this.hasReturnedResult) {
         return;
       }
       this.hasReturnedResult = true;
       process.nextTick(() => {
+        // Drop results scheduled before destroy — otherwise grpc-js reconnects after close
+        // (boot→immediate shutdown race) while the manager has already dropped the channel.
+        if (this.destroyed) {
+          return;
+        }
         if (this.error) {
           this.listener(statusOrFromError(this.error), {}, null, '');
         } else {
@@ -351,7 +358,7 @@ function ensureSwStaticResolverRegistered(): void {
     }
 
     destroy(): void {
-      this.hasReturnedResult = false;
+      this.destroyed = true;
     }
 
     static getDefaultAuthority(target: grpc.experimental.GrpcUri): string {
