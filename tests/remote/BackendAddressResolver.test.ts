@@ -201,6 +201,28 @@ describe('BackendAddressResolver (comma-separated static backends)', () => {
     expect(lookup).toHaveBeenCalledWith('hung');
   }, 20000);
 
+  it('reuses an in-flight hung lookup across expand ticks instead of stacking queries', async () => {
+    const lookup = jest.fn(
+      () =>
+        new Promise<Array<{ address: string; family: number }>>(() => {
+          /* never resolves */
+        }),
+    );
+
+    const first = await expandBackendAddresses(['hung:11800'], lookup);
+    expect(first.hadLookupFailure).toBe(true);
+    expect(lookup).toHaveBeenCalledTimes(1);
+
+    const second = await expandBackendAddresses(['hung:11800'], lookup);
+    expect(second.hadLookupFailure).toBe(true);
+    // getaddrinfo cannot be cancelled; still must not start a second libc query.
+    expect(lookup).toHaveBeenCalledTimes(1);
+
+    const third = await expandBackendAddresses(['hung:11800'], lookup);
+    expect(third.hadLookupFailure).toBe(true);
+    expect(lookup).toHaveBeenCalledTimes(1);
+  }, 30000);
+
   it('does not surface unhandledRejection when lookup fails after timeout', async () => {
     const unhandled: unknown[] = [];
     const onUnhandled = (reason: unknown) => {

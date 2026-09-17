@@ -38,16 +38,49 @@ const defaultDnsLookupAll: DnsLookupAll = (hostname) => dns.promises.lookup(host
 /** Per-hostname DNS lookup deadline (ms). Hung lookups fail open to the next name / tick. */
 export const DNS_LOOKUP_TIMEOUT_MS = 5_000;
 
+/**
+ * In-flight getaddrinfo cannot be cancelled after the wait timeout. Deduplicate by
+ * (lookup, hostname) so periodic ticks reuse the same pending query instead of
+ * stacking libc/thread-pool work under slow DNS.
+ */
+const inflightLookups = new WeakMap<
+  DnsLookupAll,
+  Map<string, Promise<ReadonlyArray<{ address: string; family: number }>>>
+>();
+
+function inflightMapFor(
+  lookup: DnsLookupAll,
+): Map<string, Promise<ReadonlyArray<{ address: string; family: number }>>> {
+  let map = inflightLookups.get(lookup);
+  if (!map) {
+    map = new Map();
+    inflightLookups.set(lookup, map);
+  }
+  return map;
+}
+
 async function lookupWithTimeout(
   hostname: string,
   lookup: DnsLookupAll,
   timeoutMs: number = DNS_LOOKUP_TIMEOUT_MS,
 ): Promise<ReadonlyArray<{ address: string; family: number }>> {
+  const inflight = inflightMapFor(lookup);
+  let lookupPromise = inflight.get(hostname);
+  if (!lookupPromise) {
+    lookupPromise = lookup(hostname);
+    inflight.set(hostname, lookupPromise);
+    // Keep a rejection handler so a late failure after timeout does not surface as
+    // an unhandledRejection; drop the map entry once the underlying query settles.
+    void lookupPromise
+      .finally(() => {
+        if (inflight.get(hostname) === lookupPromise) {
+          inflight.delete(hostname);
+        }
+      })
+      .catch(() => undefined);
+  }
+
   let timer: NodeJS.Timeout | undefined;
-  // Keep a rejection handler so a late failure after timeout does not surface as
-  // an unhandledRejection (dns.lookup/getaddrinfo cannot be cancelled).
-  const lookupPromise = lookup(hostname);
-  void lookupPromise.catch(() => undefined);
   try {
     return await Promise.race([
       lookupPromise,
