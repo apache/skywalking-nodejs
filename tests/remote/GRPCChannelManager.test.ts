@@ -280,6 +280,23 @@ describe('GRPCChannelManager (native grpc-js multi-backend failover)', () => {
     manager.shutdown();
   });
 
+  it('keeps plaintext default_authority even when a TLS-only sslTargetNameOverride is set', async () => {
+    jest
+      .spyOn(BackendAddressResolver, 'expandBackendAddresses')
+      .mockResolvedValue(dnsExpand(['10.0.0.1:11800', '10.0.0.2:11800']));
+    config.collectorAddress = 'oap-a.svc:11800,oap-b.svc:11800';
+    config.isResolveDnsPeriodically = true;
+    config.secure = false;
+    config.sslTargetNameOverride = 'custom.oap.example';
+    const manager = new GRPCChannelManager();
+    manager.boot();
+    await flushAsyncWork();
+    const options = mockWithChannelOptions.mock.calls[0][0];
+    expect(options['grpc.default_authority']).toBe('oap-a.svc');
+    expect(options['grpc.ssl_target_name_override']).toBeUndefined();
+    manager.shutdown();
+  });
+
   it('uses sw-static even when DNS expand yields a single IP', async () => {
     jest.spyOn(BackendAddressResolver, 'expandBackendAddresses').mockResolvedValue(dnsExpand(['10.0.0.1:11800']));
     config.collectorAddress = 'oap-a.svc:11800,oap-b.svc:11800';
@@ -838,6 +855,55 @@ describe('GRPCChannelManager (native grpc-js multi-backend failover)', () => {
 
     expect(outageSpy).toHaveBeenCalled();
     expect((manager as unknown as { suppressDnsRebuildStatusLog: boolean }).suppressDnsRebuildStatusLog).toBe(false);
+    outageSpy.mockRestore();
+    manager.shutdown();
+  });
+
+  it('logs an outage when a second DNS rebuild fails while already DISCONNECT', async () => {
+    jest.useFakeTimers();
+    jest
+      .spyOn(BackendAddressResolver, 'expandBackendAddresses')
+      .mockResolvedValueOnce(dnsExpand(['10.0.0.1:11800', '10.0.0.2:11800']))
+      .mockResolvedValueOnce(dnsExpand(['10.0.0.1:11800', '10.0.0.3:11800']))
+      .mockResolvedValueOnce(dnsExpand(['10.0.0.1:11800', '10.0.0.4:11800']));
+
+    const watchCallbacks: Array<(error?: Error) => void> = [];
+    mockWatchConnectivityState.mockImplementation((_state, _deadline, cb: (error?: Error) => void) => {
+      watchCallbacks.push(cb);
+    });
+
+    const outageSpy = jest.spyOn(
+      GRPCChannelManager.prototype as unknown as { logDnsRebuildFailedToConnect: () => void },
+      'logDnsRebuildFailedToConnect',
+    );
+
+    mockGetConnectivityState.mockReturnValue(grpc.connectivityState.READY);
+    config.collectorAddress = 'oap-a.svc:11800,oap-b.svc:11800';
+    config.isResolveDnsPeriodically = true;
+    const manager = new GRPCChannelManager();
+    manager.boot();
+    await flushAsyncWork();
+
+    // First rebuild: CONNECTED → quiet DISCONNECT, stuck in CONNECTING.
+    mockGetConnectivityState.mockReturnValue(grpc.connectivityState.CONNECTING);
+    watchCallbacks.length = 0;
+    jest.advanceTimersByTime(30_000);
+    await flushAsyncWork();
+    expect((manager as unknown as { lastStatus: GRPCChannelStatus }).lastStatus).toBe(GRPCChannelStatus.DISCONNECT);
+    expect((manager as unknown as { suppressDnsRebuildStatusLog: boolean }).suppressDnsRebuildStatusLog).toBe(true);
+    expect(outageSpy).not.toHaveBeenCalled();
+
+    // Second rebuild while still DISCONNECT/CONNECTING; replacement then fails.
+    watchCallbacks.length = 0;
+    jest.advanceTimersByTime(30_000);
+    await flushAsyncWork();
+    expect((manager as unknown as { suppressDnsRebuildStatusLog: boolean }).suppressDnsRebuildStatusLog).toBe(true);
+
+    mockGetConnectivityState.mockReturnValue(grpc.connectivityState.TRANSIENT_FAILURE);
+    watchCallbacks[watchCallbacks.length - 1]!();
+    await flushAsyncWork();
+
+    expect(outageSpy).toHaveBeenCalled();
     outageSpy.mockRestore();
     manager.shutdown();
   });

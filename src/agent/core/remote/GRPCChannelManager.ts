@@ -138,12 +138,17 @@ function nativeChannelOptions(authorityHostname?: string): ChannelOptions {
   // After DNS expand, endpoints are IP literals. Preserve HTTP/2 :authority on the
   // configured hostname (plaintext and TLS) so virtual-host proxies still route by name.
   // Under TLS also set SNI / ssl_target_name_override unless the operator already set
-  // sslTargetNameOverride (TLSChannelBuilder wins then).
+  // sslTargetNameOverride (TLSChannelBuilder wins then). A TLS-only override must not
+  // skip plaintext default_authority — TLSChannelBuilder ignores it when secure=false.
   const override = config.sslTargetNameOverride?.trim();
-  if (authorityHostname && !override) {
-    options['grpc.default_authority'] = authorityHostname;
+  if (authorityHostname) {
     if (config.secure) {
-      options['grpc.ssl_target_name_override'] = authorityHostname;
+      if (!override) {
+        options['grpc.default_authority'] = authorityHostname;
+        options['grpc.ssl_target_name_override'] = authorityHostname;
+      }
+    } else {
+      options['grpc.default_authority'] = authorityHostname;
     }
   }
 
@@ -476,6 +481,11 @@ export default class GRPCChannelManager implements BootService {
           this.suppressDnsRebuildStatusLog = false;
           throw error;
         }
+      } else if (this.lastStatus === GRPCChannelStatus.DISCONNECT) {
+        // Already DISCONNECT (e.g. prior rebuild still CONNECTING). Keep the quiet window so
+        // a later TRANSIENT_FAILURE can emit logDnsRebuildFailedToConnect instead of a
+        // deduped no-op notify(DISCONNECT).
+        this.suppressDnsRebuildStatusLog = true;
       } else {
         this.suppressDnsRebuildStatusLog = false;
       }
