@@ -80,7 +80,7 @@
     "wait-for-expect": "^3.0.2"
   },
   "dependencies": {
-    "@grpc/grpc-js": "^1.14.4",
+    "@grpc/grpc-js": "^1.14.6",
     "google-protobuf": "^3.14.0",
     "husky": "^7.0.4",
     "semver": "^7.3.2",
