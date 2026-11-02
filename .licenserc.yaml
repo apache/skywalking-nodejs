@@ -23,6 +23,7 @@ header:
 
   paths-ignore:
     - 'dist'
+    - 'protocol'
     - 'licenses'
     - '**/*.md'
     - '**/*.json'
