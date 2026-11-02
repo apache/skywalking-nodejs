@@ -88,6 +88,16 @@
     "uuid": "^8.1.0",
     "winston": "^3.2.1"
   },
+  "overrides": {
+    "@tootallnate/once": "^2.0.1",
+    "dockerode": {
+      "tar-fs": "^2.1.4"
+    },
+    "handlebars": "^4.7.10",
+    "sane": {
+      "micromatch": "^4.0.8"
+    }
+  },
   "lint-staged": {
     "*.ts": [
       "eslint",
