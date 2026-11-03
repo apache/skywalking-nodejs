@@ -41,10 +41,10 @@ Run the TypeScript lint check:
 npm run lint
 ```
 
-Run unit tests without Docker plugin suites:
+Run unit tests without Docker plugin suites or remote e2e:
 
 ```bash
-npx jest --testPathIgnorePatterns '/node_modules/' '/tests/plugins/' --runInBand
+npx jest --testPathIgnorePatterns '/node_modules/' '/tests/plugins/' '/tests/remote-e2e/' --runInBand
 ```
 
 Run all tests, including Docker plugin suites:

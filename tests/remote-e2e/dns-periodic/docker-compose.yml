@@ -1,0 +1,114 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+services:
+  oap:
+    image: ${SW_OAP_IMAGE:-ghcr.io/apache/skywalking/oap@sha256:f3fd1982c0344db2150780ea71bd51afc1f8fd7f482f73f01429a72151c857f6}
+    environment:
+      SW_STORAGE: banyandb
+      SW_STORAGE_BANYANDB_TARGETS: banyandb:17912
+    ports:
+      - '12802:12800'
+    expose:
+      - '11800'
+    depends_on:
+      banyandb:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'bash', '-c', 'cat < /dev/null > /dev/tcp/127.0.0.1/11800']
+      interval: 5s
+      timeout: 60s
+      retries: 120
+      start_period: 90s
+    networks:
+      dnsperiodic:
+        aliases:
+          - oap-a
+
+  # Separate container IP for oap-b that TCP-proxies to the real OAP — DNS expand
+  # therefore yields two distinct dial IPs while both reach the same backend.
+  oap-b-proxy:
+    image: alpine/socat:1.8.0.0
+    command: ['TCP-LISTEN:11800,fork,reuseaddr', 'TCP:oap:11800']
+    depends_on:
+      oap:
+        condition: service_healthy
+    healthcheck:
+      # Probe listen port: /dev/null EOF ends the transfer right after connect.
+      # (Do not use -u TCP→OPEN:/dev/null — that waits for server data and times out.)
+      # alpine/socat ENTRYPOINT is socat; CMD-SHELL bypasses it.
+      test: ['CMD-SHELL', 'socat -T1 /dev/null TCP:127.0.0.1:11800,connect-timeout=1']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 3s
+    networks:
+      dnsperiodic:
+        aliases:
+          - oap-b
+
+  banyandb:
+    image: ${SW_BANYANDB_IMAGE:-ghcr.io/apache/skywalking-banyandb:3b83e18fb0481d02e44eaa5df137fcf7b000754b}
+    command:
+      - standalone
+      - --measure-metadata-cache-wait-duration
+      - 1m
+      - --stream-metadata-cache-wait-duration
+      - 1m
+    expose:
+      - '17912'
+    healthcheck:
+      test: ['CMD', 'sh', '-c', 'nc -nz 127.0.0.1 17912']
+      interval: 5s
+      timeout: 60s
+      retries: 120
+    networks:
+      - dnsperiodic
+
+  server:
+    build:
+      context: ../../..
+      dockerfile: tests/plugins/common/Dockerfile.agent
+      args:
+        - SW_NODE_VERSION=${SW_NODE_VERSION:-22}
+    ports:
+      - '5012:5000'
+    environment:
+      SW_AGENT_NAME: nodejs-dns-periodic-e2e
+      SW_AGENT_INSTANCE: nodejs-dns-periodic-e2e-instance
+      SW_AGENT_COLLECTOR_BACKEND_SERVICES: oap-a:11800,oap-b:11800
+      SW_AGENT_IS_RESOLVE_DNS_PERIODICALLY: 'true'
+      SW_AGENT_DNS_RE_RESOLVE_INTERVAL_SECONDS: '3'
+      SW_AGENT_RUNTIME_METRICS_REPORTER_ACTIVE: 'false'
+    volumes:
+      - .:/app/tests/remote-e2e/dns-periodic
+    entrypoint: ['bash', '-c', 'npx ts-node /app/tests/remote-e2e/dns-periodic/server.ts']
+    depends_on:
+      oap:
+        condition: service_healthy
+      oap-b-proxy:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'bash', '-c', 'cat < /dev/null > /dev/tcp/127.0.0.1/5000']
+      interval: 5s
+      timeout: 60s
+      retries: 120
+    networks:
+      - dnsperiodic
+
+networks:
+  dnsperiodic:
