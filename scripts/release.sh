@@ -141,6 +141,8 @@ if [ ${#MISSING[@]} -gt 0 ]; then
     err "Missing required tools: ${MISSING[*]}"
     exit 1
 fi
+# release-src packs and checks the tarball with GNU tar in a Linux container.
+bash "${SCRIPT_DIR}/linux-tar.sh" check
 HAVE_LICENSE_EYE=true
 command -v license-eye >/dev/null || HAVE_LICENSE_EYE=false
 echo "All required tools present.  node: $(node --version)  npm: $(npm --version)"
