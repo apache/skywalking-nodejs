@@ -58,8 +58,8 @@ they read your SVN password. These settings are optional:
   1. Register the fingerprint at [id.apache.org](https://id.apache.org/).
   1. **Append** (never overwrite) your key to the [SkyWalking KEYS](https://dist.apache.org/repos/dist/release/skywalking/KEYS)
      file — **PMC only**; ask a PMC member if needed.
-- **Tools**: Node >= 20, plus `git`, `svn`, `gh`, `gpg`, `shasum`, `tar` (and `license-eye`,
-  optional). Run `gh auth login`; for the npm publish, `npm login` as a maintainer of
+- **Tools**: Node >= 20, plus `git`, `svn`, `gh`, `gpg`, `shasum`, `tar`, Docker with its daemon running
+  (and `license-eye`, optional). Run `gh auth login`; for the npm publish, `npm login` as a maintainer of
   `skywalking-backend-js`.
 - **Milestones**: close the current milestone and create the next one in
   [skywalking-nodejs](https://github.com/apache/skywalking-nodejs/milestones) and
@@ -77,7 +77,10 @@ bash scripts/release.sh               # the real cut
 1. Check the GPG signer, required tools, and Node.js version.
 1. Clone `master` with submodules and create a `prepare-release-<v>` branch.
 1. Remove `-dev`, commit the release version, and tag the release commit.
-1. Build, sign, and check `skywalking-nodejs-src-<v>.tgz{,.asc,.sha512}`.
+1. Build, sign, and check `skywalking-nodejs-src-<v>.tgz{,.asc,.sha512}`. The tarball is packed with GNU tar in a
+   Linux container (`scripts/linux-tar.sh`), not with the host's `tar`, so a release made on macOS carries no macOS
+   metadata (AppleDouble `._*` files or extended-attribute headers). Before signing, it is unpacked with GNU tar in the
+   same image, and the release stops if tar prints any warning or finds a `._*` entry.
 1. Push the tag only after the checks pass. Add the next `-dev` commit and open the release pull
    request.
 1. Upload the release candidate to `dist/dev/skywalking/node-js/<v>/`.
